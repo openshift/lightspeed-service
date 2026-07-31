@@ -42,6 +42,7 @@ Every provider must satisfy all of the following:
     - **Gemini 3 (Vertex)**: `thinking_level` (low/medium/high), `include_thoughts` (bool). Passed as kwargs to `ChatGoogleGenerativeAI`.
     - **Gemini 2.5 (Vertex)**: `thinking_budget` (int token count), `include_thoughts` (bool). `thinking_budget` and `thinking_level` are mutually exclusive at the Gemini API level.
     - **Anthropic (Vertex)**: `type` (enabled/adaptive), `display` (omitted/summarized), optionally `budget_tokens` (int). Passed as the `thinking` dict to `ChatAnthropicVertex`.
+    - **Anthropic (direct)**: `type` (enabled/adaptive), `display` (omitted/summarized), optionally `budget_tokens` (int). Passed as the `thinking` dict to `ChatAnthropic`. Same key semantics as the Vertex Anthropic variant.
     - **Bedrock (Anthropic models)**: `type` (adaptive). Passed as thinking configuration to `ChatBedrockConverse`.
     - **Bedrock (OpenAI models)**: `effort` (low/medium/high), `summary` (auto/concise/detailed). Passed as the `reasoning` dict to `ChatOpenAI`.
     - **vLLM (RHELAI / RHOAI)**: `enabled` (bool). When `true`, triggers use of the `ChatVLLMReasoning` subclass instead of `ChatOpenAI`.
@@ -124,33 +125,39 @@ The following sections describe only what differs from the standard contract abo
 
 41. [PLANNED: OLS-3442] When `reasoning_config` is present, passes it as the `thinking` dict to `ChatAnthropicVertex`. Anthropic extended thinking requires thinking blocks with cryptographic signatures to be round-tripped in subsequent messages. The current cache stores plain-string `AIMessage` objects which do not preserve these signatures. This is acceptable for now — Anthropic's API automatically handles prior-turn thinking blocks, and cache schema changes are deferred until evals show they're needed.
 
+### Anthropic (`anthropic`)
+
+42. Default URL: `https://api.anthropic.com`. Uses `ChatAnthropic` from `langchain-anthropic`. Credentials are a direct Anthropic API key read from `credentials_path` via the standard `apitoken` pattern. Uses httpx clients and custom certificate store. `max_tokens_for_response` maps to `max_tokens`.
+
+43. [PLANNED: OLS-3442] When `reasoning_config` is present, passes it as the `thinking` dict to `ChatAnthropic`. Same semantics as the Vertex Anthropic variant (rule 13) — extended thinking requires `type` (enabled/adaptive) and optionally `budget_tokens`. Standard sampling parameters (`temperature`, `top_p`) are skipped when reasoning is enabled.
+
 ### AWS Bedrock (`bedrock`)
 
-42. Uses the Bedrock Mantle gateway — a single endpoint exposing multiple model families (Anthropic Claude, OpenAI GPT, DeepSeek, etc.) via their native APIs. The base URL must be configured explicitly (region-specific, e.g., `https://bedrock-mantle.us-east-1.api.aws`). No default URL; the system must reject a Bedrock provider with no URL at configuration time.
+44. Uses the Bedrock Mantle gateway — a single endpoint exposing multiple model families (Anthropic Claude, OpenAI GPT, DeepSeek, etc.) via their native APIs. The base URL must be configured explicitly (region-specific, e.g., `https://bedrock-mantle.us-east-1.api.aws`). No default URL; the system must reject a Bedrock provider with no URL at configuration time.
 
-43. Must route to the correct LangChain class and Mantle API path based on model name prefix:
+45. Must route to the correct LangChain class and Mantle API path based on model name prefix:
     - `anthropic.*` → `ChatBedrockConverse` from `langchain-aws`, via native Bedrock Converse API (region prefix auto-prepended to model ID)
     - `openai.*` → `ChatOpenAI` from `langchain-openai`, with base URL suffix `/openai/v1` and `use_responses_api=True`
     - All other models → `ChatOpenAI` from `langchain-openai`, with base URL suffix `/v1` (standard Chat Completions)
 
-44. Authentication: two pathways supported. (a) Bearer token — read from `credentials_path` file using the standard `apitoken` pattern; passed as `bedrock_api_key` to `ChatBedrockConverse` and as `openai_api_key` for `ChatOpenAI`. (b) IAM credentials — `aws_access_key_id`, `aws_secret_access_key`, and optional `role_arn` read from the `credentials_path` directory; for `ChatBedrockConverse` a pre-configured boto3 client is passed, for `ChatOpenAI` via `httpx-aws-auth` SigV4 signing. If neither path provides credentials, the provider raises a clear error.
+46. Authentication: two pathways supported. (a) Bearer token — read from `credentials_path` file using the standard `apitoken` pattern; passed as `bedrock_api_key` to `ChatBedrockConverse` and as `openai_api_key` for `ChatOpenAI`. (b) IAM credentials — `aws_access_key_id`, `aws_secret_access_key`, and optional `role_arn` read from the `credentials_path` directory; for `ChatBedrockConverse` a pre-configured boto3 client is passed, for `ChatOpenAI` via `httpx-aws-auth` SigV4 signing. If neither path provides credentials, the provider raises a clear error.
 
-45. Uses a single `BedrockParameters` set — the union of `ChatBedrockConverse` and `ChatOpenAI` kwargs. `max_tokens_for_response` maps to `max_completion_tokens` in the generic parameter mapping; `load()` pops `max_completion_tokens` for the Anthropic branch since `ChatBedrockConverse` uses `max_tokens` natively.
+47. Uses a single `BedrockParameters` set — the union of `ChatBedrockConverse` and `ChatOpenAI` kwargs. `max_tokens_for_response` maps to `max_completion_tokens` in the generic parameter mapping; `load()` pops `max_completion_tokens` for the Anthropic branch since `ChatBedrockConverse` uses `max_tokens` natively.
 
-46. Uses custom certificate store and httpx clients (same pattern as OpenAI). Supports TLS security profiles and proxy configuration.
+48. Uses custom certificate store and httpx clients (same pattern as OpenAI). Supports TLS security profiles and proxy configuration.
 
 ### Fake Provider (`fake_provider`)
 
-47. Returns static preconfigured responses for testing. Supports a streaming mode that splits the response into chunks with a configurable sleep interval, and a non-streaming mode that returns the full response at once.
+49. Returns static preconfigured responses for testing. Supports a streaming mode that splits the response into chunks with a configurable sleep interval, and a non-streaming mode that returns the full response at once.
 
-48. Accepts `bind_tools()` but ignores the tools (returns the same LLM instance unchanged).
+50. Accepts `bind_tools()` but ignores the tools (returns the same LLM instance unchanged).
 
-49. Not intended for production use. Configured via `fake_provider_config` with fields: `stream`, `response`, `chunks`, `sleep`. The `mcp_tool_call` field (if present) is ignored and does not affect the static response or emitted metadata; it may be removed in a future revision. [PLANNED] Clarify or remove `mcp_tool_call` from the Fake Provider configuration surface.
+51. Not intended for production use. Configured via `fake_provider_config` with fields: `stream`, `response`, `chunks`, `sleep`. The `mcp_tool_call` field (if present) is ignored and does not affect the static response or emitted metadata; it may be removed in a future revision. [PLANNED] Clarify or remove `mcp_tool_call` from the Fake Provider configuration surface.
 
 ## Configuration Surface
 
 - `llm_providers[].name` -- Provider instance name (used as the lookup key).
-- `llm_providers[].type` -- Provider type string (must match a registered type: `openai`, `azure_openai`, `watsonx`, `rhoai_vllm`, `rhelai_vllm`, `google_vertex`, `google_vertex_anthropic`, `bedrock`, `fake_provider`). Defaults to the provider name if not specified.
+- `llm_providers[].type` -- Provider type string (must match a registered type: `openai`, `azure_openai`, `watsonx`, `rhoai_vllm`, `rhelai_vllm`, `google_vertex`, `google_vertex_anthropic`, `anthropic`, `bedrock`, `fake_provider`). Defaults to the provider name if not specified.
 - `llm_providers[].url` -- Base URL for the LLM API endpoint.
 - `llm_providers[].credentials_path` -- Path to file or directory containing the API key/token.
 - `llm_providers[].project_id` -- Required for WatsonX; project identifier.
@@ -175,6 +182,7 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].rhelai_vllm_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].google_vertex_config` -- Provider-specific: `project`, `location`.
 - `llm_providers[].google_vertex_anthropic_config` -- Provider-specific: `project`, `location`.
+- `llm_providers[].anthropic_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].aws_access_key_id` -- Bedrock IAM: read from `credentials_path` directory at config load time.
 - `llm_providers[].aws_secret_access_key` -- Bedrock IAM: read from `credentials_path` directory at config load time.
 - `llm_providers[].role_arn` -- Bedrock IAM: optional STS assume-role ARN, read from `credentials_path` directory.
@@ -198,7 +206,7 @@ The following sections describe only what differs from the standard contract abo
 
 6. Credentials are never logged. Parameters containing keys, tokens, or HTTP client objects must be redacted from log output.
 
-7. The certificate store path is computed at startup and points to a PEM bundle file in the certificate directory. It is only used by OpenAI-family providers (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM, Bedrock).
+7. The certificate store path is computed at startup and points to a PEM bundle file in the certificate directory. It is only used by OpenAI-family providers and direct Anthropic (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM, Anthropic, Bedrock).
 
 8. Google Vertex providers require `credentials` to contain valid JSON representing a Google service account key. Non-JSON or non-object values must be rejected.
 
@@ -208,6 +216,6 @@ The following sections describe only what differs from the standard contract abo
 
 - ~~[PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider~~ — Implemented in OLS-1895. IAM credentials (access key + secret key) and STS assume-role supported. E2E coverage tracked by [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327).
 - [PLANNED: OLS-3442] Reasoning token support: per-model `reasoning_config` for all providers, vLLM `ChatVLLMReasoning` subclass, remove model-name detection from OpenAI/Azure providers. Replaces `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
-- [PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively. Anthropic models are currently available through the Google Vertex Anthropic provider.
+- ~~[PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively.~~ — Implemented in OLS-3755. Direct Anthropic provider using `ChatAnthropic` from `langchain-anthropic` with API key authentication.
 - [PLANNED: OLS-1320] Support short-lived (rotating) tokens for all providers, replacing static API keys with tokens that are refreshed periodically.
 - [PLANNED: OLS-1999] Support IBM WatsonX short-lived token authentication, enabling token-based auth that refreshes automatically rather than using a static API key.

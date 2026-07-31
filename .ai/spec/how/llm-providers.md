@@ -21,8 +21,8 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 - `LLMProvider(AbstractLLMProvider)` -- Concrete base. Constructor pipeline: `default_params` -> `_override_params` (merge caller params, then dev-config overrides) -> `_remap_to_llm_params` (generic-to-provider name translation) -> `_validate_parameters` (drop params not in the provider's allowed set).
 - `_construct_httpx_client(use_custom_certificate_store, use_async)` -- Builds `httpx.Client` or `httpx.AsyncClient` with proxy, TLS security profile, and custom certificate store support. Used by OpenAI-compatible providers.
 - `ProviderParameter(name, _type)` -- Frozen dataclass. The allowed-parameter sets use both name and type for validation (a parameter with the wrong type is rejected).
-- Parameter sets: `AzureOpenAIParameters`, `OpenAIParameters`, `RHOAIVLLMParameters`, `RHELAIVLLMParameters`, `WatsonxParameters`, `BedrockParameters`, `FakeProviderParameters`, `GoogleVertexAnthropicParameters`, `GoogleVertexParameters`. Collected in `available_provider_parameters` dict keyed by provider type string.
-- Generic-to-LLM mapping dicts: `AzureOpenAIParametersMapping`, `OpenAIParametersMapping`, `WatsonxParametersMapping`, `BedrockParametersMapping`, etc. Collected in `generic_to_llm_parameters`.
+- Parameter sets: `AzureOpenAIParameters`, `OpenAIParameters`, `RHOAIVLLMParameters`, `RHELAIVLLMParameters`, `WatsonxParameters`, `AnthropicParameters`, `BedrockParameters`, `FakeProviderParameters`, `GoogleVertexAnthropicParameters`, `GoogleVertexParameters`. Collected in `available_provider_parameters` dict keyed by provider type string.
+- Generic-to-LLM mapping dicts: `AzureOpenAIParametersMapping`, `OpenAIParametersMapping`, `WatsonxParametersMapping`, `AnthropicParametersMapping`, `BedrockParametersMapping`, etc. Collected in `generic_to_llm_parameters`.
 
 ### Provider implementations
 
@@ -35,6 +35,7 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 | `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. [PLANNED: OLS-3442 — `ChatVLLMReasoning` when `reasoning_config.enabled`] |
 | `google_vertex.py` | `GoogleVertex` | `"google_vertex"` | `ChatGoogleGenerativeAI` | Gemini / publisher models; credentials via `load_vertex_credentials`. [PLANNED: OLS-3442 — thinking config via `reasoning_config`] |
 | `google_vertex.py` | `GoogleVertexAnthropic` | `"google_vertex_anthropic"` | `ChatAnthropicVertex` | Claude on Vertex Model Garden; same module. [PLANNED: OLS-3442 — thinking config via `reasoning_config`] |
+| `anthropic.py` | `Anthropic` | `"anthropic"` | `ChatAnthropic` | Direct Anthropic API; API key auth; httpx clients and custom cert store. [PLANNED: OLS-3442 — thinking config via `reasoning_config`] |
 | `bedrock.py` | `Bedrock` | `"bedrock"` | `ChatBedrockConverse` or `ChatOpenAI` | AWS Bedrock via Mantle gateway; routes by model prefix (`anthropic.*` → Converse, `openai.*` → Responses API). [PLANNED: OLS-3442 — reasoning config] |
 | `vllm_reasoning.py` | `ChatVLLMReasoning` | (not registered) | N/A | [PLANNED: OLS-3442] `BaseChatOpenAI` subclass that captures `reasoning_content`/`reasoning` from vLLM responses. Not a provider — used by vLLM providers when reasoning is enabled |
 | `fake_provider.py` | `FakeProvider` | `"fake_provider"` | `FakeListLLM` / `FakeStreamingListLLM` | Testing only; monkey-patches `bind_tools` |
@@ -96,13 +97,13 @@ The base class handles parameter merging, remapping, and validation automaticall
 
 Callers pass generic parameter names defined in `GenericLLMParameters`:
 
-| Generic name | OpenAI / Azure / VLLM | WatsonX | Google Vertex |
-|---|---|---|---|
-| `max_tokens_for_response` | `max_completion_tokens` | `max_new_tokens` | `max_output_tokens` |
-| `min_tokens_for_response` | (not mapped) | `min_new_tokens` | (not mapped) |
-| `top_k` | (not mapped) | `top_k` | (not mapped) |
-| `top_p` | (not mapped) | `top_p` | (not mapped) |
-| `temperature` | (not mapped) | `temperature` | (not mapped) |
+| Generic name | OpenAI / Azure / VLLM | WatsonX | Google Vertex | Anthropic |
+|---|---|---|---|---|
+| `max_tokens_for_response` | `max_completion_tokens` | `max_new_tokens` | `max_output_tokens` | `max_tokens` |
+| `min_tokens_for_response` | (not mapped) | `min_new_tokens` | (not mapped) | (not mapped) |
+| `top_k` | (not mapped) | `top_k` | (not mapped) | (not mapped) |
+| `top_p` | (not mapped) | `top_p` | (not mapped) | (not mapped) |
+| `temperature` | (not mapped) | `temperature` | (not mapped) | (not mapped) |
 
 When a generic name has no mapping entry for a provider, it passes through unchanged and is then accepted or rejected by `_validate_parameters`.
 
@@ -128,7 +129,7 @@ Each provider follows the same pattern: read generic fields from `ProviderConfig
 
 ### Constants
 
-- Provider type strings: `PROVIDER_OPENAI`, `PROVIDER_AZURE_OPENAI`, `PROVIDER_WATSONX`, `PROVIDER_RHOAI_VLLM`, `PROVIDER_RHELAI_VLLM`, `PROVIDER_BEDROCK`, `PROVIDER_FAKE`, `PROVIDER_GOOGLE_VERTEX`, `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` in `ols/constants.py`.
+- Provider type strings: `PROVIDER_OPENAI`, `PROVIDER_AZURE_OPENAI`, `PROVIDER_WATSONX`, `PROVIDER_RHOAI_VLLM`, `PROVIDER_RHELAI_VLLM`, `PROVIDER_ANTHROPIC`, `PROVIDER_BEDROCK`, `PROVIDER_FAKE`, `PROVIDER_GOOGLE_VERTEX`, `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` in `ols/constants.py`.
 - `SUPPORTED_PROVIDER_TYPES` frozenset is checked during config validation (not by the registry).
 
 ### TLS and proxy

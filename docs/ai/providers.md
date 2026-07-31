@@ -123,6 +123,7 @@ Unknown parameters (not in the provider's `ProviderParameter` set) are silently 
 | `PROVIDER_WATSONX` | `watsonx.py` | `WatsonxLLM` |
 | `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` | `google_vertex.py` | `ChatAnthropicVertex` (Claude on Vertex) |
 | `PROVIDER_GOOGLE_VERTEX` | `google_vertex.py` | `ChatGoogleGenerativeAI` |
+| `PROVIDER_ANTHROPIC` | `anthropic.py` | `ChatAnthropic` (direct Anthropic API) |
 | `PROVIDER_FAKE` | `fake_provider.py` | `FakeListLLM` / `FakeStreamingListLLM` |
 | `PROVIDER_BEDROCK` | `bedrock.py` | `ChatBedrockConverse` / `ChatOpenAI` (model-prefix routing) |
 
