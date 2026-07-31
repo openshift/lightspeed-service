@@ -71,18 +71,21 @@ ibm-watsonx-ai==1.6.0 \
 jmespath==1.0.1 \
     --hash=sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
-langchain-aws==1.6.3 \
-    --hash=sha256:418fa53a94fdc4971de44939fceb70f1d09e1a63867942b52f54403a5385e43e \
-    --hash=sha256:f8574b23859c7a975c91cef98f9544f2c57ada1043be55449045824bf822f026
+langchain-anthropic==1.5.3 \
+    --hash=sha256:48a7e4fc3856c42f9dcb4396ba112afcdd8dee21b70a402bc43283c970de3941 \
+    --hash=sha256:b1b72b7c9e4bf5c044660629ebbcb79cef18c140fdc80174750eb86de13ec8bc
+langchain-aws==1.6.4 \
+    --hash=sha256:1ff9769b8177973bb0345af92b667e460285418914b918a117649558335461bb \
+    --hash=sha256:db8aeda35dbdfab543398f78cd792059a2ed917ebe0943ff3012f43aeaaee9b4
 langchain-google-vertexai==3.2.4 \
     --hash=sha256:65b5615e596fdabc2e149f0160fded88bebef2bbc1ea70095ff81714f7570183 \
     --hash=sha256:f0c16b4b639037f60357dbf6d4aa3b0f301f23be6b33b0688c75902235cb9434
 langchain-ibm==1.1.0 \
     --hash=sha256:09695295a2773a2f651272586e86a95275872b404c11421d609cfb7866a17c26 \
     --hash=sha256:2d64f5869febd8153e826f912043fd48a9d17f9c6bfd30ad60887c1a8b4183d3
-langchain-mcp-adapters==0.3.0 \
-    --hash=sha256:1af511a95e028d9546502e360f95698ae8b691dbc07981fc48170c2cb1ebd7a9 \
-    --hash=sha256:fa6c9497015eb2807de5d0c341a36e1d2445cecbae1f4a24e922fc5b94f1a36c
+langchain-mcp-adapters==0.3.1 \
+    --hash=sha256:1e354d9466db9fab9e30f24419adffbd39a84229e7f452927f99ea799e1937f9 \
+    --hash=sha256:e08d4a74a0934d558ddb807ecbb8f89466c93a0d06c1fb58974b93b4703de01c
 llama-index-embeddings-huggingface==0.7.0 \
     --hash=sha256:cae7e4ffddc1fecb34b83425a00679f338ce03ad0a7f3aca6b927136d6af7131 \
     --hash=sha256:da8a2a65df9404112c4430dfada09d4f846ba165197a25dbe77f734014c56a87

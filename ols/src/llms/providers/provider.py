@@ -16,6 +16,7 @@ from langchain_core.language_models.llms import LLM
 from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.constants import (
+    PROVIDER_ANTHROPIC,
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BEDROCK,
     PROVIDER_FAKE,
@@ -164,6 +165,20 @@ BedrockParameters = {
     ProviderParameter("max_completion_tokens", int),
 }
 
+AnthropicParameters = {
+    ProviderParameter("model", str),
+    ProviderParameter("anthropic_api_key", str),
+    ProviderParameter("base_url", str),
+    ProviderParameter("max_tokens", int),
+    ProviderParameter("temperature", float),
+    ProviderParameter("top_p", float),
+    ProviderParameter("top_k", int),
+    ProviderParameter("thinking", dict),
+    ProviderParameter("http_client", httpx.Client),
+    ProviderParameter("http_async_client", httpx.AsyncClient),
+    ProviderParameter("default_headers", dict),
+}
+
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
@@ -175,6 +190,7 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParameters,
     PROVIDER_GOOGLE_VERTEX: GoogleVertexParameters,
     PROVIDER_BEDROCK: BedrockParameters,
+    PROVIDER_ANTHROPIC: AnthropicParameters,
 }
 
 # Generic to Azure OpenAI parameters mapping
@@ -222,6 +238,10 @@ BedrockParametersMapping: dict[str, str] = {
     GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
 }
 
+AnthropicParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+}
+
 # mapping between generic parameters and LLM-specific parameters
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
@@ -233,6 +253,7 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParametersMapping,
     PROVIDER_GOOGLE_VERTEX: GoogleVertexParametersMapping,
     PROVIDER_BEDROCK: BedrockParametersMapping,
+    PROVIDER_ANTHROPIC: AnthropicParametersMapping,
 }
 
 

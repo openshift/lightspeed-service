@@ -24,8 +24,10 @@ def test_providers_are_registered():
     )
     assert constants.PROVIDER_GOOGLE_VERTEX in LLMProvidersRegistry.llm_providers
     assert constants.PROVIDER_BEDROCK in LLMProvidersRegistry.llm_providers
+    assert constants.PROVIDER_ANTHROPIC in LLMProvidersRegistry.llm_providers
 
     # import after previous test to not influence the auto-registration
+    from ols.src.llms.providers.anthropic import Anthropic
     from ols.src.llms.providers.bedrock import Bedrock
     from ols.src.llms.providers.fake_provider import FakeProvider
     from ols.src.llms.providers.google_vertex import GoogleVertex, GoogleVertexAnthropic
@@ -52,6 +54,7 @@ def test_providers_are_registered():
         == GoogleVertex
     )
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_BEDROCK] == Bedrock
+    assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_ANTHROPIC] == Anthropic
 
 
 def test_valid_provider_is_registered():
