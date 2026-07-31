@@ -322,6 +322,82 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
         )
 
 
+def _run_operator_sdk_bundle(bundle_image: str) -> None:
+    """Run ``operator-sdk run bundle`` for the given image."""
+    subprocess.run(  # noqa: S603
+        [  # noqa: S607
+            "operator-sdk",
+            "run",
+            "bundle",
+            "--timeout=20m",
+            "-n",
+            "openshift-lightspeed",
+            bundle_image,
+            "--verbose",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+def _cleanup_failed_bundle() -> bool:
+    """Clean up a failed operator bundle install so it can be retried.
+
+    Returns True if cleanup succeeded, False otherwise.
+    """
+    print("Cleaning up failed operator bundle install...")
+    try:
+        result = subprocess.run(
+            [  # noqa: S607
+                "operator-sdk",
+                "cleanup",
+                "lightspeed-operator",
+                "--timeout=5m",
+                "-n",
+                "openshift-lightspeed",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            print(
+                f"operator-sdk cleanup failed (rc={result.returncode}),"
+                f" stdout: {result.stdout}, stderr: {result.stderr}"
+            )
+            return False
+        print("operator-sdk cleanup succeeded")
+        return True
+    except OSError as e:
+        print(f"operator-sdk cleanup error (non-fatal): {e}")
+        return False
+
+
+def _run_bundle_with_retry(bundle_image: str) -> None:
+    """Install the operator bundle, retrying once on failure after cleanup."""
+    try:
+        _run_operator_sdk_bundle(bundle_image)
+    except subprocess.CalledProcessError as first_err:
+        print(
+            f"operator-sdk run bundle failed: {first_err},"
+            f" stdout: {first_err.output}, stderr: {first_err.stderr}"
+        )
+        if not _cleanup_failed_bundle():
+            print("Cleanup failed, skipping retry")
+            raise
+        time.sleep(30)
+        print("Retrying operator-sdk run bundle...")
+        try:
+            _run_operator_sdk_bundle(bundle_image)
+        except subprocess.CalledProcessError as retry_err:
+            print(
+                f"operator-sdk run bundle retry failed: {retry_err},"
+                f" stdout: {retry_err.output}, stderr: {retry_err.stderr}"
+            )
+            raise
+
+
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     if not disconnected:
@@ -357,28 +433,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             ],
             ignore_existing_resource=True,
         )
-        try:
-            subprocess.run(  # noqa: S603
-                [  # noqa: S607
-                    "operator-sdk",
-                    "run",
-                    "bundle",
-                    "--timeout=20m",
-                    "-n",
-                    "openshift-lightspeed",
-                    bundle_image,
-                    "--verbose",
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        # TODO: add run_command func
-        except subprocess.CalledProcessError as e:
-            print(
-                f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
-            )
-            raise
+        _run_bundle_with_retry(bundle_image)
     cluster_utils.run_oc(
         ["project", "openshift-lightspeed"], ignore_existing_resource=True
     )

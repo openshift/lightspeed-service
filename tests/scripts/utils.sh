@@ -50,6 +50,7 @@ function cleanup_ols_operator() {
 # $7 OLS_CONFIG_SUFFIX
 function run_suite() {
   echo "Preparing to run suite $1"
+  local saved_seconds=$SECONDS
 
   if [ "$1" = "model_eval" ]; then
   # Run old-style model evaluation tests
@@ -68,5 +69,7 @@ function run_suite() {
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
   fi
   local rc=$?
+  local duration_s=$(( SECONDS - saved_seconds ))
+  echo "{\"suite\":\"$1\",\"rc\":$rc,\"duration_s\":$duration_s,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >> "${ARTIFACT_DIR}/suite_results.jsonl"
   return $rc
 }
