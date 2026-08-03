@@ -109,7 +109,7 @@ def split_ciphers(cipher_string: Optional[str]) -> SplitCiphers:
     for cipher in (c.strip() for c in cipher_string.replace(":", ",").split(",")):
         if not cipher:
             continue
-        if cipher.startswith("TLS_"):
+        if cipher.startswith("TLS_") and "_WITH_" not in cipher:
             tls13.append(cipher)
         else:
             tls12.append(cipher)

@@ -173,3 +173,16 @@ class TestSplitCiphers:
         result = split_ciphers(cipher_str)
         assert result.tls12 == "ECDHE-RSA-AES128-GCM-SHA256"
         assert result.tls13 == "TLS_AES_128_GCM_SHA256"
+
+    def test_iana_format_tls12_not_misclassified(self):
+        """IANA-format TLS 1.2 names (TLS_*_WITH_*) stay in tls12."""
+        cipher_str = (
+            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, "
+            "TLS_AES_128_GCM_SHA256, "
+            "ECDHE-RSA-AES256-GCM-SHA384"
+        )
+        result = split_ciphers(cipher_str)
+        assert result.tls12 == (
+            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:ECDHE-RSA-AES256-GCM-SHA384"
+        )
+        assert result.tls13 == "TLS_AES_128_GCM_SHA256"
