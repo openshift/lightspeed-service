@@ -12,6 +12,10 @@ from tests.e2e.utils.wait_for_ols import wait_for_ols
 OC_COMMAND_RETRY_COUNT = 120
 
 
+class PodNotFoundError(Exception):
+    """Raised when a pod is not found on the cluster."""
+
+
 OC_SUBPROCESS_TIMEOUT = 120
 
 
@@ -271,6 +275,8 @@ def get_pod_containers(pod, namespace: str = "openshift-lightspeed") -> list[str
         )
         return result.stdout.strip("'").split()
     except subprocess.CalledProcessError as e:
+        if "NotFound" in (e.stderr or ""):
+            raise PodNotFoundError(f"Pod {pod} not found") from e
         raise Exception(f"Error getting containers of pod {pod}") from e
 
 

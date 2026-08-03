@@ -11,6 +11,7 @@ from ols.constants import DEFAULT_CONFIGURATION_FILE
 
 sys.path.append(Path(__file__).parent.parent.parent.as_posix())
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.cluster import PodNotFoundError
 
 
 def must_gather():
@@ -157,7 +158,12 @@ def must_gather():
     pod_logs_dir = cluster_dir / "podlogs"
     pod_logs_dir.mkdir(exist_ok=True)
     for pod in cluster_utils.get_running_pods():
-        for container in cluster_utils.get_pod_containers(pod):
+        try:
+            containers = cluster_utils.get_pod_containers(pod)
+        except PodNotFoundError:
+            print(f"Pod {pod} vanished before logs could be collected, skipping")
+            continue
+        for container in containers:
             cluster_utils.run_oc_and_store_stdout(
                 [
                     "logs",
