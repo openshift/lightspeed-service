@@ -56,7 +56,7 @@ function run_suites() {
 
   # Vertex Gemini
   SUITE_ID="lseval_presubmit_vertex_gemini" run_suite \
-    "lseval_presubmit_vertex_gemini" "lseval" "vertex_gemini" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.5-flash" "$OLS_IMAGE" "lseval"
+    "lseval_presubmit_vertex_gemini" "lseval" "vertex_gemini" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "lseval"
   (( rc = rc || $? ))
 
   # Vertex Claude

@@ -8,7 +8,7 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: gemini-3.5-flash
+          - name: gemini-3.1-flash-lite
         name: google_vertex
         type: google_vertex
         googleVertexConfig:
@@ -16,7 +16,7 @@ spec:
           location: "us-central1"
         url: https://us-central1-aiplatform.googleapis.com/
   ols:
-    defaultModel: gemini-3.5-flash
+    defaultModel: gemini-3.1-flash-lite
     defaultProvider: google_vertex
     deployment:
       replicas: 1
