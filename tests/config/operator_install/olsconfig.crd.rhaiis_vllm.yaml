@@ -17,7 +17,7 @@ spec:
           - name: meta-llama/Llama-3.1-70B-Instruct
         name: rhelai_vllm
         type: rhelai_vllm
-        url: http://52.117.125.226:8080/v1
+        url: http://52.116.126.38/v1
   ols:
     defaultModel: meta-llama/Llama-3.1-70B-Instruct
     defaultProvider: rhelai_vllm
