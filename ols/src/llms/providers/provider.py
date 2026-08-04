@@ -374,6 +374,13 @@ class LLMProvider(AbstractLLMProvider):
             )
             updated_params = {**updated_params, **config.dev_config.llm_params}
 
+        # Temperature stripping is intentionally applied after all param merges
+        # (including dev_config overrides) because it enforces a physical model
+        # constraint: if the model's API does not accept a temperature argument,
+        # passing one causes an API error regardless of how it was configured.
+        # This is not a precedence decision — dev_config still wins over defaults
+        # and call-site params — it is a hard capability check that must happen
+        # last, after the final merged param set is known.
         if not self._model_supports_temperature() and "temperature" in updated_params:
             logger.warning(
                 "Model %s does not support temperature; removing it from parameters",
