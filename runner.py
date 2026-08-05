@@ -3,7 +3,6 @@
 import logging
 import os
 import sys
-import threading
 from pathlib import Path
 
 from ols.app.models.config import OtelTlsMode
@@ -25,10 +24,7 @@ from ols.version import __version__
 
 
 def load_index():
-    """Load the index."""
-    # Resolve Solr hybrid search (OCP version resolution) in the background
-    # so it does not block uvicorn startup.  Solr failure is non-fatal: the
-    # pod goes ready once rag_index loads and serves without hybrid search.
+    """Resolve Solr hybrid search and load RAG indexes before accepting requests."""
     config.solr_hybrid_search  # pylint: disable=W0104, E0606
     config.rag_index  # pylint: disable=W0104, E0606
 
@@ -108,10 +104,7 @@ if __name__ == "__main__":
             "in the `dev_config` section of the configuration file."
         )
 
-    # create and start the rag_index_thread - allows loading index in
-    # parallel with starting the Uvicorn server
-    rag_index_thread = threading.Thread(target=load_index)
-    rag_index_thread.start()
+    load_index()
 
     # start the quota scheduler
     start_quota_scheduler(config)

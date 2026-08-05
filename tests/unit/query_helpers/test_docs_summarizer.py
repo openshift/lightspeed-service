@@ -224,13 +224,15 @@ async def test_resolve_tools_appends_openshift_docs_tool_when_solr_configured_no
         m_get.return_value = []
         prev = config.ols_config.solr_hybrid
         config.ols_config.solr_hybrid = SolrHybridSettings()
-        config.__dict__["solr_hybrid_search"] = MagicMock()
+        config._cached_solr_hybrid_search = MagicMock()
+        config._solr_hybrid_initialized = True
         try:
             summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
             tools = await summarizer._resolve_tools_for_request("query")
         finally:
             config.ols_config.solr_hybrid = prev
-            config.__dict__.pop("solr_hybrid_search", None)
+            config._cached_solr_hybrid_search = None
+            config._solr_hybrid_initialized = False
     assert [t.name for t in tools] == ["search_openshift_documentation"]
     m_get.assert_awaited_once()
 

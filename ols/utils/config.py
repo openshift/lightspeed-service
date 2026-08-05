@@ -57,6 +57,9 @@ class AppConfig:
         self._tools_approval: Optional[config_model.ToolsApprovalConfig] = None
         self._pending_approval_store: Optional["PendingApprovalStoreBase"] = None
         self._cached_solr_embed_model: Any = None
+        self._cached_solr_hybrid_search: SolrHybridSearch | None = None
+        self._solr_hybrid_initialized: bool = False
+        self._solr_init_attempts: int = 0
         self._cached_byok_embed_model: Any = None
 
     @property
@@ -264,18 +267,45 @@ class AppConfig:
         )
         return self._cached_solr_embed_model
 
-    @cached_property
+    _SOLR_MAX_INIT_ATTEMPTS = 3
+
+    @property
     def solr_hybrid_search(self) -> SolrHybridSearch | None:
-        """Return Solr hybrid RAG client when ``ols_config.solr_hybrid`` is present."""
+        """Return Solr hybrid RAG client when ``ols_config.solr_hybrid`` is present.
+
+        Re-attempts initialization on every access until it succeeds, so
+        RHOKP starting after the app-server is tolerated without a pod restart.
+        Once connected, the result is cached for the lifetime of the process.
+        Gives up permanently after ``_SOLR_MAX_INIT_ATTEMPTS`` failures.
+        """
+        if self._solr_hybrid_initialized:
+            return self._cached_solr_hybrid_search
         settings = self.config.ols_config.solr_hybrid  # type: ignore[attr-defined]
         if settings is None:
+            self._solr_hybrid_initialized = True
             return None
         try:
             embed_model = self._solr_hybrid_embed_model()
             encode_fn = embed_model.get_text_embedding
-            return SolrHybridSearch(settings, encode_fn)
+            self._cached_solr_hybrid_search = SolrHybridSearch(settings, encode_fn)
+            self._solr_hybrid_initialized = True
+            return self._cached_solr_hybrid_search
         except Exception:
-            logger.exception("Failed to initialize Solr hybrid RAG")
+            self._solr_init_attempts += 1
+            if self._solr_init_attempts >= self._SOLR_MAX_INIT_ATTEMPTS:
+                logger.error(
+                    "Solr hybrid RAG permanently unavailable after %d attempts "
+                    "— product documentation search is disabled for this pod",
+                    self._solr_init_attempts,
+                )
+                self._solr_hybrid_initialized = True
+            else:
+                logger.warning(
+                    "Solr hybrid RAG not yet available (attempt %d/%d) "
+                    "— will retry on next request",
+                    self._solr_init_attempts,
+                    self._SOLR_MAX_INIT_ATTEMPTS,
+                )
             return None
 
     @property
@@ -324,8 +354,9 @@ class AppConfig:
                 del self.__dict__["tools_rag"]
             if "skills_rag" in self.__dict__:
                 del self.__dict__["skills_rag"]
-            if "solr_hybrid_search" in self.__dict__:
-                del self.__dict__["solr_hybrid_search"]
+            self._cached_solr_hybrid_search = None
+            self._solr_hybrid_initialized = False
+            self._solr_init_attempts = 0
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())
