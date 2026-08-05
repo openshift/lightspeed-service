@@ -19,6 +19,7 @@ flit-core==3.12.0
     #   pyproject-metadata
 hatchling==1.31.0
     # via
+    #   langchain-anthropic
     #   langchain-aws
     #   langchain-google-vertexai
     #   llama-index-embeddings-huggingface
@@ -52,7 +53,7 @@ setuptools-scm==10.2.1
     #   setuptools-rust
 trove-classifiers==2026.6.1.19
     # via hatchling
-vcs-versioning==2.2.2
+vcs-versioning==2.2.3
     # via setuptools-scm
 versioneer==0.29
     # via bottleneck

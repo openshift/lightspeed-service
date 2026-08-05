@@ -109,7 +109,7 @@ Each provider entry under `llm_providers` supports:
 | Field Path | Type | Default | Purpose |
 |------------|------|---------|---------|
 | `llm_providers[].name` | string | (required) | Provider name |
-| `llm_providers[].type` | string | =name | Provider type (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, bedrock, fake_provider). The default `=name` only applies when the provider name exactly matches one of the supported type values; if the name is an alias or does not match, `type` must be set explicitly or the provider will fail to start. |
+| `llm_providers[].type` | string | =name | Provider type (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, anthropic, bedrock, fake_provider). The default `=name` only applies when the provider name exactly matches one of the supported type values; if the name is an alias or does not match, `type` must be set explicitly or the provider will fail to start. |
 | `llm_providers[].url` | URL | none | Provider endpoint URL |
 | `llm_providers[].credentials_path` | string | none | Path to credential file or directory |
 | `llm_providers[].models[]` | list | (required, >= 1) | Model definitions |
@@ -150,7 +150,7 @@ Each provider entry under `llm_providers` supports:
 13. `default_model` must name a model that exists within the default provider's model list.
 14. `conversation_cache.type` must be either `memory` or `postgres`. The corresponding sub-section (`memory` or `postgres`) must be present when the type is specified.
 15. `authentication_config.module` must be one of: `k8s`, `noop`, `noop-with-token`.
-16. Provider `type` must be one of the supported provider types: openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, bedrock, fake_provider.
+16. Provider `type` must be one of the supported provider types: openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, anthropic, bedrock, fake_provider.
 17. `project_id` is required when provider type is `watsonx`.
 
 ### Tool Budget Computation
