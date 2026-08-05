@@ -233,10 +233,10 @@ modifications:
 
 ### Custom CA Bundle
 
-When `certificate_directory` is configured in `OLSConfig`, `build_mcp_config`
-creates an `httpx.AsyncClient` factory with a custom SSL context pointing to the
-CA bundle file. This factory is attached to every MCP server transport config,
-enabling connections to servers with internal/self-signed certificates.
+CA trust for MCP server connections is handled globally via the `SSL_CERT_FILE`
+environment variable set by the operator. Python's `ssl.create_default_context()`
+picks up the merged CA bundle automatically, so no per-server certificate
+configuration is needed in `build_mcp_config`.
 
 ### Per-Round Timeout
 

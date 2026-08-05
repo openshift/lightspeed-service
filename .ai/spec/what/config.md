@@ -75,8 +75,6 @@ The YAML file has four top-level sections:
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Max fraction of remaining tool token budget usable per round (0.3--0.8) | -- |
 | `ols_config.max_workers` | int | 1 | Number of concurrent workers | -- |
 | `ols_config.expire_llm_is_ready_persistent_state` | int | -1 | Expiration for LLM readiness cache (-1 = never) | -- |
-| `ols_config.extra_ca` | list | [] | Additional CA certificate file paths | see what/security.md |
-| `ols_config.certificate_directory` | string | /tmp | Directory for assembled certificate stores | see what/security.md |
 | `ols_config.tlsSecurityProfile` | object | none | TLS security profile for service endpoints | see what/security.md |
 
 ### `dev_config` Fields

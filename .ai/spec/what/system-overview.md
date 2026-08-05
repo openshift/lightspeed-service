@@ -189,8 +189,8 @@ The service is being rebranded to "Red Hat OpenShift Intelligent Assistant."
     set-cookie).
 
 32. Connections to LLM providers use TLS. Credentials are read from file
-    paths specified in the provider configuration. Extra CA certificates
-    can be configured via `ols_config.extra_ca`.
+    paths specified in the provider configuration. CA trust is handled
+    via the `SSL_CERT_FILE` environment variable set by the operator.
 
 ### User Feedback
 
@@ -275,7 +275,6 @@ All configuration is read from `olsconfig.yaml` (path overridden via the
 | `ols_config.max_iterations` | Override default max tool-calling iterations |
 | `ols_config.history_compression_enabled` | Enable/disable history summarization (default: true) |
 | `ols_config.proxy_config` | HTTP/HTTPS proxy and no-proxy settings |
-| `ols_config.extra_ca` | Additional CA certificate file paths |
 | `ols_config.tool_filtering` | Tool filtering via hybrid RAG (embed model, alpha, top_k, threshold) |
 | `ols_config.tools_approval` | Tool execution approval strategy and timeout |
 | `ols_config.skills` | Skills directory, embed model, alpha, threshold |

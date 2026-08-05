@@ -150,11 +150,8 @@ class Bedrock(LLMProvider):
             params["http_client"] = httpx.Client(auth=auth)
             params["http_async_client"] = httpx.AsyncClient(auth=auth)
         else:
-            use_cert_store = self.provider_config.certificates_store is not None
             params["openai_api_key"] = api_key
-            params["http_client"] = self._construct_httpx_client(use_cert_store, False)
-            params["http_async_client"] = self._construct_httpx_client(
-                use_cert_store, True
-            )
+            params["http_client"] = self._construct_httpx_client(False)
+            params["http_async_client"] = self._construct_httpx_client(True)
 
         return ChatOpenAI(**params)

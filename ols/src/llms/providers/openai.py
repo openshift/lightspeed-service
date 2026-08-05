@@ -41,8 +41,8 @@ class OpenAI(LLMProvider):
             "cache": None,
             "max_completion_tokens": 512,
             "verbose": False,
-            "http_client": self._construct_httpx_client(True, False),
-            "http_async_client": self._construct_httpx_client(True, True),
+            "http_client": self._construct_httpx_client(False),
+            "http_async_client": self._construct_httpx_client(True),
         }
 
         # gpt-5 and o-series models use the Responses API for reasoning support

@@ -1,28 +1,11 @@
 """Unit tests for OpenAI provider."""
 
-import os
-
 import httpx
 import pytest
 from langchain_openai.chat_models.base import ChatOpenAI
 
-from ols import constants
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.openai import OpenAI
-
-cert_in_certificates_store_path = "tests/unit/extra_certs/sample_cert_1.crt"
-
-
-@pytest.fixture
-def fake_certifi_store(tmpdir):
-    """Create a fake certifi store."""
-    cert_store_path = os.path.join(
-        constants.DEFAULT_CERTIFICATE_DIRECTORY, constants.CERTIFICATE_STORAGE_FILENAME
-    )
-    with open(cert_store_path, "wb") as cert_store:
-        with open(cert_in_certificates_store_path, "rb") as cert_file:
-            cert_store.write(cert_file.read())
-    return cert_store_path
 
 
 @pytest.fixture
@@ -89,7 +72,7 @@ def provider_config_with_specific_parameters():
     )
 
 
-def test_basic_interface(provider_config, fake_certifi_store):
+def test_basic_interface(provider_config):
     """Test basic interface."""
     openai = OpenAI(model="uber-model", params={}, provider_config=provider_config)
     llm = openai.load()
@@ -109,7 +92,7 @@ def test_basic_interface(provider_config, fake_certifi_store):
     assert isinstance(client, httpx.Client)
 
 
-def test_params_handling(provider_config, fake_certifi_store):
+def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
     # first three parameters should be removed before model init
     # rest need to stay
@@ -148,9 +131,7 @@ def test_params_handling(provider_config, fake_certifi_store):
     assert openai.default_params["base_url"] == "test_url"
 
 
-def test_credentials_key_in_directory_handling(
-    provider_config_credentials_directory, fake_certifi_store
-):
+def test_credentials_key_in_directory_handling(provider_config_credentials_directory):
     """Test that credentials in directory is handled as expected."""
     params = {}
 
@@ -165,9 +146,7 @@ def test_credentials_key_in_directory_handling(
     assert openai.credentials == "secret_key"
 
 
-def test_loading_provider_specific_parameters(
-    provider_config_with_specific_parameters, fake_certifi_store
-):
+def test_loading_provider_specific_parameters(provider_config_with_specific_parameters):
     """Test that not allowed parameters are removed before model init."""
     openai = OpenAI(
         model="uber-model",
@@ -192,7 +171,7 @@ def test_loading_provider_specific_parameters(
     assert openai.default_params["base_url"] == "http://openai.com/"
 
 
-def test_none_params_handling(provider_config, fake_certifi_store):
+def test_none_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
     # first three parameters should be removed before model init
     # rest need to stay
@@ -217,7 +196,7 @@ def test_none_params_handling(provider_config, fake_certifi_store):
     assert openai.default_params["base_url"] == "test_url"
 
 
-def test_params_replace_default_values_with_none(provider_config, fake_certifi_store):
+def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
     # provider initialization with empty set of params
     openai = OpenAI(model="uber-model", params={}, provider_config=provider_config)

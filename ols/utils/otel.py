@@ -75,11 +75,13 @@ class OTLPJsonStdoutExporter(SpanExporter):
 
 def init_tracer(
     otel_endpoint: Optional[str] = None,
-    insecure: bool = False,
-    certificate_file: Optional[str] = None,
     audit_enabled: bool = False,
 ) -> trace.Tracer:
-    """Initialize the OTEL tracer with exporters based on configuration."""
+    """Initialize the OTEL tracer with exporters based on configuration.
+
+    CA trust for gRPC is handled via GRPC_DEFAULT_SSL_ROOTS_FILE_PATH,
+    set from SSL_CERT_FILE at startup in runner.py.
+    """
     resource = Resource.create({"service.name": "lightspeed-service"})
     provider = TracerProvider(resource=resource)
 
@@ -92,16 +94,7 @@ def init_tracer(
             OTLPSpanExporter,
         )
 
-        credentials = None
-        if not insecure and certificate_file:
-            import grpc  # pylint: disable=C0415
-
-            with open(certificate_file, "rb") as f:
-                credentials = grpc.ssl_channel_credentials(root_certificates=f.read())
-
-        exporter = OTLPSpanExporter(
-            endpoint=otel_endpoint, insecure=insecure, credentials=credentials
-        )
+        exporter = OTLPSpanExporter(endpoint=otel_endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         logger.info("OTEL tracer configured with endpoint: %s", otel_endpoint)
     elif not audit_enabled:
