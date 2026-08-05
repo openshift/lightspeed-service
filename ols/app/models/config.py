@@ -393,14 +393,12 @@ class ProviderConfig(BaseModel):
     google_vertex_anthropic_config: Optional[GoogleVertexAnthropicConfig] = None
     google_vertex_config: Optional[GoogleVertexConfig] = None
     fake_provider_config: Optional[FakeConfig] = None
-    certificates_store: Optional[str] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
 
     def __init__(
         self,
         data: Optional[dict] = None,
         ignore_llm_secrets: bool = False,
-        certificate_directory: str = constants.DEFAULT_CERTIFICATE_DIRECTORY,
     ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
@@ -441,15 +439,6 @@ class ProviderConfig(BaseModel):
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
             # note: it can be overwritten in azure_config
-        if self.type in (
-            constants.PROVIDER_RHOAI_VLLM,
-            constants.PROVIDER_RHELAI_VLLM,
-            constants.PROVIDER_OPENAI,
-            constants.PROVIDER_AZURE_OPENAI,
-        ):
-            self.certificates_store = os.path.join(
-                certificate_directory, constants.CERTIFICATE_STORAGE_FILENAME
-            )
         self.tls_security_profile = TLSSecurityProfile(
             data.get("tlsSecurityProfile", None)
         )
@@ -638,7 +627,6 @@ class LLMProviders(BaseModel):
         self,
         data: Optional[dict] = None,
         ignore_llm_secrets: bool = False,
-        certificate_directory: str = constants.DEFAULT_CERTIFICATE_DIRECTORY,
     ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
@@ -647,7 +635,7 @@ class LLMProviders(BaseModel):
         for p in data:
             if "name" not in p:
                 raise checks.InvalidConfigurationError("provider name is missing")
-            provider = ProviderConfig(p, ignore_llm_secrets, certificate_directory)
+            provider = ProviderConfig(p, ignore_llm_secrets)
             self.providers[p["name"]] = provider
 
     def validate_yaml(self) -> None:
@@ -1153,18 +1141,10 @@ class AuditLoggingMode(StrEnum):
     DISABLED = "Disabled"
 
 
-class OtelTlsMode(StrEnum):
-    """Allowed values for OTEL TLS mode."""
-
-    SECURE = "Secure"
-    INSECURE = "Insecure"
-
-
 class OtelConfig(BaseModel):
     """OTEL exporter configuration."""
 
     endpoint: Optional[str] = None
-    tls_mode: OtelTlsMode = OtelTlsMode.SECURE
 
 
 class AuditConfig(BaseModel):
@@ -1263,9 +1243,6 @@ class OLSConfig(BaseModel):
     user_data_collection: UserDataCollection = UserDataCollection()
     tls_security_profile: Optional[TLSSecurityProfile] = None
 
-    extra_ca: list[FilePath] = []
-    certificate_directory: Optional[str] = None
-
     quota_handlers: Optional[QuotaHandlersConfig] = None
 
     proxy_config: Optional[ProxyConfig] = None
@@ -1326,10 +1303,6 @@ class OLSConfig(BaseModel):
         # by system prompt infrastructure
         self.system_prompt = checks.get_attribute_from_file(data, "system_prompt_path")
 
-        self.extra_ca = data.get("extra_ca", [])
-        self.certificate_directory = data.get(
-            "certificate_directory", constants.DEFAULT_CERTIFICATE_DIRECTORY
-        )
         self.tls_security_profile = TLSSecurityProfile(
             data.get("tlsSecurityProfile", None)
         )
@@ -1436,9 +1409,7 @@ class Config(BaseModel):
             raise checks.InvalidConfigurationError("no OLS config section found")
         v = data.get("llm_providers")
         if v is not None:
-            self.llm_providers = LLMProviders(
-                v, ignore_llm_secrets, self.ols_config.certificate_directory
-            )
+            self.llm_providers = LLMProviders(v, ignore_llm_secrets)
         else:
             raise checks.InvalidConfigurationError(
                 "no LLM providers config section found"

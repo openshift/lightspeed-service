@@ -999,8 +999,6 @@ def test_provider_config_rhoai_vllm_specific():
     assert provider_config.rhoai_vllm_config is not None
     assert str(provider_config.rhoai_vllm_config.url) == "http://localhost/"
     assert provider_config.rhoai_vllm_config.api_key == "secret_key"
-    assert provider_config.certificates_store == "/tmp/ols.pem"  # noqa: S108
-
     # configuration for other providers must not be set
     assert provider_config.openai_config is None
     assert provider_config.azure_config is None
@@ -1065,8 +1063,6 @@ def test_provider_config_rhelai_vllm_specific():
     assert provider_config.rhelai_vllm_config is not None
     assert str(provider_config.rhelai_vllm_config.url) == "http://localhost/"
     assert provider_config.rhelai_vllm_config.api_key == "secret_key"
-    assert provider_config.certificates_store == "/tmp/ols.pem"  # noqa: S108
-
     # configuration for other providers must not be set
     assert provider_config.rhoai_vllm_config is None
     assert provider_config.openai_config is None
@@ -2234,8 +2230,6 @@ def test_ols_config(tmpdir):
     assert ols_config.authentication_config == AuthenticationConfig(
         module=constants.DEFAULT_AUTHENTICATION_MODULE
     )
-    assert ols_config.extra_ca == []
-    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
     assert ols_config.tls_security_profile == TLSSecurityProfile()
@@ -2400,8 +2394,6 @@ def test_ols_config_with_auth_config(tmpdir):
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig(module="foo")
-    assert ols_config.extra_ca == []
-    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
     assert ols_config.tls_security_profile == TLSSecurityProfile()
@@ -2442,8 +2434,6 @@ def test_ols_config_with_tls_security_profile(tmpdir):
     assert ols_config.authentication_config == AuthenticationConfig(
         module=constants.DEFAULT_AUTHENTICATION_MODULE
     )
-    assert ols_config.extra_ca == []
-    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
     assert ols_config.tls_security_profile is not None
@@ -2660,12 +2650,6 @@ def test_ols_config_equality(subtests):
         ols_config_1.max_iterations = 7
         assert ols_config_1 != ols_config_2
 
-    # certificate_directory attribute (str/dir)
-    with subtests.test(msg="Different attribute: certificate_directory"):
-        ols_config_1, ols_config_2 = get_ols_configs()
-        ols_config_1.certificate_directory = "/dev/none"
-        assert ols_config_1 != ols_config_2
-
     # max_workers attribute (int)
     with subtests.test(msg="Different attribute: max_workers"):
         ols_config_1, ols_config_2 = get_ols_configs()
@@ -2790,7 +2774,6 @@ def test_config():
                 "logging_config": {
                     "app_log_level": "error",
                 },
-                "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
                 "expire_llm_is_ready_persistent_state": 2,
             },
@@ -2841,29 +2824,11 @@ def test_config():
         .credentials
         == "secret_key"
     )
-    assert (
-        config.llm_providers.providers[
-            "rhoai_provider_name"
-        ].certificates_store  # pyright: ignore[reportIndexIssue]
-        == "/foo/bar/baz/ols.pem"
-    )
-    assert (
-        config.llm_providers.providers[
-            "rhelai_provider_name"
-        ].certificates_store  # pyright: ignore[reportIndexIssue]
-        == "/foo/bar/baz/ols.pem"
-    )
-    assert (
-        config.llm_providers.providers["test_provider_name"].certificates_store
-        == "/foo/bar/baz/ols.pem"  # pyright: ignore[reportIndexIssue]
-    )
-
     assert config.ols_config.default_provider == "test_default_provider"
     assert config.ols_config.default_model == "test_default_model"
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
-    assert config.ols_config.certificate_directory == "/foo/bar/baz"
     assert config.ols_config.system_prompt_path is None
     assert config.ols_config.system_prompt is None
     assert config.ols_config.authentication_config is not None
@@ -2933,7 +2898,6 @@ def test_config_equality():
                 "logging_config": {
                     "app_log_level": "error",
                 },
-                "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
                 "expire_llm_is_ready_persistent_state": 2,
             },
@@ -2948,47 +2912,6 @@ def test_config_equality():
 
     config2.ols_config.expire_llm_is_ready_persistent_state = 3
     assert config != config2
-
-
-def test_config_default_certificate_directory():
-    """Test the Config model of the Global service configuration."""
-    config = Config(
-        {
-            "llm_providers": [
-                {
-                    "name": "test_provider_name",
-                    "type": "openai",
-                    "url": "test_provider_url",
-                    "credentials_path": "tests/config/secret/apitoken",
-                    "models": [
-                        {
-                            "name": "test_model_name",
-                            "url": "http://test_model_url/",
-                            "credentials_path": "tests/config/secret/apitoken",
-                        }
-                    ],
-                },
-            ],
-            "ols_config": {
-                "default_provider": "test_default_provider",
-                "default_model": "test_default_model",
-                "conversation_cache": {
-                    "type": "memory",
-                    "memory": {
-                        "max_entries": 100,
-                    },
-                },
-                "logging_config": {
-                    "app_log_level": "error",
-                },
-            },
-            "dev_config": {"disable_tls": "true"},
-        }
-    )
-    assert (
-        config.ols_config.certificate_directory
-        == constants.DEFAULT_CERTIFICATE_DIRECTORY
-    )
 
 
 def test_config_improper_missing_model():
@@ -3995,8 +3918,6 @@ def test_ols_config_with_system_prompt(tmpdir):
     assert ols_config.authentication_config == AuthenticationConfig(
         module=constants.DEFAULT_AUTHENTICATION_MODULE
     )
-    assert ols_config.extra_ca == []
-    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt == "This is test system prompt!"
 

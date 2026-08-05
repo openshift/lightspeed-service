@@ -1,6 +1,6 @@
 """Unit tests for ols.utils.otel module."""
 
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import patch
 
 import pytest
 from opentelemetry import trace
@@ -28,56 +28,11 @@ class TestInitTracer:
 
     @patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter")
     @patch("ols.utils.otel.BatchSpanProcessor")
-    def test_insecure_mode(self, mock_processor, mock_exporter):
-        """Insecure mode passes insecure=True explicitly."""
-        init_tracer(otel_endpoint="localhost:4317", insecure=True)
-        mock_exporter.assert_called_once_with(
-            endpoint="localhost:4317", insecure=True, credentials=None
-        )
-
-    @patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter")
-    @patch("ols.utils.otel.BatchSpanProcessor")
-    def test_secure_with_certificate_file(self, mock_processor, mock_exporter):
-        """Secure mode with certificate_file creates gRPC SSL credentials."""
-        ca_path = "/tmp/ols.pem"  # noqa: S108
-        mock_creds = MagicMock()
-        with patch("builtins.open", mock_open(read_data=b"fake-cert")):
-            with patch(
-                "grpc.ssl_channel_credentials", return_value=mock_creds
-            ) as mock_ssl:
-                init_tracer(
-                    otel_endpoint="collector.ns.svc:4317",
-                    insecure=False,
-                    certificate_file=ca_path,
-                )
-                mock_ssl.assert_called_once_with(root_certificates=b"fake-cert")
-        mock_exporter.assert_called_once_with(
-            endpoint="collector.ns.svc:4317", insecure=False, credentials=mock_creds
-        )
-
-    @patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter")
-    @patch("ols.utils.otel.BatchSpanProcessor")
-    def test_secure_without_certificate_file(self, mock_processor, mock_exporter):
-        """Secure mode without certificate_file passes credentials=None."""
-        init_tracer(otel_endpoint="localhost:4317", insecure=False)
-        mock_exporter.assert_called_once_with(
-            endpoint="localhost:4317", insecure=False, credentials=None
-        )
-
-    @patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter")
-    @patch("ols.utils.otel.BatchSpanProcessor")
-    def test_insecure_mode_ignores_certificate_file(
-        self, mock_processor, mock_exporter
-    ):
-        """Insecure mode does not create credentials even with certificate_file."""
-        init_tracer(
-            otel_endpoint="localhost:4317",
-            insecure=True,
-            certificate_file="/tmp/ols.pem",  # noqa: S108
-        )
-        mock_exporter.assert_called_once_with(
-            endpoint="localhost:4317", insecure=True, credentials=None
-        )
+    def test_endpoint_creates_otlp_exporter(self, mock_processor, mock_exporter):
+        """Providing an endpoint creates an OTLP gRPC exporter."""
+        init_tracer(otel_endpoint="localhost:4317")
+        mock_exporter.assert_called_once_with(endpoint="localhost:4317")
+        mock_processor.assert_called_once()
 
     @patch("ols.utils.otel.SimpleSpanProcessor")
     def test_audit_enabled_adds_stdout_exporter(self, mock_simple_processor):
@@ -102,7 +57,7 @@ class TestInitTracer:
         self, mock_simple_processor, mock_batch_processor, mock_exporter
     ):
         """Both audit and endpoint add stdout + OTLP exporters."""
-        init_tracer(otel_endpoint="localhost:4317", insecure=True, audit_enabled=True)
+        init_tracer(otel_endpoint="localhost:4317", audit_enabled=True)
         mock_simple_processor.assert_called_once()
         mock_batch_processor.assert_called_once()
         mock_exporter.assert_called_once()

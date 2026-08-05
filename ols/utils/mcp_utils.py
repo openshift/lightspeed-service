@@ -1,15 +1,10 @@
 """Utilities for parsing and validating MCP client headers."""
 
-import functools
 import logging
-import os
-import ssl
 from typing import Optional, TypeAlias, TypedDict
 
-import httpx
 from langchain_core.tools.structured import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_mcp_adapters.sessions import McpHttpClientFactory
 
 from ols import config, constants
 from ols.app.models.config import MCPServerConfig, MCPServers
@@ -24,7 +19,6 @@ class MCPServerTransport(TypedDict, total=False):
     url: str
     headers: dict[str, str]
     timeout: int
-    httpx_client_factory: McpHttpClientFactory
 
 
 # Type aliases for clarity and reusability
@@ -456,17 +450,6 @@ def build_mcp_config(
 
     servers_config: MCPServersDict = {}
 
-    httpx_factory: McpHttpClientFactory | None = None
-    if config.ols_config.certificate_directory:
-        ca_bundle = os.path.join(
-            config.ols_config.certificate_directory,
-            constants.CERTIFICATE_STORAGE_FILENAME,
-        )
-        if os.path.isfile(ca_bundle):
-            ssl_context = ssl.create_default_context(cafile=ca_bundle)
-            httpx_factory = functools.partial(httpx.AsyncClient, verify=ssl_context)
-            logger.debug("MCP connections will use custom CA bundle: %s", ca_bundle)
-
     try:
         for server in servers_list:
             headers = resolve_server_headers(server, user_token, client_headers)
@@ -482,8 +465,6 @@ def build_mcp_config(
                 server_config["headers"] = headers
             if server.timeout:
                 server_config["timeout"] = server.timeout
-            if httpx_factory is not None:
-                server_config["httpx_client_factory"] = httpx_factory
 
             servers_config[server.name] = server_config
 

@@ -376,13 +376,16 @@ class LLMProvider(AbstractLLMProvider):
 
         return updated_params
 
-    def _construct_httpx_client(  # noqa: C901
-        self, use_custom_certificate_store: bool, use_async: bool
+    def _construct_httpx_client(
+        self, use_async: bool
     ) -> httpx.Client | httpx.AsyncClient:
-        """Construct HTTPX client instance to be used to communicate with LLM."""
-        # no proxy by default
+        """Construct HTTPX client instance to be used to communicate with LLM.
+
+        CA trust is handled globally via the SSL_CERT_FILE env var set by the
+        operator, so ssl.create_default_context() picks up the merged ols.pem
+        bundle automatically.
+        """
         proxy = None
-        # set up proxy if configured.
         if config.ols_config.proxy_config and config.ols_config.proxy_config.proxy_url:
             logger.debug(
                 "Proxy is configured. Proxy URL: %s Proxy CA cert: %s",
@@ -398,7 +401,6 @@ class LLMProvider(AbstractLLMProvider):
                 url=config.ols_config.proxy_config.proxy_url, ssl_context=proxy_context
             )
         mounts = None
-        # if proxy is set, we need to bypass proxy for hosts specified in env var "no_proxy"
         if (
             config.ols_config.proxy_config
             and config.ols_config.proxy_config.no_proxy_hosts
@@ -415,28 +417,12 @@ class LLMProvider(AbstractLLMProvider):
         sec_profile = self.provider_config.tls_security_profile
         logger.info("Security profile %s", sec_profile)
 
-        # if security profile is not set, use httpx client as is
         if sec_profile is None or sec_profile.profile_type is None:
-            verify: ssl.SSLContext | bool = True
-            if use_custom_certificate_store:
-                logger.debug(
-                    "Custom Certificate store location: %s",
-                    self.provider_config.certificates_store,
-                )
-                custom_context = ssl.create_default_context()
-                custom_context.check_hostname = False
-                custom_context.load_verify_locations(
-                    cafile=self.provider_config.certificates_store
-                )
-                verify = custom_context
-            logger.info(
-                "No security profiles. creating httpx.Client with verify %s", verify
-            )
+            logger.info("No security profiles. creating httpx.Client with verify=True")
             if use_async:
-                return httpx.AsyncClient(verify=verify, proxy=proxy, mounts=mounts)
-            return httpx.Client(verify=verify, proxy=proxy, mounts=mounts)
+                return httpx.AsyncClient(verify=True, proxy=proxy, mounts=mounts)
+            return httpx.Client(verify=True, proxy=proxy, mounts=mounts)
 
-        # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
         logger.info("list of ciphers: %s", ciphers)
 
@@ -456,11 +442,9 @@ class LLMProvider(AbstractLLMProvider):
         if ciphers is not None:
             context.set_ciphers(ciphers)
 
-        if use_custom_certificate_store:
-            context.load_verify_locations(self.provider_config.certificates_store)
         logger.info(
             "With security profile, creating httpx.Client with verify %s", context
         )
         if use_async:
-            return httpx.AsyncClient(verify=context, proxy=proxy)
-        return httpx.Client(verify=context, proxy=proxy)
+            return httpx.AsyncClient(verify=context, proxy=proxy, mounts=mounts)
+        return httpx.Client(verify=context, proxy=proxy, mounts=mounts)
