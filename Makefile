@@ -9,7 +9,7 @@ ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
-MODEL := $(if $(MODEL),$(MODEL),"gpt-4.1-mini")
+MODEL := $(if $(MODEL),$(MODEL),"gpt-5.4-mini")
 OLS_CONFIG_SUFFIX := $(if $(OLS_CONFIG_SUFFIX),$(OLS_CONFIG_SUFFIX),"default")
 PATH_TO_PLANTUML := ~/bin
 

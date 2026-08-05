@@ -57,7 +57,7 @@ llm_providers:
     credentials_path: bedrock_api_key.txt
     models:
       # use fully qualified Bedrock model IDs (e.g. anthropic.claude-opus-4-7,
-      # openai.gpt-5.4, deepseek.v3.1)
+      # openai.gpt-5.4-mini, deepseek.v3.1)
       - name: anthropic.claude-opus-4-7
   # - name: my_bedrock_iam
   #   type: bedrock
