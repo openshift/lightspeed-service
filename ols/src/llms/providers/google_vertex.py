@@ -11,6 +11,7 @@ from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 from ols.src.llms.providers.utils import load_vertex_credentials
+from ols.utils.checks import InvalidConfigurationError
 
 if TYPE_CHECKING:
     from google.auth.credentials import Credentials as GoogleCredentials
@@ -32,9 +33,12 @@ class GoogleVertex(LLMProvider):
     def default_params(self) -> dict[str, Any]:
         """Construct and return structure with default LLM params."""
         self.project = self.provider_config.project_id
-        if self.provider_config.credentials is None:
-            raise ValueError("credentials are required for Google Vertex provider")
-        self.credentials = load_vertex_credentials(self.provider_config.credentials)
+        creds_value = self.provider_config.get_credentials()
+        if creds_value is None:
+            raise InvalidConfigurationError(
+                "credentials are required for Google Vertex provider"
+            )
+        self.credentials = load_vertex_credentials(creds_value)
         if self.provider_config.google_vertex_config is not None:
             vertex_config = self.provider_config.google_vertex_config
             self.project = vertex_config.project
@@ -70,11 +74,12 @@ class GoogleVertexAnthropic(LLMProvider):
     def default_params(self) -> dict[str, Any]:
         """Construct and return structure with default LLM params."""
         self.project = self.provider_config.project_id
-        if self.provider_config.credentials is None:
-            raise ValueError(
+        creds_value = self.provider_config.get_credentials()
+        if creds_value is None:
+            raise InvalidConfigurationError(
                 "credentials are required for Google Vertex Anthropic provider"
             )
-        self.credentials = load_vertex_credentials(self.provider_config.credentials)
+        self.credentials = load_vertex_credentials(creds_value)
         if self.provider_config.google_vertex_anthropic_config is not None:
             vertex_config = self.provider_config.google_vertex_anthropic_config
             self.project = vertex_config.project

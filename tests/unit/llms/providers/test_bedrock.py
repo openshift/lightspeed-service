@@ -1,7 +1,7 @@
 """Unit tests for AWS Bedrock provider."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -355,7 +355,7 @@ def test_load_anthropic_model_iam(
     assert call_kwargs["region_name"] == "us-east-1"
     assert call_kwargs["client"] is mock_client
     assert "bedrock_api_key" not in call_kwargs
-    mock_build_session.assert_called_once_with("us-east-1")
+    mock_build_session.assert_called_once_with("us-east-1", ANY)
     mock_build_session.return_value.client.assert_called_once_with("bedrock-runtime")
 
 
@@ -384,7 +384,7 @@ def test_load_openai_model_iam(
     assert call_kwargs["use_responses_api"] is True
     assert "http_client" in call_kwargs
     assert "http_async_client" in call_kwargs
-    _mock_sigv4.assert_called_once_with("us-east-1")
+    _mock_sigv4.assert_called_once_with("us-east-1", ANY)
 
 
 @patch(
@@ -492,3 +492,62 @@ def test_build_sigv4_auth_with_role(
         RoleArn="arn:aws:iam::123456789012:role/TestRole",
         RoleSessionName="ols-bedrock",
     )
+
+
+def test_bedrock_picks_up_rotated_credentials(tmp_path: Path) -> None:
+    """Test that Bedrock provider re-reads credentials when hot-reload is enabled."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("initial-key")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": str(secret_file),
+            "models": [{"name": "anthropic.claude-opus-4-7"}],
+        },
+        credential_hot_reload=True,
+    )
+
+    bedrock_1 = Bedrock(
+        model="anthropic.claude-opus-4-7", params={}, provider_config=config
+    )
+    assert bedrock_1.default_params["api_key"] == "initial-key"
+
+    secret_file.write_text("rotated-key")
+
+    bedrock_2 = Bedrock(
+        model="anthropic.claude-opus-4-7", params={}, provider_config=config
+    )
+    assert bedrock_2.default_params["api_key"] == "rotated-key"
+
+
+def test_bedrock_iam_picks_up_rotated_credentials(tmp_path: Path) -> None:
+    """Test that Bedrock IAM credentials are re-read when hot-reload is enabled."""
+    creds_dir = tmp_path / "aws_creds"
+    creds_dir.mkdir()
+    (creds_dir / "aws_access_key_id").write_text("original_access")
+    (creds_dir / "aws_secret_access_key").write_text("original_secret")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": str(creds_dir),
+            "models": [{"name": "anthropic.claude-opus-4-7"}],
+        },
+        credential_hot_reload=True,
+    )
+
+    access_key, secret_key, _ = config.get_aws_credentials()
+    assert access_key == "original_access"
+    assert secret_key == "original_secret"  # noqa: S105
+
+    (creds_dir / "aws_access_key_id").write_text("rotated_access")
+    (creds_dir / "aws_secret_access_key").write_text("rotated_secret")
+
+    access_key, secret_key, _ = config.get_aws_credentials()
+    assert access_key == "rotated_access"
+    assert secret_key == "rotated_secret"  # noqa: S105

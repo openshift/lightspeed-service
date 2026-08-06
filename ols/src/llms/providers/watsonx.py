@@ -42,7 +42,7 @@ class Watsonx(LLMProvider):
     def load(self) -> BaseChatModel:
         """Load LLM."""
         self.url = str(self.provider_config.url or self.url)
-        self.credentials = self.provider_config.credentials
+        self.credentials = self.provider_config.get_credentials()
         self.project_id = self.provider_config.project_id
 
         # provider-specific configuration has precendence over regular configuration
