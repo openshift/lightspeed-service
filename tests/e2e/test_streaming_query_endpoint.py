@@ -73,7 +73,7 @@ def test_invalid_question():
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
         assert re.search(
-            r"(sorry|questions|assist|help)",
+            r"(sorry|questions|assist|can('t|not) help)",
             response.text,
             re.IGNORECASE,
         )

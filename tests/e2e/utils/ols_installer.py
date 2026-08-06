@@ -295,13 +295,11 @@ def ensure_bedrock_iam_secret(creds: str) -> None:
     values = {k: os.getenv(k) for k in env_keys}
     missing = [k for k in env_keys if not values[k]]
     if missing:
-        print(
-            "Skipping Bedrock IAM secret creation (unset or empty): "
-            f"{', '.join(missing)}. "
-            "Bedrock provider will not work until these CI/Vault/Prow env vars "
-            "are set."
+        raise RuntimeError(
+            f"Bedrock IAM secret cannot be created — required env vars "
+            f"are unset or empty: {', '.join(missing)}. "
+            f"Set these CI/Vault/Prow env vars before running Bedrock e2e tests."
         )
-        return
 
     oc_args: list[str] = [
         "create",
