@@ -1,5 +1,6 @@
 """Unit tests for PostgresCache transaction management fix."""
 
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import psycopg2
@@ -12,6 +13,14 @@ from ols.app.models.models import CacheEntry
 from ols.src.cache.cache_error import CacheError
 from ols.src.cache.postgres_cache import PostgresCache
 from ols.utils import suid
+
+
+@pytest.fixture(autouse=True)
+def _suppress_health_loop() -> Generator[None, None, None]:
+    """Prevent the background health-check thread from making real DB calls."""
+    with patch.object(PostgresCache, "_health_check_loop"):
+        yield
+
 
 user_id = suid.get_suid()
 conversation_id = suid.get_suid()

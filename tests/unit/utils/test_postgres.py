@@ -6,6 +6,7 @@ import psycopg2
 import pytest
 
 from ols.app.models.config import TLSSecurityProfile
+from ols.src.cache.cache_error import CacheError
 from ols.utils.postgres import PostgresBase, connection
 
 
@@ -30,6 +31,8 @@ class TestConnectionDecorator:
             """Initialize connectable."""
             self._connected = False
             self._raise_on_call = raise_on_call
+            self._call_count = 0
+            self._unhealthy_marked = False
 
         def connected(self) -> bool:
             """Check connection status."""
@@ -43,6 +46,10 @@ class TestConnectionDecorator:
             """Drop connection."""
             self._connected = False
 
+        def _mark_unhealthy(self) -> None:
+            """Mark as unhealthy."""
+            self._unhealthy_marked = True
+
         @connection
         def do_work(self) -> str:
             """Perform work requiring a connection."""
@@ -50,7 +57,28 @@ class TestConnectionDecorator:
                 raise RuntimeError("work failed")
             return "done"
 
-    def test_auto_reconnects_when_disconnected(self):
+        @connection
+        def do_work_operational_error(self) -> str:
+            """Raise OperationalError on first call, succeed on retry."""
+            self._call_count += 1
+            if self._call_count == 1:
+                raise psycopg2.OperationalError("connection lost")
+            return "recovered"
+
+        @connection
+        def do_work_interface_error(self) -> str:
+            """Raise InterfaceError on first call, succeed on retry."""
+            self._call_count += 1
+            if self._call_count == 1:
+                raise psycopg2.InterfaceError("cannot reach server")
+            return "recovered"
+
+        @connection
+        def do_work_database_error(self) -> str:
+            """Raise DatabaseError (SQL error, no retry)."""
+            raise psycopg2.DatabaseError("SQL syntax error")
+
+    def test_auto_reconnects_when_disconnected(self) -> None:
         """Decorator calls connect() when not connected."""
         c = self.Connectable()
         c.disconnect()
@@ -60,7 +88,7 @@ class TestConnectionDecorator:
         assert c.connected() is True
         assert result == "done"
 
-    def test_does_not_reconnect_when_connected(self):
+    def test_does_not_reconnect_when_connected(self) -> None:
         """Decorator skips connect() when already connected."""
         c = self.Connectable()
         c.connect()
@@ -68,7 +96,7 @@ class TestConnectionDecorator:
             c.do_work()
             mock_connect.assert_not_called()
 
-    def test_propagates_exception_after_reconnect(self):
+    def test_propagates_exception_after_reconnect(self) -> None:
         """Decorator reconnects then lets the wrapped exception propagate."""
         c = self.Connectable(raise_on_call=True)
         c.disconnect()
@@ -76,6 +104,49 @@ class TestConnectionDecorator:
         with pytest.raises(RuntimeError, match="work failed"):
             c.do_work()
         assert c.connected() is True
+
+    def test_operational_error_triggers_reconnect_and_retry(self) -> None:
+        """OperationalError causes reconnect + retry, succeeding on second attempt."""
+        c = self.Connectable()
+        c.connect()
+        result = c.do_work_operational_error()
+        assert result == "recovered"
+        assert c._unhealthy_marked is True
+
+    def test_interface_error_triggers_reconnect_and_retry(self) -> None:
+        """InterfaceError causes reconnect + retry, succeeding on second attempt."""
+        c = self.Connectable()
+        c.connect()
+        result = c.do_work_interface_error()
+        assert result == "recovered"
+        assert c._unhealthy_marked is True
+
+    def test_database_error_wraps_in_cache_error_no_retry(self) -> None:
+        """DatabaseError is wrapped in CacheError without reconnect attempt."""
+        c = self.Connectable()
+        c.connect()
+        with patch.object(c, "connect") as mock_connect:
+            with pytest.raises(CacheError, match="SQL syntax error"):
+                c.do_work_database_error()
+            mock_connect.assert_not_called()
+        assert c._unhealthy_marked is False
+
+    def test_connection_error_reconnect_failure_raises_cache_error(self) -> None:
+        """When reconnect fails after OperationalError, CacheError is raised."""
+        c = self.Connectable()
+        c.connect()
+        original_connect = c.connect
+        call_count = [0]
+
+        def failing_connect() -> None:
+            call_count[0] += 1
+            if call_count[0] > 0:
+                raise psycopg2.OperationalError("cannot connect")
+            original_connect()
+
+        c.connect = failing_connect
+        with pytest.raises(CacheError, match="reconnect failed"):
+            c.do_work_operational_error()
 
 
 class TestPostgresBaseConnect:
@@ -93,7 +164,8 @@ class TestPostgresBaseConnect:
                 call("CREATE INDEX IF NOT EXISTS i1 ON t1 (id)"),
             ]
         )
-        cursor.close.assert_called_once()
+        # close is called twice: once for DDL cursor, once for statement_timeout cursor
+        assert cursor.close.call_count == 2
         mock_connect.return_value.commit.assert_called_once()
 
     def test_connect_sets_autocommit_after_init(self):
@@ -102,6 +174,16 @@ class TestPostgresBaseConnect:
             FakeComponent(config=MagicMock())
 
         assert mock_connect.return_value.autocommit is True
+
+    def test_connect_sets_statement_timeout(self):
+        """Statement timeout is set after autocommit is enabled."""
+        mock_config = MagicMock()
+        mock_config.statement_timeout = 5000
+        with patch("psycopg2.connect") as mock_connect:
+            cursor = mock_connect.return_value.cursor.return_value
+            FakeComponent(config=mock_config)
+
+        cursor.execute.assert_any_call("SET statement_timeout = %s", ("5000",))
 
     def test_connect_closes_connection_on_ddl_failure(self):
         """Connection is closed and exception propagates when DDL fails."""

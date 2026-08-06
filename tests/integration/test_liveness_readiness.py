@@ -38,7 +38,7 @@ def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     response = pytest.client.get("/liveness")
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"alive": True}
+    assert response.json() == {"alive": True, "reason": None}
 
 
 def test_readiness():
