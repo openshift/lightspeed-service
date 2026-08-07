@@ -9,6 +9,7 @@ import pytest
 from ols import config, constants
 from ols.runners.quota_scheduler import start_quota_scheduler
 from ols.runners.uvicorn import start_uvicorn
+from ols.utils.ssl import split_ciphers
 
 MINIMAL_CONFIG_FILE = "tests/config/valid_config.yaml"
 CORRECT_CONFIG_FILE = "tests/config/config_for_integration_tests.yaml"
@@ -27,10 +28,11 @@ def _run_start_uvicorn_and_assert(
     ssl_ciphers: str,
     min_tls_version,
     access_log: bool,
+    expected_ciphersuites=None,
 ) -> None:
     """Call start_uvicorn with mocked uvicorn internals and assert expectations."""
     fake_uvicorn_config = SimpleNamespace(
-        ssl=SimpleNamespace(minimum_version=None),
+        ssl=SimpleNamespace(minimum_version=None, set_ciphersuites=Mock()),
         loaded=False,
     )
     fake_uvicorn_config.load = Mock(
@@ -61,6 +63,12 @@ def _run_start_uvicorn_and_assert(
         )
         assert fake_uvicorn_config.loaded is True
         assert fake_uvicorn_config.ssl.minimum_version == min_tls_version
+        if expected_ciphersuites is not None and hasattr(
+            ssl.SSLContext, "set_ciphersuites"
+        ):
+            fake_uvicorn_config.ssl.set_ciphersuites.assert_called_once_with(
+                expected_ciphersuites
+            )
         mocked_server.assert_called_once_with(fake_uvicorn_config)
         fake_server.run.assert_called_once_with()
 
@@ -68,6 +76,7 @@ def _run_start_uvicorn_and_assert(
 def test_start_uvicorn_minimal_setup():
     """Test the function to start Uvicorn server."""
     config.reload_from_yaml_file(MINIMAL_CONFIG_FILE)
+    default_ciphers = split_ciphers(constants.DEFAULT_SSL_CIPHERS)
 
     _run_start_uvicorn_and_assert(
         host="0.0.0.0",  # noqa: S104
@@ -75,7 +84,8 @@ def test_start_uvicorn_minimal_setup():
         ssl_keyfile=None,
         ssl_certfile=None,
         ssl_keyfile_password=None,
-        ssl_ciphers=constants.DEFAULT_SSL_CIPHERS,
+        ssl_ciphers=default_ciphers.tls12 or "DEFAULT",
+        expected_ciphersuites=default_ciphers.tls13,
         min_tls_version=None,
         access_log=False,
     )
@@ -84,6 +94,9 @@ def test_start_uvicorn_minimal_setup():
 def test_start_uvicorn_full_setup():
     """Test the function to start Uvicorn server."""
     config.reload_from_yaml_file(CORRECT_CONFIG_FILE)
+    custom_ciphers = split_ciphers(
+        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+    )
 
     _run_start_uvicorn_and_assert(
         host="0.0.0.0",  # noqa: S104
@@ -91,7 +104,8 @@ def test_start_uvicorn_full_setup():
         ssl_keyfile="tests/config/key",
         ssl_certfile="tests/config/empty_cert.crt",
         ssl_keyfile_password="* this is password *",  # noqa: S106
-        ssl_ciphers="TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+        ssl_ciphers=custom_ciphers.tls12 or "DEFAULT",
+        expected_ciphersuites=custom_ciphers.tls13,
         min_tls_version=ssl.TLSVersion.TLSv1_3,
         access_log=False,
     )

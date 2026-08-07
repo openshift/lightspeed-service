@@ -36,7 +36,8 @@ def start_uvicorn(config: AppConfig) -> None:
     sec_profile = config.ols_config.tls_security_profile
     ssl_version = ssl_utils.get_ssl_version(sec_profile)
     min_tls_version = ssl_utils.get_min_tls_version(sec_profile)
-    ssl_ciphers = ssl_utils.get_ciphers(sec_profile)
+    ssl_ciphers_str = ssl_utils.get_ciphers(sec_profile)
+    ciphers = ssl_utils.split_ciphers(ssl_ciphers_str)
 
     uvicorn_config = uvicorn.Config(
         "ols.app.main:app",
@@ -48,12 +49,17 @@ def start_uvicorn(config: AppConfig) -> None:
         ssl_certfile=ssl_certfile,
         ssl_keyfile_password=ssl_keyfile_password,
         ssl_version=ssl_version,
-        ssl_ciphers=ssl_ciphers,
+        ssl_ciphers=ciphers.tls12 or "DEFAULT",
         access_log=log_level < logging.INFO,
     )
     uvicorn_config.load()
-    if uvicorn_config.ssl is not None and min_tls_version is not None:
-        uvicorn_config.ssl.minimum_version = min_tls_version
+    if uvicorn_config.ssl is not None:
+        if min_tls_version is not None:
+            uvicorn_config.ssl.minimum_version = min_tls_version
+        if ciphers.tls13 is not None and hasattr(
+            uvicorn_config.ssl, "set_ciphersuites"
+        ):
+            uvicorn_config.ssl.set_ciphersuites(ciphers.tls13)
 
     server = uvicorn.Server(uvicorn_config)
     server.run()

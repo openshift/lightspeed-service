@@ -2,6 +2,7 @@
 
 import logging
 import ssl
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from ols import constants
@@ -83,3 +84,37 @@ def get_ciphers(sec_profile: Optional[TLSSecurityProfile]) -> str:
     ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
     logger.info("Allowing following ciphers: %s", ciphers)
     return ciphers
+
+
+@dataclass(frozen=True, slots=True)
+class SplitCiphers:
+    """TLS 1.2 ciphers and TLS 1.3 ciphersuites separated for OpenSSL APIs."""
+
+    tls12: Optional[str]
+    tls13: Optional[str]
+
+
+def split_ciphers(cipher_string: Optional[str]) -> SplitCiphers:
+    """Separate a cipher string into TLS 1.2 ciphers and TLS 1.3 ciphersuites.
+
+    TLS 1.3 ciphersuites are identified by the 'TLS_' prefix per RFC 8446.
+    Output uses colon separation as required by OpenSSL APIs.
+    Accepts comma-separated, colon-separated, or mixed input.
+    """
+    if not cipher_string:
+        return SplitCiphers(tls12=None, tls13=None)
+
+    tls12: list[str] = []
+    tls13: list[str] = []
+    for cipher in (c.strip() for c in cipher_string.replace(":", ",").split(",")):
+        if not cipher:
+            continue
+        if cipher.startswith("TLS_") and "_WITH_" not in cipher:
+            tls13.append(cipher)
+        else:
+            tls12.append(cipher)
+
+    return SplitCiphers(
+        tls12=":".join(tls12) if tls12 else None,
+        tls13=":".join(tls13) if tls13 else None,
+    )
