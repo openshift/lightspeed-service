@@ -1,11 +1,13 @@
 """Unit tests for the providers module."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from langchain_core.language_models.fake_chat_models import FakeChatModel
 
 from ols import config, constants
 from ols.app.models.config import ProviderConfig, TLSSecurityProfile
-from ols.src.llms.providers.provider import LLMProvider
+from ols.src.llms.providers.provider import LLMProvider, _no_proxy_mount_key
 from ols.src.llms.providers.registry import (
     LLMProvidersRegistry,
     register_llm_provider_as,
@@ -163,3 +165,81 @@ def test_construct_httpx_client():
     llm_provider = MyProvider("model", provider_config)
     client = llm_provider._construct_httpx_client(False, False)
     assert client is not None
+
+
+# --- Tests for _no_proxy_mount_key ---
+
+
+def test_no_proxy_mount_key_bare_ipv6_loopback() -> None:
+    """Verify that a bare IPv6 loopback is bracketed and uses exact-match."""
+    assert _no_proxy_mount_key("::1") == "all://[::1]"
+
+
+def test_no_proxy_mount_key_bare_ipv6_full() -> None:
+    """Verify that a full bare IPv6 address is bracketed and uses exact-match."""
+    assert _no_proxy_mount_key("2001:db8::1") == "all://[2001:db8::1]"
+
+
+def test_no_proxy_mount_key_already_bracketed_ipv6() -> None:
+    """Verify that an already-bracketed IPv6 address is not double-bracketed."""
+    assert _no_proxy_mount_key("[::1]") == "all://[::1]"
+
+
+def test_no_proxy_mount_key_hostname() -> None:
+    """Verify that plain hostnames use the wildcard suffix pattern."""
+    assert _no_proxy_mount_key("example.com") == "all://*example.com"
+
+
+def test_no_proxy_mount_key_ipv4() -> None:
+    """Verify that IPv4 addresses use the wildcard suffix pattern."""
+    assert _no_proxy_mount_key("192.168.1.1") == "all://*192.168.1.1"
+
+
+def test_no_proxy_mount_key_cidr() -> None:
+    """Verify that IPv4 CIDR ranges use the wildcard suffix pattern."""
+    assert _no_proxy_mount_key("10.0.0.0/8") == "all://*10.0.0.0/8"
+
+
+def test_no_proxy_mount_key_ipv6_cidr() -> None:
+    """Verify that IPv6 CIDR ranges use the wildcard suffix pattern, not bracketed."""
+    assert _no_proxy_mount_key("2001:db8::/32") == "all://*2001:db8::/32"
+
+
+def test_no_proxy_mount_key_host_with_port() -> None:
+    """Verify that host:port entries are treated as plain hostnames, not IPv6."""
+    assert _no_proxy_mount_key("internal-api:8443") == "all://*internal-api:8443"
+
+
+def test_construct_httpx_client_with_ipv6_in_no_proxy_hosts() -> None:
+    """Verify that httpx client construction does not raise when ::1 is in no_proxy_hosts.
+
+    Regression test for OLS-3736: bare IPv6 in the cluster's no-proxy list
+    caused httpx to raise 'Invalid port: :1' when the mounts dict was built
+    with the unbracketed address embedded directly in a URL pattern.
+    """
+
+    class MyProvider(LLMProvider):
+        @property
+        def default_params(self) -> dict:
+            """Return empty default parameter dict."""
+            return {}
+
+        def load(self) -> FakeChatModel:
+            """Return a FakeChatModel instance."""
+            return FakeChatModel()
+
+    provider_config = ProviderConfig()
+    provider_config.type = None
+    provider_config.tls_security_profile = None
+    llm_provider = MyProvider("model", provider_config)
+
+    mock_proxy_config = MagicMock()
+    # proxy_url=None → the proxy construction block is skipped
+    mock_proxy_config.proxy_url = None
+    mock_proxy_config.no_proxy_hosts = ["::1", "[::1]", "localhost", "10.0.0.0/8"]
+
+    with patch("ols.src.llms.providers.provider.config") as mock_config:
+        mock_config.ols_config.proxy_config = mock_proxy_config
+        mock_config.dev_config.llm_params = None
+        client = llm_provider._construct_httpx_client(False, False)
+        assert client is not None
