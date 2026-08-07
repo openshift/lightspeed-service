@@ -59,6 +59,10 @@ llm_providers:
       # use fully qualified Bedrock model IDs (e.g. anthropic.claude-opus-4-7,
       # openai.gpt-5.4, deepseek.v3.1)
       - name: anthropic.claude-opus-4-7
+      # For models that reject the temperature parameter, set temperature_supported: false:
+      # - name: anthropic.claude-sonnet-5
+      #   parameters:
+      #     temperature_supported: false
   # - name: my_bedrock_iam
   #   type: bedrock
   #   url: "https://bedrock-mantle.us-east-1.api.aws"
