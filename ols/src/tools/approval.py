@@ -34,6 +34,7 @@ class PendingApproval:
     """Store a single pending tool approval request."""
 
     approval_id: str
+    user_id: str
     decision: bool | None = None
     event: asyncio.Event = field(default_factory=asyncio.Event)
 
@@ -42,7 +43,7 @@ class PendingApprovalStoreBase(ABC):
     """Abstract store contract for pending tool approvals."""
 
     @abstractmethod
-    def add(self, approval_id: str) -> PendingApproval:
+    def add(self, approval_id: str, user_id: str) -> PendingApproval:
         """Add or replace a pending approval request by approval_id."""
 
     @abstractmethod
@@ -54,7 +55,9 @@ class PendingApprovalStoreBase(ABC):
         """Delete pending approval by approval_id. Return False when not found."""
 
     @abstractmethod
-    def set_decision(self, approval_id: str, approved: bool) -> ApprovalSetResult:
+    def set_decision(
+        self, approval_id: str, user_id: str, approved: bool
+    ) -> ApprovalSetResult:
         """Persist approval decision for a pending request."""
 
 
@@ -66,11 +69,9 @@ class InMemoryPendingApprovalStore(PendingApprovalStoreBase):
         # approval_id -> pending approval state
         self._items: dict[str, PendingApproval] = {}
 
-    def add(self, approval_id: str) -> PendingApproval:
+    def add(self, approval_id: str, user_id: str) -> PendingApproval:
         """Add or replace a pending approval request by approval_id."""
-        # Create a fresh unresolved approval row for this approval request.
-        pending = PendingApproval(approval_id=approval_id)
-        # Upsert semantics are fine for in-memory flow; latest request wins.
+        pending = PendingApproval(approval_id=approval_id, user_id=user_id)
         self._items[approval_id] = pending
         return pending
 
@@ -84,10 +85,14 @@ class InMemoryPendingApprovalStore(PendingApprovalStoreBase):
         # Remove completed/expired approval state from in-memory store.
         return self._items.pop(approval_id, None) is not None
 
-    def set_decision(self, approval_id: str, approved: bool) -> ApprovalSetResult:
+    def set_decision(
+        self, approval_id: str, user_id: str, approved: bool
+    ) -> ApprovalSetResult:
         """Persist approval decision for a pending request."""
         pending = self.get(approval_id)
         if pending is None:
+            return ApprovalSetResult.NOT_FOUND
+        if pending.user_id != user_id:
             return ApprovalSetResult.NOT_FOUND
         if pending.decision is not None:
             return ApprovalSetResult.ALREADY_RESOLVED
@@ -101,13 +106,14 @@ def create_pending_approval_store() -> PendingApprovalStoreBase:
     return InMemoryPendingApprovalStore()
 
 
-def register_pending_approval(approval_id: str) -> None:
+def register_pending_approval(approval_id: str, user_id: str) -> None:
     """Register a pending approval request in storage.
 
     Args:
         approval_id: Unique approval request identifier to register.
+        user_id: ID of the user who owns this approval request.
     """
-    config.pending_approval_store.add(approval_id)
+    config.pending_approval_store.add(approval_id, user_id)
 
 
 async def get_approval_decision(
@@ -160,19 +166,22 @@ async def get_approval_decision(
         store.delete(approval_id)
 
 
-def set_approval_decision(approval_id: str, approved: bool) -> ApprovalSetResult:
+def set_approval_decision(
+    approval_id: str, user_id: str, approved: bool
+) -> ApprovalSetResult:
     """Set approval decision for a pending request.
 
     Args:
         approval_id: Unique approval request identifier to resolve.
+        user_id: ID of the user submitting the decision (must match owner).
         approved: Decision value where True means approved and False means rejected.
 
     Returns:
         "applied": decision was set successfully
-        "not_found": no pending approval exists for approval_id
+        "not_found": no pending approval exists for approval_id or user mismatch
         "already_resolved": approval exists but was already completed
     """
-    return config.pending_approval_store.set_decision(approval_id, approved)
+    return config.pending_approval_store.set_decision(approval_id, user_id, approved)
 
 
 def normalize_tool_annotation(

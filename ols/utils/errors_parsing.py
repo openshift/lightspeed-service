@@ -83,13 +83,13 @@ def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
             return (
                 status.HTTP_502_BAD_GATEWAY,
                 f"{_NETWORK_PREFIX} {NETWORK_ERROR_MSG}",
-                str(e),
+                "Unable to connect to LLM provider",
             )
         case httpx.ConnectError() | httpx.ConnectTimeout():
             return (
                 status.HTTP_502_BAD_GATEWAY,
                 f"{_NETWORK_PREFIX} {NETWORK_ERROR_MSG}",
-                str(e),
+                "Unable to connect to LLM provider",
             )
         case BadRequestError():
             sc, resp, cause = parse_openai_error(e)
@@ -101,7 +101,7 @@ def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
             return (
                 DEFAULT_STATUS_CODE,
                 f"{_LLM_BACKEND_PREFIX} {DEFAULT_ERROR_MESSAGE}",
-                str(e),
+                "An unexpected error occurred",
             )
 
 

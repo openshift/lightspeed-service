@@ -155,7 +155,7 @@ async def get_mcp_app_resource(
         logger.error("Failed to fetch MCP resource '%s': %s", request.resource_uri, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch resource: {e}",
+            detail="Failed to fetch resource",
         )
 
 
@@ -250,5 +250,5 @@ async def call_mcp_app_tool(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to call tool: {e}",
+            detail="Failed to call tool",
         )

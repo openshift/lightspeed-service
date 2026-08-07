@@ -51,9 +51,9 @@ async def submit_tool_approval_decision(
     auth: tuple[str, str, bool, str] = Depends(auth_dependency),
 ) -> None:
     """Submit user decision for a pending tool approval request."""
-    del auth  # Auth dependency enforces request authentication.
+    user_id, _, _, _ = auth
 
-    result = set_approval_decision(request.approval_id, request.approved)
+    result = set_approval_decision(request.approval_id, user_id, request.approved)
     match result:
         case ApprovalSetResult.APPLIED:
             return

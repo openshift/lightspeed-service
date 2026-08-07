@@ -38,7 +38,7 @@ class Attachment(BaseModel):
 
     attachment_type: str
     content_type: str
-    content: str
+    content: str = Field(max_length=100_000)
 
     # provides examples for /docs endpoint
     model_config = {
@@ -83,12 +83,12 @@ class LLMRequest(BaseModel):
         ```
     """
 
-    query: str
+    query: str = Field(max_length=32_000)
     conversation_id: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
     system_prompt: Optional[str] = None
-    attachments: Optional[list[Attachment]] = None
+    attachments: Optional[list[Attachment]] = Field(default=None, max_length=10)
     media_type: Optional[str] = MEDIA_TYPE_TEXT
     mcp_headers: Optional[dict[str, dict[str, str]]] = None
     mode: QueryMode = QueryMode.ASK
