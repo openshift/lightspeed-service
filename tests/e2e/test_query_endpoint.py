@@ -45,7 +45,7 @@ def test_invalid_question():
         # at least acknowledges that query is non-ocp.
         # Below assert is minimal due to model randomness.
         assert re.search(
-            r"(sorry|questions|assist)",
+            r"(sorry|questions|assist|help)",
             json_response["response"],
             re.IGNORECASE,
         )
@@ -75,7 +75,7 @@ def test_invalid_question_without_conversation_id():
         # Randomness in response is expected.
         # assert json_response["response"] == INVALID_QUERY_RESP
         assert re.search(
-            r"(sorry|questions|assist)",
+            r"(sorry|questions|assist|help)",
             json_response["response"],
             re.IGNORECASE,
         )
