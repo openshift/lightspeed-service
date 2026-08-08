@@ -346,7 +346,6 @@ def default_config():
                 "logging_config": {
                     "app_log_level": "error",
                 },
-                "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
                 "limiters": {},
             },

@@ -108,12 +108,11 @@ ols_config:
     capture_content: false    # default: false; opt-in to record LLM output in span events
     otel:
       endpoint: ""            # optional OTLP gRPC endpoint; no-op exporter when empty/absent
-      tls_mode: Secure        # Secure (default) | Insecure
 ```
 
 21. `audit.enabled` controls audit emission. Defaults to `true` -- when the config section is absent or the field is not set, audit logging is on. Set to `false` to suppress all audit spans and events.
 
-22. `audit.otel.endpoint` controls OTLP trace export. When set, the service configures an OTLP exporter with the given endpoint. `tls_mode` defaults to `Secure`; set to `Insecure` for plaintext gRPC. When endpoint is absent, a no-op OTLP exporter is used. The stdout exporter always emits regardless of whether an OTLP endpoint is configured.
+22. `audit.otel.endpoint` controls OTLP trace export. When set, the service configures an OTLP exporter with the given endpoint. CA trust for gRPC is handled via the `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` environment variable, set from `SSL_CERT_FILE` at startup. When endpoint is absent, a no-op OTLP exporter is used. The stdout exporter always emits regardless of whether an OTLP endpoint is configured.
 
 ### Span Hierarchy Diagram
 

@@ -49,9 +49,8 @@ The service must protect customer data, enforce transport-layer encryption, reda
 
 ### TLS for provider connections
 
-26. The service must support custom CA certificates for providers using private or enterprise certificate authorities, configured via `ols_config.extra_ca`.
-27. The service must aggregate extra CA certificates into a merged certificate store (combining system-trusted certificates from certifi with the extra CAs) and use that store when connecting to providers and MCP servers.
-28. TLS security profiles (cipher suites, minimum TLS version) must be configurable per LLM provider, independent of the service's own endpoint TLS settings.
+26. CA trust for all outbound connections (LLM providers, MCP servers, OTLP gRPC) is handled via the `SSL_CERT_FILE` environment variable set by the operator. The operator merges extra CA certificates into the bundle before the service starts.
+27. TLS security profiles (cipher suites, minimum TLS version) must be configurable per LLM provider, independent of the service's own endpoint TLS settings.
 29. HTTPS proxy support must be available with configurable proxy URL, proxy CA certificate, and no-proxy host list. Proxy configuration must also be derivable from `https_proxy`/`HTTPS_PROXY` and `no_proxy` environment variables.
 
 ### Tool approval security
@@ -91,8 +90,6 @@ The service must protect customer data, enforce transport-layer encryption, reda
 | `ols_config.tls_security_profile.type` | TLS profile: `IntermediateType`, `ModernType`, or `Custom` |
 | `ols_config.tls_security_profile.minTLSVersion` | Minimum TLS version (e.g., `VersionTLS12`, `VersionTLS13`) |
 | `ols_config.tls_security_profile.ciphers` | List of allowed cipher suite names (Custom profile or subset of profile ciphers) |
-| `ols_config.extra_ca` | List of extra CA certificate file paths to trust |
-| `ols_config.certificate_directory` | Directory where the merged certificate store is written |
 | `ols_config.query_filters[].name` | Human-readable name for a redaction filter |
 | `ols_config.query_filters[].pattern` | Regex pattern to match sensitive data |
 | `ols_config.query_filters[].replace_with` | Replacement string for matched data |
@@ -116,7 +113,7 @@ The service must protect customer data, enforce transport-layer encryption, reda
 - Tool approval state is ephemeral (in-memory, per-process). A restart clears all pending approvals.
 - The approval timeout prevents indefinite waits: if no decision arrives, the tool call is not executed (fail-closed).
 - The `kubernetes` MCP header placeholder is valid only with `k8s` or `noop-with-token` authentication modules. Other modules cause the server to be excluded.
-- The merged certificate store is written to `certificate_directory` at startup. If `certificate_directory` is not set, extra CA certificates are not aggregated.
+- CA trust for all outbound connections (LLM providers, MCP servers, OTLP gRPC) is handled via the `SSL_CERT_FILE` environment variable set by the operator. For gRPC, `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` is set from `SSL_CERT_FILE` at startup.
 - Containers must operate with a read-only root filesystem; writable paths are limited to explicitly mounted volumes.
 
 ## Planned Changes

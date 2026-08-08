@@ -579,7 +579,6 @@ ols_config:
         period: "5 minutes"
     scheduler:
       period: 100
-  certificate_directory: '/foo/bar/baz'
   system_prompt_path: 'tests/config/system_prompt.txt'
   tlsSecurityProfile:
     type: Custom
@@ -706,7 +705,6 @@ def test_valid_config_file_without_certificate_directory():
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
-                    "certificate_directory": constants.DEFAULT_CERTIFICATE_DIRECTORY,
                 },
                 "dev_config": {
                     "disable_auth": True,

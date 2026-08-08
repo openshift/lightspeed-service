@@ -77,7 +77,6 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 |---|---|
 | `utils/config.py` | `AppConfig` singleton. Uses `__new__` for singleton enforcement. Lazy-initializes subsystems via `@property` and `@cached_property`: `conversation_cache`, `quota_limiters`, `token_usage_history`, `query_redactor`, `rag_index`, `rag_index_loader`, `tools_rag`, `skills_rag`, `pending_approval_store`. `reload_from_yaml_file()` parses YAML via `Config` Pydantic model and resets cached properties. The module-level `config` instance is the global singleton imported throughout the codebase. |
 | `utils/logging_configurator.py` | `configure_logging()` -- sets up Python logging from config. |
-| `utils/certificates.py` | `generate_certificates_file()` -- merges certifi CA bundle with any explicitly configured certificates into a single PEM file at `/tmp/ols.pem`. |
 | `utils/ssl.py` | `get_ssl_version()` and `get_ciphers()` -- resolves TLS security profile settings for Uvicorn. |
 | `utils/tls.py` | TLS utility functions for provider-level HTTPX clients: `ciphers_as_string()`, `min_tls_version()`, `ssl_tls_version()`. |
 | `utils/redactor.py` | `Redactor` -- applies configured query filters (regex-based PII redaction) to queries and attachments before logging or LLM submission. |
@@ -127,7 +126,7 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 
 5. **HuggingFace environment**: `configure_hugging_face_envs(config.ols_config)` sets `HF_HOME`, `TRANSFORMERS_CACHE`, etc.
 
-6. **Certificate generation**: `generate_certificates_file()` merges certifi CA certs with any explicitly configured certificates into `/tmp/ols.pem`.
+6. **gRPC CA trust**: Sets `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` from `SSL_CERT_FILE` so the OTLP gRPC exporter uses the same CA bundle as Python's `ssl` module.
 
 7. **K8s auth init** (conditional): If `use_k8s_auth()` is true, initializes `K8sClientSingleton` and retrieves the cluster ID. Fails fast if cluster ID is unavailable.
 

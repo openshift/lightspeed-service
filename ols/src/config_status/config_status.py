@@ -37,7 +37,6 @@ class ConfigStatus(BaseModel):
     token_history_enabled: bool
 
     proxy_enabled: bool
-    extra_ca_count: int
 
 
 def extract_config_status(cfg: Config) -> ConfigStatus:
@@ -99,8 +98,6 @@ def extract_config_status(cfg: Config) -> ConfigStatus:
     proxy_enabled = (
         ols_cfg.proxy_config is not None and ols_cfg.proxy_config.proxy_url is not None
     )
-    extra_ca_count = len(ols_cfg.extra_ca)
-
     return ConfigStatus(
         providers=providers,
         models=models,
@@ -112,7 +109,6 @@ def extract_config_status(cfg: Config) -> ConfigStatus:
         quota_management_enabled=quota_management_enabled,
         token_history_enabled=token_history_enabled,
         proxy_enabled=proxy_enabled,
-        extra_ca_count=extra_ca_count,
     )
 
 

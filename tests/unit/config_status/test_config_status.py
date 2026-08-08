@@ -71,7 +71,6 @@ class TestConfigStatus:
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
-            extra_ca_count=0,
         )
 
         assert status.providers == {"openai": ["my_openai"]}
@@ -193,7 +192,6 @@ class TestStoreConfigStatus:
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
-            extra_ca_count=0,
         )
 
         with patch("ols.src.config_status.config_status.suid.get_suid") as mock_suid:
@@ -230,7 +228,6 @@ class TestStoreConfigStatus:
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
-            extra_ca_count=0,
         )
 
         with patch("ols.src.config_status.config_status.suid.get_suid") as mock_suid:

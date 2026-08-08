@@ -208,12 +208,6 @@ BEDROCK_ROLE_ARN_FILENAME = "role_arn"
 # Selectors for fields from configuration structure
 CREDENTIALS_PATH_SELECTOR = "credentials_path"
 
-# Default directory where standard and extra certificates will be stored
-DEFAULT_CERTIFICATE_DIRECTORY = "/tmp"  # noqa: S108
-
-# Certificate storage filename
-CERTIFICATE_STORAGE_FILENAME = "ols.pem"
-
 # Default SSL version used by FastAPI REST API
 DEFAULT_SSL_VERSION = ssl.PROTOCOL_TLS_SERVER
 

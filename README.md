@@ -560,15 +560,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
          ```
          In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible.
 
-## 7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
-```yaml
-      ols_config:
-         extra_ca:
-            - "path/to/cert_1.crt"
-            - "path/to/cert_2.crt"
-```
-
- > This action may be required for self-hosted LLMs.
+## 7. (Optional) Incorporating additional CA(s). In operator-managed deployments, the operator merges extra CA certificates into the `SSL_CERT_FILE` bundle automatically. For local development, set the `SSL_CERT_FILE` environment variable to point to a PEM bundle containing any additional CAs needed for self-hosted LLMs or internal services.
 
 ## 8. (Optional) Configure the number of workers
    By default the number of workers is set to 1, you can increase the number of workers to scale up the REST API by modifying the max_workers config option in `olsconfig.yaml`.

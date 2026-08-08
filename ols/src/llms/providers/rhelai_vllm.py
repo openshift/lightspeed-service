@@ -44,8 +44,8 @@ class RHELAIVLLM(LLMProvider):
             "temperature": 0.01,
             "max_completion_tokens": 512,
             "verbose": False,
-            "http_client": self._construct_httpx_client(True, False),
-            "http_async_client": self._construct_httpx_client(True, True),
+            "http_client": self._construct_httpx_client(False),
+            "http_async_client": self._construct_httpx_client(True),
         }
 
     def load(self) -> BaseChatModel:
