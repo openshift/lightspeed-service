@@ -1066,9 +1066,7 @@ def test_check_token_available_on_exceed_error():
     quota_limiters = [mock_quota_limiter]
     user_id = "user_id"
 
-    expected = (
-        "500: {'response': 'The quota has been exceeded', 'cause': 'Quota limit reached'}"
-    )
+    expected = "500: {'response': 'The quota has been exceeded', 'cause': 'Quota limit reached'}"
     with pytest.raises(HTTPException, match=expected):
         ols.check_tokens_available(quota_limiters, user_id)
 
