@@ -8,6 +8,7 @@ from langchain_core.tools.structured import StructuredTool
 from ols import constants
 from ols.app.models.config import MCPServerConfig
 from ols.utils.mcp_utils import (
+    _mcp_transport_to_network,
     build_mcp_config,
     gather_mcp_tools,
     get_mcp_tools,
@@ -461,6 +462,30 @@ class TestGatherMcpTools:
             assert result[0].metadata is not None
             assert result[0].metadata["mcp_server"] == "test-server"
 
+    async def test_gather_mcp_tools_metadata_capture(self) -> None:
+        """Verify MCP metadata capture."""
+        with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
+            tool = MagicMock(spec=StructuredTool)
+            tool.name = "test_tool"
+            tool.metadata = {}
+            tool.args_schema = {"type": "object", "properties": {}}
+
+            mock_client = AsyncMock()
+            mock_client.get_tools.return_value = [tool]
+            mock_client_cls.return_value = mock_client
+
+            servers = {
+                "test-server": {"transport": "streamable_http", "url": "http://test"}
+            }
+            result = await gather_mcp_tools(servers)
+
+            assert len(result) == 1
+            assert result[0].metadata["mcp_server"] == "test-server"
+            assert "mcp_session_id" not in result[0].metadata
+            assert "mcp_protocol_version" not in result[0].metadata
+            assert "mcp_transport" in result[0].metadata
+            assert result[0].metadata["mcp_transport"] == "tcp"
+
 
 @pytest.mark.asyncio
 class TestGetMcpTools:
@@ -599,3 +624,18 @@ class TestGetMcpTools:
             result = await get_mcp_tools("test query")
 
             assert result == []
+
+
+@pytest.mark.parametrize(
+    ("mcp_transport", "expected"),
+    [
+        ("streamable_http", "tcp"),
+        ("sse", "tcp"),
+        ("stdio", "pipe"),
+        ("unknown_transport", "unknown_transport"),
+        ("", ""),
+    ],
+)
+def test_mcp_transport_to_network(mcp_transport: str, expected: str) -> None:
+    """Verify MCP transport types map to correct OTel network.transport values."""
+    assert _mcp_transport_to_network(mcp_transport) == expected
