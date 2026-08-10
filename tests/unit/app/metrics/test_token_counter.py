@@ -163,3 +163,74 @@ def test_token_metric_updater_reports_reasoning_tokens():
     updater.token_counter.token_counter.llm_calls = 1
 
     updater.__exit__(None, None, None)
+
+
+def test_token_metric_updater_observes_genai_token_histogram():
+    """Test TokenMetricUpdater.__exit__ observes gen_ai token usage histogram."""
+    from ols.app.metrics.metrics import gen_ai_client_token_usage
+
+    llm = MockLLM()
+    updater = TokenMetricUpdater(llm=llm, provider="test_prov", model="test_mod")
+    updater.token_counter.token_counter.input_tokens = 100
+    updater.token_counter.token_counter.output_tokens = 50
+    updater.token_counter.token_counter.llm_calls = 1
+
+    before_input = gen_ai_client_token_usage.labels(
+        gen_ai_operation_name="chat",
+        gen_ai_token_type="input",  # noqa: S106
+        gen_ai_request_model="test_mod",
+        gen_ai_provider_name="test_prov",
+    )._sum.get()
+    before_output = gen_ai_client_token_usage.labels(
+        gen_ai_operation_name="chat",
+        gen_ai_token_type="output",  # noqa: S106
+        gen_ai_request_model="test_mod",
+        gen_ai_provider_name="test_prov",
+    )._sum.get()
+
+    updater.__exit__(None, None, None)
+
+    after_input = gen_ai_client_token_usage.labels(
+        gen_ai_operation_name="chat",
+        gen_ai_token_type="input",  # noqa: S106
+        gen_ai_request_model="test_mod",
+        gen_ai_provider_name="test_prov",
+    )._sum.get()
+    after_output = gen_ai_client_token_usage.labels(
+        gen_ai_operation_name="chat",
+        gen_ai_token_type="output",  # noqa: S106
+        gen_ai_request_model="test_mod",
+        gen_ai_provider_name="test_prov",
+    )._sum.get()
+
+    assert after_input - before_input == 100.0
+    assert after_output - before_output == 50.0
+
+
+def test_token_metric_updater_observes_histogram_on_failure_with_tokens() -> None:
+    """Verify histogram records accumulated tokens even when LLM call fails."""
+    from ols.app.metrics.metrics import gen_ai_client_token_usage
+
+    llm = MockLLM()
+    updater = TokenMetricUpdater(llm=llm, provider="fail_prov", model="fail_mod")
+    updater.token_counter.token_counter.input_tokens = 200
+    updater.token_counter.token_counter.output_tokens = 0
+    updater.token_counter.token_counter.llm_calls = 1
+
+    before = gen_ai_client_token_usage.labels(
+        gen_ai_operation_name="chat",
+        gen_ai_token_type="input",  # noqa: S106
+        gen_ai_request_model="fail_mod",
+        gen_ai_provider_name="fail_prov",
+    )._sum.get()
+
+    updater.__exit__(RuntimeError, RuntimeError("LLM failed"), None)
+
+    after = gen_ai_client_token_usage.labels(
+        gen_ai_operation_name="chat",
+        gen_ai_token_type="input",  # noqa: S106
+        gen_ai_request_model="fail_mod",
+        gen_ai_provider_name="fail_prov",
+    )._sum.get()
+
+    assert after - before == 200.0
