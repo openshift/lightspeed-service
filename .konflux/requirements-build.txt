@@ -11,14 +11,16 @@ calver==2025.10.20
 cython==3.2.9
     # via numpy
 flit-core==3.12.0
+    # via pyproject-hooks
+flit-core==4.0.2
     # via
     #   build
     #   packaging
     #   pathspec
-    #   pyproject-hooks
     #   pyproject-metadata
 hatchling==1.31.0
     # via
+    #   banks
     #   langchain-aws
     #   langchain-google-vertexai
     #   llama-index-embeddings-huggingface
@@ -33,8 +35,12 @@ pdm-backend==2.4.9
     # via
     #   langchain-ibm
     #   langchain-mcp-adapters
+pkgconfig==1.6.0
+    # via aiohttp
 pluggy==1.6.0
     # via hatchling
+poetry-core==2.4.1
+    # via pkgconfig
 pyproject-hooks==1.2.0
     # via build
 pyproject-metadata==0.12.1
@@ -52,7 +58,7 @@ setuptools-scm==10.2.1
     #   setuptools-rust
 trove-classifiers==2026.6.1.19
     # via hatchling
-vcs-versioning==2.2.2
+vcs-versioning==2.2.4
     # via setuptools-scm
 versioneer==0.29
     # via bottleneck

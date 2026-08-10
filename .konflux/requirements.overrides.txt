@@ -1,9 +1,12 @@
 # override these packages to the version available on RHOAI wheels index:
 # https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple
-aiohttp==3.14.1
+# CVE-2026-69243 / CVE-2026-69244: RHOAI only ships 3.14.1; force fixed PyPI version
+aiohttp==3.14.3
 aiosqlite==0.22.1
 anyio==4.13.0
 attrs==26.1.0
+# CVE-2026-61536: RHOAI only ships vulnerable 2.4.2; force fixed PyPI version
+banks==2.5.0
 certifi==2026.5.20
 cryptography==49.0.0
 datasets==5.0.0
@@ -17,6 +20,8 @@ orjson==3.11.8
 pandas==2.3.3
 pydantic==2.13.1
 scipy==1.17.1
+# CVE-2026-68770: RHOAI only ships vulnerable 5.2.0; force fixed PyPI version
+sentence-transformers==5.7.0
 setuptools==80.10.2
 sqlalchemy==2.0.49
 tokenizers==0.22.2
