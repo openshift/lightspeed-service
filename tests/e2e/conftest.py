@@ -16,6 +16,7 @@ from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster, ols_installer
 from tests.e2e.utils.adapt_ols_config import adapt_ols_config
 from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster, teardown_mcp_on_cluster
+from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -141,6 +142,73 @@ def pytest_sessionstart():
     # Gather OLS artifacts in case OLS does not become ready
     if on_cluster and not OLS_READY:
         must_gather()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _operator_running_for_certs(request):
+    """Scale up the operator for certificate rotation tests.
+
+    The operator controller-manager is normally scaled to 0 during e2e tests
+    to prevent interference. Certificate rotation tests need it running so it
+    can detect CA bundle changes and trigger pod rollouts.
+    """
+    if not any(
+        item.get_closest_marker("certificates") for item in request.session.items
+    ):
+        yield
+        return
+
+    print("Scaling up operator controller manager for certificate tests...")
+    cluster.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "1",
+        ]
+    )
+    try:
+        if not retry_until_timeout_or_success(
+            60,
+            5,
+            lambda: (
+                pods := cluster.get_pod_by_prefix(
+                    prefix="lightspeed-operator-controller-manager",
+                    fail_not_found=False,
+                )
+            )
+            and all(s == "true" for s in cluster.get_container_ready_status(pods[0])),
+            "Waiting for operator controller manager to be ready",
+        ):
+            raise RuntimeError(
+                "Timed out waiting for operator controller manager to be ready"
+            )
+        print("Operator controller manager is ready")
+
+        yield
+    finally:
+        print("Scaling down operator controller manager after certificate tests...")
+        cluster.run_oc(
+            [
+                "scale",
+                "deployment/lightspeed-operator-controller-manager",
+                "--replicas",
+                "0",
+            ]
+        )
+        if not retry_until_timeout_or_success(
+            30,
+            3,
+            lambda: not cluster.get_pod_by_prefix(
+                prefix="lightspeed-operator-controller-manager",
+                fail_not_found=False,
+            ),
+            "Waiting for operator controller manager to scale down",
+        ):
+            raise RuntimeError(
+                "Timed out waiting for operator controller manager to scale down"
+            )
+        print("Operator controller manager scaled down")
 
 
 def pytest_runtest_makereport(item, call) -> TestReport:

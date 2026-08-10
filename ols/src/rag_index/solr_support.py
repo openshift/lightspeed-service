@@ -416,7 +416,7 @@ class SolrHybridSearch:
         )
         return resolved
 
-    _SOLR_STARTUP_RETRIES = 24
+    _SOLR_STARTUP_RETRIES = 36
     _SOLR_STARTUP_BACKOFF_S = 5
 
     @staticmethod

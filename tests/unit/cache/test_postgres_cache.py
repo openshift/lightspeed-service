@@ -812,17 +812,77 @@ def test_ready():
         # cache is ready
         assert cache.ready()
 
-        # mock the connection state 1 - closed
+
+def test_ready_reconnects_on_closed_connection():
+    """Test that ready() reconnects when connection is closed."""
+    with patch("psycopg2.connect") as mock_connect:
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # simulate closed connection
         cache.connection.closed = 1
-        # cache is not ready
+
+        # ready() should attempt reconnect and succeed
+        assert cache.ready()
+        # connect() is called during __init__ and again during reconnect
+        assert mock_connect.call_count == 2
+
+
+def test_ready_reconnects_on_none_connection():
+    """Test that ready() reconnects when connection is None."""
+    with patch("psycopg2.connect") as mock_connect:
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # simulate lost connection
+        cache.connection = None
+
+        # ready() should attempt reconnect and succeed
+        assert cache.ready()
+        assert mock_connect.call_count == 2
+
+
+def test_ready_returns_false_when_reconnect_fails():
+    """Test that ready() returns False when reconnect attempt fails."""
+    with patch("psycopg2.connect") as mock_connect:
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # simulate closed connection
+        cache.connection.closed = 1
+        # make reconnect fail
+        mock_connect.side_effect = psycopg2.OperationalError("connection refused")
+
         assert not cache.ready()
 
-        for error_type in (psycopg2.OperationalError, psycopg2.InterfaceError):
-            # mock the connection state 0 - open
-            cache.connection.closed = 0
-            # patch the poll function to raise OperationalError
-            cache.connection.poll = MagicMock(
-                side_effect=error_type("Connection closed")
-            )
-            # cache is not ready
-            assert not cache.ready()
+
+def test_ready_reconnects_on_poll_error():
+    """Test that ready() reconnects when poll raises OperationalError."""
+    with patch("psycopg2.connect") as mock_connect:
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        cache.connection.closed = 0
+        cache.connection.poll = MagicMock(
+            side_effect=psycopg2.OperationalError("Connection closed")
+        )
+
+        # ready() should attempt reconnect and succeed
+        assert cache.ready()
+        assert mock_connect.call_count == 2
+
+
+def test_ready_returns_false_when_poll_reconnect_fails():
+    """Test that ready() returns False when reconnect after poll error fails."""
+    with patch("psycopg2.connect") as mock_connect:
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        cache.connection.closed = 0
+        cache.connection.poll = MagicMock(
+            side_effect=psycopg2.InterfaceError("Connection closed")
+        )
+        # make reconnect fail
+        mock_connect.side_effect = psycopg2.OperationalError("connection refused")
+
+        assert not cache.ready()

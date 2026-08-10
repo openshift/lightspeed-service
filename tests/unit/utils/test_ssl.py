@@ -9,6 +9,7 @@ from ols import constants
 from ols.app.models.config import TLSSecurityProfile
 from ols.utils import ssl as ssl_utils
 from ols.utils import tls
+from ols.utils.ssl import SplitCiphers, split_ciphers
 
 
 def test_postgres_ssl_mode_default_is_require():
@@ -115,3 +116,73 @@ class TestLibpqTlsParams:
             host="127.0.0.1", dbname="test", sslmode="require", **params
         )
         assert "ssl_min_protocol_version=TLSv1.2" in dsn
+
+
+class TestSplitCiphers:
+    """Tests for the split_ciphers helper."""
+
+    def test_none_input(self):
+        """Return both fields as None when input is None."""
+        result = split_ciphers(None)
+        assert result == SplitCiphers(tls12=None, tls13=None)
+
+    def test_empty_string(self):
+        """Return both fields as None when input is empty."""
+        result = split_ciphers("")
+        assert result == SplitCiphers(tls12=None, tls13=None)
+
+    def test_tls13_only(self):
+        """ModernType: all ciphers are TLS 1.3 ciphersuites."""
+        cipher_str = (
+            "TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384, "
+            "TLS_CHACHA20_POLY1305_SHA256"
+        )
+        result = split_ciphers(cipher_str)
+        assert result.tls12 is None
+        assert result.tls13 == (
+            "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:"
+            "TLS_CHACHA20_POLY1305_SHA256"
+        )
+
+    def test_tls12_only(self):
+        """Custom profile with only TLS 1.2 ciphers."""
+        cipher_str = "ECDHE-RSA-AES128-GCM-SHA256, DHE-RSA-AES256-GCM-SHA384"
+        result = split_ciphers(cipher_str)
+        assert result.tls12 == "ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384"
+        assert result.tls13 is None
+
+    def test_mixed_ciphers(self):
+        """IntermediateType: mix of TLS 1.2 and TLS 1.3."""
+        cipher_str = (
+            "TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384, "
+            "TLS_CHACHA20_POLY1305_SHA256, "
+            "ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-RSA-AES128-GCM-SHA256"
+        )
+        result = split_ciphers(cipher_str)
+        assert result.tls12 == (
+            "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256"
+        )
+        assert result.tls13 == (
+            "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:"
+            "TLS_CHACHA20_POLY1305_SHA256"
+        )
+
+    def test_colon_separated_input(self):
+        """Accept colon-separated input (OpenSSL native format)."""
+        cipher_str = "TLS_AES_128_GCM_SHA256:ECDHE-RSA-AES128-GCM-SHA256"
+        result = split_ciphers(cipher_str)
+        assert result.tls12 == "ECDHE-RSA-AES128-GCM-SHA256"
+        assert result.tls13 == "TLS_AES_128_GCM_SHA256"
+
+    def test_iana_format_tls12_not_misclassified(self):
+        """IANA-format TLS 1.2 names (TLS_*_WITH_*) stay in tls12."""
+        cipher_str = (
+            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, "
+            "TLS_AES_128_GCM_SHA256, "
+            "ECDHE-RSA-AES256-GCM-SHA384"
+        )
+        result = split_ciphers(cipher_str)
+        assert result.tls12 == (
+            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:ECDHE-RSA-AES256-GCM-SHA384"
+        )
+        assert result.tls13 == "TLS_AES_128_GCM_SHA256"

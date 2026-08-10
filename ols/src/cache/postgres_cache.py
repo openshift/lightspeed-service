@@ -388,21 +388,32 @@ class PostgresCache(Cache, PostgresBase):
     def ready(self) -> bool:
         """Check if the cache is ready.
 
-        Postgres cache checks if the connection is alive.
+        Postgres cache checks if the connection is alive. When a dead
+        connection is detected and the database is available again, the
+        connection is automatically re-established.
 
         Returns:
             True if the cache is ready, False otherwise.
         """
-        # TODO: when the connection is closed and the database is back online,
-        # we need to reestablish the connection => implement this
-        if not self.connection or self.connection.closed == 1:
-            return False
-        try:
-            return self.connection.poll() == psycopg2.extensions.POLL_OK
-        except (psycopg2.OperationalError, psycopg2.InterfaceError):
-            # OperationalError - the once alive connection is closed
-            # InterfaceError - cannot reach the database server
-            return False
+        with self._tx_lock:
+            if not self.connection or self.connection.closed == 1:
+                try:
+                    logger.info("Detected dead connection, attempting reconnect")
+                    self.connect()
+                    return True
+                except Exception as e:
+                    logger.warning("Reconnect attempt failed: %s", e)
+                    return False
+            try:
+                return self.connection.poll() == psycopg2.extensions.POLL_OK
+            except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                try:
+                    logger.info("Connection error during poll, attempting reconnect")
+                    self.connect()
+                    return True
+                except Exception as e:
+                    logger.warning("Reconnect attempt failed: %s", e)
+                    return False
 
     @staticmethod
     def _select(
