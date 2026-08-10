@@ -171,6 +171,28 @@ report_results() {
     log "All TLS scans passed"
 }
 
+export_artifacts() {
+    if [[ -z "${ARTIFACT_DIR:-}" ]]; then
+        return
+    fi
+    local dest="${ARTIFACT_DIR}/tls-scan"
+    mkdir -p "${dest}"
+    shopt -s nullglob
+    local artifacts=(
+        "${SCAN_DIR}"/*.json
+        "${SCAN_DIR}"/*-junit.xml
+        "${SCAN_DIR}"/pqc-check.log
+        "${SCAN_DIR}"/*-scan.log
+    )
+    shopt -u nullglob
+    if ((${#artifacts[@]} == 0)); then
+        log "No TLS scan artifacts found in ${SCAN_DIR}"
+        return 0
+    fi
+    cp -v -- "${artifacts[@]}" "${dest}/" || return 1
+    log "Artifacts exported to ${dest}"
+}
+
 generate_certs
 extract_scanner
 
@@ -198,4 +220,5 @@ for profile in IntermediateType ModernType; do
     stop_ols
 done
 
+export_artifacts
 report_results

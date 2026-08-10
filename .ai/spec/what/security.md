@@ -13,7 +13,7 @@ The service must protect customer data, enforce transport-layer encryption, reda
 5. When no TLS security profile is configured, the service must use default cipher suites that include the `IntermediateType` ciphers plus FIPS-compliant CBC ciphers (`ECDHE-ECDSA-AES128-SHA256`, `ECDHE-RSA-AES128-SHA256`, `ECDHE-ECDSA-AES256-SHA384`, `ECDHE-RSA-AES256-SHA384`, `DHE-RSA-AES128-SHA256`, `DHE-RSA-AES256-SHA256`) for compatibility with HAProxy reencrypt routes.
 6. The service must support certificate rotation: when certificates change on disk, the service must pick up the new certificates on restart or configuration reload.
 7. The private key password must be read from a file referenced by `ols_config.tls_config.tls_key_password_path`, never stored as a plaintext value in configuration.
-8. [PLANNED: OLS-2866] The service's TLS endpoint configuration must be verifiable by automated TLS scanning tools.
+8. The service's TLS endpoint configuration must be verifiable by automated TLS scanning tools (`make tls-scan`). CI gating is planned (OLS-2866, OLS-3353).
 
 ### FIPS compliance
 
@@ -118,5 +118,4 @@ The service must protect customer data, enforce transport-layer encryption, reda
 
 ## Planned Changes
 
-- [PLANNED: OLS-2866] Automated TLS scanning verification of OLS service endpoints using tls-scanner.
 - [PLANNED: OLS-2717] Enable TLS on openshift-mcp-server connections.
