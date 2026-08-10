@@ -177,10 +177,19 @@ export_artifacts() {
     fi
     local dest="${ARTIFACT_DIR}/tls-scan"
     mkdir -p "${dest}"
-    cp -v "${SCAN_DIR}"/*.json "${dest}/" 2>/dev/null || true
-    cp -v "${SCAN_DIR}"/*-junit.xml "${dest}/" 2>/dev/null || true
-    cp -v "${SCAN_DIR}"/pqc-check.log "${dest}/" 2>/dev/null || true
-    cp -v "${SCAN_DIR}"/*-scan.log "${dest}/" 2>/dev/null || true
+    shopt -s nullglob
+    local artifacts=(
+        "${SCAN_DIR}"/*.json
+        "${SCAN_DIR}"/*-junit.xml
+        "${SCAN_DIR}"/pqc-check.log
+        "${SCAN_DIR}"/*-scan.log
+    )
+    shopt -u nullglob
+    if ((${#artifacts[@]} == 0)); then
+        log "No TLS scan artifacts found in ${SCAN_DIR}"
+        return 0
+    fi
+    cp -v -- "${artifacts[@]}" "${dest}/" || return 1
     log "Artifacts exported to ${dest}"
 }
 
