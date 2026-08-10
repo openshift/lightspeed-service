@@ -214,11 +214,11 @@ def test_store_conversation_history_empty_user_id():
     user_id = ""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    with pytest.raises(HTTPException, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Conversation storage failed"):
         ols.store_conversation_history(
             user_id, conversation_id, llm_request, "", [], {}
         )
-    with pytest.raises(HTTPException, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Conversation storage failed"):
         ols.store_conversation_history(
             user_id, conversation_id, llm_request, None, [], {}
         )
@@ -230,7 +230,7 @@ def test_store_conversation_history_improper_user_id():
     user_id = "::::"
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    with pytest.raises(HTTPException, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Conversation storage failed"):
         ols.store_conversation_history(
             user_id, conversation_id, llm_request, "", [], {}
         )
@@ -241,7 +241,7 @@ def test_store_conversation_history_improper_conversation_id():
     """Test if basic input verification is done during history store operation."""
     conversation_id = "::::"
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    with pytest.raises(HTTPException, match="Invalid conversation ID"):
+    with pytest.raises(HTTPException, match="Conversation storage failed"):
         ols.store_conversation_history(
             constants.DEFAULT_USER_UID, conversation_id, llm_request, "", [], {}
         )
@@ -1067,7 +1067,7 @@ def test_check_token_available_on_exceed_error():
     user_id = "user_id"
 
     expected = (
-        "500: {'response': 'The quota has been exceeded', 'cause': 'Raised exception'}"
+        "500: {'response': 'The quota has been exceeded', 'cause': 'Quota limit reached'}"
     )
     with pytest.raises(HTTPException, match=expected):
         ols.check_tokens_available(quota_limiters, user_id)

@@ -1065,6 +1065,7 @@
                     },
                     "content": {
                         "type": "string",
+                        "maxLength": 100000,
                         "title": "Content"
                     }
                 },
@@ -1474,6 +1475,7 @@
                 "properties": {
                     "query": {
                         "type": "string",
+                        "maxLength": 32000,
                         "title": "Query"
                     },
                     "conversation_id": {
@@ -1526,7 +1528,8 @@
                                 "items": {
                                     "$ref": "#/components/schemas/Attachment"
                                 },
-                                "type": "array"
+                                "type": "array",
+                                "maxItems": 10
                             },
                             {
                                 "type": "null"

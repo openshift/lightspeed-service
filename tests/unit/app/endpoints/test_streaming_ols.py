@@ -191,7 +191,7 @@ def test_generic_llm_error():
     prefixed_msg = f"{_LLM_BACKEND_PREFIX} {DEFAULT_ERROR_MESSAGE}"
     assert (
         generic_llm_error("error", constants.MEDIA_TYPE_TEXT)
-        == f"{prefixed_msg}: error"
+        == f"{prefixed_msg}: An unexpected error occurred"
     )
 
     assert generic_llm_error("error", constants.MEDIA_TYPE_JSON) == format_stream_data(
@@ -199,7 +199,7 @@ def test_generic_llm_error():
             "event": "error",
             "data": {
                 "response": prefixed_msg,
-                "cause": "error",
+                "cause": "An unexpected error occurred",
             },
         }
     )
