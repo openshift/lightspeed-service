@@ -35,7 +35,7 @@ async def test_submit_tool_approval_decision_applied(mock_auth):
         )
 
     assert response is None
-    mock_set_decision.assert_called_once_with("approval-1", True)
+    mock_set_decision.assert_called_once_with("approval-1", "test-user-id", True)
 
 
 @pytest.mark.asyncio

@@ -170,6 +170,40 @@ class TestLLM:
         with pytest.raises(ValidationError):
             LLMRequest(query="irrelevant", mode="unknown_mode")
 
+    @staticmethod
+    def test_llm_request_query_max_length():
+        """Test query field rejects input exceeding 32000 characters."""
+        LLMRequest(query="x" * 32_000)
+        with pytest.raises(ValidationError, match="String should have at most 32000"):
+            LLMRequest(query="x" * 32_001)
+
+    @staticmethod
+    def test_attachment_content_max_length():
+        """Test attachment content rejects input exceeding 100000 characters."""
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="x" * 100_000,
+        )
+        with pytest.raises(ValidationError, match="String should have at most 100000"):
+            Attachment(
+                attachment_type="log",
+                content_type="text/plain",
+                content="x" * 100_001,
+            )
+
+    @staticmethod
+    def test_llm_request_attachments_max_count():
+        """Test attachments list rejects more than 10 items."""
+        attachment = Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="data",
+        )
+        LLMRequest(query="q", attachments=[attachment] * 10)
+        with pytest.raises(ValidationError, match="List should have at most 10"):
+            LLMRequest(query="q", attachments=[attachment] * 11)
+
 
 class TestStatusResponse:
     """Unit tests for the StatusResponse model."""

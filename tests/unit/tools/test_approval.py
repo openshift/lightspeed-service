@@ -41,8 +41,9 @@ async def test_pending_approval_store_crud(
     store = pending_store
     approval_id = "approval-1"
 
-    pending = store.add(approval_id)
+    pending = store.add(approval_id, "test-user")
     assert pending.approval_id == approval_id
+    assert pending.user_id == "test-user"
     assert store.get(approval_id) is pending
     assert store.delete(approval_id) is True
     assert store.get(approval_id) is None
@@ -56,12 +57,12 @@ async def test_get_approval_decision_returns_true_when_approved(
     """Test approval decision waiter returns True when approved."""
     store = pending_store
     approval_id = "approval-2"
-    register_pending_approval(approval_id)
+    register_pending_approval(approval_id, "test-user")
 
     wait_task = asyncio.create_task(get_approval_decision(approval_id, 1))
     await asyncio.sleep(0)
 
-    assert set_approval_decision(approval_id, True) == "applied"
+    assert set_approval_decision(approval_id, "test-user", True) == "applied"
     assert await wait_task == "approved"
     assert store.get(approval_id) is None
 
@@ -73,12 +74,12 @@ async def test_get_approval_decision_returns_rejected_when_denied(
     """Test approval decision waiter returns rejected when denied."""
     store = pending_store
     approval_id = "approval-rejected"
-    register_pending_approval(approval_id)
+    register_pending_approval(approval_id, "test-user")
 
     wait_task = asyncio.create_task(get_approval_decision(approval_id, 1))
     await asyncio.sleep(0)
 
-    assert set_approval_decision(approval_id, False) == "applied"
+    assert set_approval_decision(approval_id, "test-user", False) == "applied"
     assert await wait_task == "rejected"
     assert store.get(approval_id) is None
 
@@ -90,7 +91,7 @@ async def test_get_approval_decision_returns_false_on_timeout(
     """Test approval decision waiter returns False when timeout occurs."""
     store = pending_store
     approval_id = "approval-timeout"
-    register_pending_approval(approval_id)
+    register_pending_approval(approval_id, "test-user")
 
     result = await get_approval_decision(approval_id, timeout_seconds=0)
     assert result == "timeout"
@@ -113,7 +114,7 @@ async def test_get_approval_decision_returns_false_on_wait_error(
 
     store = pending_store
     approval_id = "approval-error"
-    register_pending_approval(approval_id)
+    register_pending_approval(approval_id, "test-user")
 
     result = await get_approval_decision(approval_id, timeout_seconds=1)
     assert result == "error"
@@ -134,12 +135,27 @@ async def test_set_approval_decision_states(
     """Test set_approval_decision return states."""
     store = pending_store
 
-    assert set_approval_decision("missing", True) == "not_found"
+    assert set_approval_decision("missing", "test-user", True) == "not_found"
 
-    pending = store.add("approval-3")
-    assert set_approval_decision("approval-3", False) == "applied"
+    pending = store.add("approval-3", "test-user")
+    assert set_approval_decision("approval-3", "test-user", False) == "applied"
     assert pending.decision is False
-    assert set_approval_decision("approval-3", True) == "already_resolved"
+    assert set_approval_decision("approval-3", "test-user", True) == "already_resolved"
+
+
+@pytest.mark.asyncio
+async def test_set_approval_decision_user_mismatch(
+    pending_store: PendingApprovalStoreBase,
+) -> None:
+    """Test user_id mismatch returns not_found to prevent enumeration."""
+    store = pending_store
+    store.add("approval-owned", "owner-user")
+
+    assert set_approval_decision("approval-owned", "other-user", True) == "not_found"
+
+    pending = store.get("approval-owned")
+    assert pending is not None
+    assert pending.decision is None
 
 
 def test_normalize_tool_annotation_variants() -> None:
