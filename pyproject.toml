@@ -107,6 +107,8 @@ dependencies = [
     "llama-index-core>=0.12.44",
     "llama-index-vector-stores-faiss>=0.3.0",
     "llama-index-embeddings-huggingface>=0.4.0",
+    # CVE-2026-68770: RCE via trust_remote_code bypass; RHOAI index still on 5.2.0
+    "sentence-transformers>=5.6.0",
     "uvicorn>=0.32.1",
     "faiss-cpu>=1.9.0.post1",
     "openai>=1.54.3",

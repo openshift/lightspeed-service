@@ -65,24 +65,24 @@ ibm-cos-sdk-core==2.14.3 \
     --hash=sha256:85dee7790c92e8db69bf39dae4c02cac211e3c1d81bb86e64fa2d1e929674623
 ibm-cos-sdk-s3transfer==2.14.3 \
     --hash=sha256:2251ebfc4a46144401e431f4a5d9f04c262a0d6f95c88a8e71071da056e55f72
-ibm-watsonx-ai==1.6.0 \
-    --hash=sha256:707dbfe8c641a0053114037c2e56f85fa20028c50af20d96338c3ac92185e0d7 \
-    --hash=sha256:d6f006902b48b70a7508925aa980bd159e5196c953c05a9b13634deb37caa4e9
+ibm-watsonx-ai==1.6.1 \
+    --hash=sha256:1c505c5c53007ff8fc9a70ae13befbcebc4d1b44dbe28aef50eae332529e9e4a \
+    --hash=sha256:f73e6414b6188e4eb53a15e2aaf7437ee3e8868150ae4a61c063afbedd3e1dc5
 jmespath==1.0.1 \
     --hash=sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
-langchain-aws==1.6.3 \
-    --hash=sha256:418fa53a94fdc4971de44939fceb70f1d09e1a63867942b52f54403a5385e43e \
-    --hash=sha256:f8574b23859c7a975c91cef98f9544f2c57ada1043be55449045824bf822f026
+langchain-aws==1.7.0 \
+    --hash=sha256:25ccaebeec0bd718df4a1dce44c725591e177690bc19df7caa0cd2d601df27a0 \
+    --hash=sha256:e4e8d578b4be8fd3ad970373fc72c3e321fea7f955cb6c075464e30636ec583d
 langchain-google-vertexai==3.2.4 \
     --hash=sha256:65b5615e596fdabc2e149f0160fded88bebef2bbc1ea70095ff81714f7570183 \
     --hash=sha256:f0c16b4b639037f60357dbf6d4aa3b0f301f23be6b33b0688c75902235cb9434
 langchain-ibm==1.1.0 \
     --hash=sha256:09695295a2773a2f651272586e86a95275872b404c11421d609cfb7866a17c26 \
     --hash=sha256:2d64f5869febd8153e826f912043fd48a9d17f9c6bfd30ad60887c1a8b4183d3
-langchain-mcp-adapters==0.3.0 \
-    --hash=sha256:1af511a95e028d9546502e360f95698ae8b691dbc07981fc48170c2cb1ebd7a9 \
-    --hash=sha256:fa6c9497015eb2807de5d0c341a36e1d2445cecbae1f4a24e922fc5b94f1a36c
+langchain-mcp-adapters==0.3.2 \
+    --hash=sha256:094e6b3096dbcc408417d5722f6915f164772e50c502ae3d8989405bf12c3c84 \
+    --hash=sha256:61cd1a09597adb619a9bafb0642938ffc2a9463d699a753f7af0420ea46c381a
 llama-index-embeddings-huggingface==0.7.0 \
     --hash=sha256:cae7e4ffddc1fecb34b83425a00679f338ce03ad0a7f3aca6b927136d6af7131 \
     --hash=sha256:da8a2a65df9404112c4430dfada09d4f846ba165197a25dbe77f734014c56a87
@@ -145,6 +145,9 @@ python-frontmatter==1.2.0 \
 rank-bm25==0.2.2 \
     --hash=sha256:096ccef76f8188563419aaf384a02f0ea459503fdf77901378d4fd9d87e5e51d \
     --hash=sha256:7bd4a95571adadfc271746fa146a4bcfd89c0cf731e49c3d1ad863290adbe8ae
+sentence-transformers==5.7.0 \
+    --hash=sha256:b78141da3d8137e70d965866e2ca43190b9266f3d4d8752e250ded75e7136730 \
+    --hash=sha256:fd8c8fc35e6323631dff9f3760969ebf7980dc3cfda0ab1354bc6a774cc0e5d8
 validators==0.35.0 \
     --hash=sha256:992d6c48a4e77c81f1b4daba10d16c3a9bb0dbb79b3a19ea847ff0928e70497a \
     --hash=sha256:e8c947097eae7892cb3d26868d637f79f47b4a0554bc6b80065dfe5aac3705dd
