@@ -418,23 +418,10 @@ class LLMProvider(AbstractLLMProvider):
         logger.info("Security profile %s", sec_profile)
 
         if sec_profile is None or sec_profile.profile_type is None:
-            verify: ssl.SSLContext | bool = True
-            if use_custom_certificate_store:
-                logger.debug(
-                    "Custom Certificate store location: %s",
-                    self.provider_config.certificates_store,
-                )
-                custom_context = ssl.create_default_context()
-                custom_context.load_verify_locations(
-                    cafile=self.provider_config.certificates_store
-                )
-                verify = custom_context
-            logger.info(
-                "No security profiles. creating httpx.Client with verify %s", verify
-            )
+            logger.info("No security profiles. creating httpx.Client with verify=True")
             if use_async:
-                return httpx.AsyncClient(verify=verify, proxy=proxy, mounts=mounts)
-            return httpx.Client(verify=verify, proxy=proxy, mounts=mounts)
+                return httpx.AsyncClient(verify=True, proxy=proxy, mounts=mounts)
+            return httpx.Client(verify=True, proxy=proxy, mounts=mounts)
 
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
         logger.info("list of ciphers: %s", ciphers)
