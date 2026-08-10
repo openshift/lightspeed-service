@@ -97,7 +97,8 @@ description = "OpenShift Lightspeed is an AI powered assistant that runs on Open
 authors = []
 # NOTE: langchain bumps causes mypy issues
 dependencies = [
-    "aiohttp>=3.13.3",
+    # CVE-2026-69243 / CVE-2026-69244: RHOAI index still on 3.14.1
+    "aiohttp>=3.14.3",
     "aiostream>=0.7.0",
     "httpx>=0.28.0",
     "fastapi>=0.115.6",

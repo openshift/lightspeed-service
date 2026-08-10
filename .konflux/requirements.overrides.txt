@@ -1,6 +1,7 @@
 # override these packages to the version available on RHOAI wheels index:
 # https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple
-aiohttp==3.14.1
+# CVE-2026-69243 / CVE-2026-69244: RHOAI only ships 3.14.1; force fixed PyPI version
+aiohttp==3.14.3
 aiosqlite==0.22.1
 anyio==4.13.0
 attrs==26.1.0
