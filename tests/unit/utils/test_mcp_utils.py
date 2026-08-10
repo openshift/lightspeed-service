@@ -314,54 +314,6 @@ class TestBuildMcpConfig:
         result = build_mcp_config([bad_server], None, None)
         assert result == {}
 
-    def test_httpx_factory_included_when_cert_bundle_present(
-        self, mock_file_server, tmp_path
-    ):
-        """Test that httpx_client_factory is set with correct SSL context."""
-        ca_bundle = tmp_path / "ols.pem"
-        ca_bundle.write_text("fake-cert")
-
-        with (
-            patch("ols.utils.mcp_utils.config") as mock_config,
-            patch("ssl.create_default_context") as mock_ctx,
-            patch("ols.utils.mcp_utils.httpx.AsyncClient") as mock_client_cls,
-        ):
-            mock_ssl = MagicMock()
-            mock_ctx.return_value = mock_ssl
-            mock_config.ols_config.certificate_directory = str(tmp_path)
-            result = build_mcp_config([mock_file_server], None, None)
-
-        assert "file-server" in result
-        factory = result["file-server"]["httpx_client_factory"]
-        assert callable(factory)
-
-        mock_ctx.assert_called_once_with(cafile=str(ca_bundle))
-
-        factory(headers={"X-Test": "1"})
-        mock_client_cls.assert_called_once_with(
-            verify=mock_ssl, headers={"X-Test": "1"}
-        )
-
-    def test_httpx_factory_absent_when_no_certificate_directory(self, mock_file_server):
-        """Test that httpx_client_factory is absent when certificate_directory is None."""
-        with patch("ols.utils.mcp_utils.config") as mock_config:
-            mock_config.ols_config.certificate_directory = None
-            result = build_mcp_config([mock_file_server], None, None)
-
-        assert "file-server" in result
-        assert "httpx_client_factory" not in result["file-server"]
-
-    def test_httpx_factory_absent_when_bundle_file_missing(
-        self, mock_file_server, tmp_path
-    ):
-        """Test that httpx_client_factory is absent when the CA bundle file does not exist."""
-        with patch("ols.utils.mcp_utils.config") as mock_config:
-            mock_config.ols_config.certificate_directory = str(tmp_path)
-            result = build_mcp_config([mock_file_server], None, None)
-
-        assert "file-server" in result
-        assert "httpx_client_factory" not in result["file-server"]
-
 
 @pytest.mark.asyncio
 class TestGatherMcpTools:

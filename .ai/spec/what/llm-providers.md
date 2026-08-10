@@ -54,9 +54,9 @@ Every provider must satisfy all of the following:
 
 16. Hosts listed in `ols_config.proxy_config.no_proxy_hosts` must bypass the proxy entirely.
 
-17. Providers that use custom certificate stores (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM) must load the certificate bundle from `certificates_store` and use it for TLS verification.
+17. CA trust for provider connections is handled globally via the `SSL_CERT_FILE` environment variable set by the operator. Python's `ssl.create_default_context()` picks up the merged CA bundle automatically; no per-provider certificate store configuration is needed.
 
-18. When `tlsSecurityProfile` is configured on the provider, the HTTP client must enforce the specified minimum TLS version and cipher suite list. When no security profile is set, the client must use default TLS verification (or the custom certificate store if applicable).
+18. When `tlsSecurityProfile` is configured on the provider, the HTTP client must enforce the specified minimum TLS version and cipher suite list. When no security profile is set, the client must use default TLS verification.
 
 ## Per-Provider Deviations
 
@@ -198,7 +198,7 @@ The following sections describe only what differs from the standard contract abo
 
 6. Credentials are never logged. Parameters containing keys, tokens, or HTTP client objects must be redacted from log output.
 
-7. The certificate store path is computed at startup and points to a PEM bundle file in the certificate directory. It is only used by OpenAI-family providers (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM, Bedrock).
+7. CA trust for all provider connections is handled globally via the `SSL_CERT_FILE` environment variable set by the operator. No per-provider certificate store is needed.
 
 8. Google Vertex providers require `credentials` to contain valid JSON representing a Google service account key. Non-JSON or non-object values must be rejected.
 

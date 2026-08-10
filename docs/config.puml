@@ -97,12 +97,10 @@ class "ModelParameters" as ols.app.models.config.ModelParameters {
 }
 class "OLSConfig" as ols.app.models.config.OLSConfig {
   authentication_config
-  certificate_directory : Optional[str]
   conversation_cache : Optional[ConversationCacheConfig]
   default_model : Optional[str]
   default_provider : Optional[str]
   expire_llm_is_ready_persistent_state : Optional[int]
-  extra_ca : list[FilePath]
   logging_config : Optional[LoggingConfig]
   max_workers : Optional[int]
   query_filters : Optional[list[QueryFilter]]
@@ -135,7 +133,6 @@ class "PostgresConfig" as ols.app.models.config.PostgresConfig {
 class "ProviderConfig" as ols.app.models.config.ProviderConfig {
   api_version : Optional[str]
   azure_config : Optional[AzureOpenAIConfig]
-  certificates_store : Optional[str]
   credentials : Optional[str]
   deployment_name : Optional[str]
   fake_provider_config : Optional[FakeConfig]

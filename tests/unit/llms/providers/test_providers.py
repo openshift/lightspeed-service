@@ -161,5 +161,5 @@ def test_construct_httpx_client():
         }
     )
     llm_provider = MyProvider("model", provider_config)
-    client = llm_provider._construct_httpx_client(False, False)
+    client = llm_provider._construct_httpx_client(False)
     assert client is not None

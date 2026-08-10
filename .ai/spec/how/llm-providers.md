@@ -198,10 +198,11 @@ Both vLLM field names (`reasoning_content` and `reasoning`) are checked to handl
 
 ### HTTP client setup
 
-`_construct_httpx_client` in the base class handles three concerns:
+`_construct_httpx_client` in the base class handles two concerns:
 1. **Proxy**: reads `proxy_config.proxy_url`, creates `httpx.Proxy` with optional SSL context for HTTPS proxies, and sets up `no_proxy` host bypass via httpx mounts.
-2. **Custom certificate store**: when `use_custom_certificate_store=True`, loads CA certs from `provider_config.certificates_store` (set automatically for OpenAI-compatible providers during config init).
-3. **TLS security profile**: when `tls_security_profile` is configured, constrains minimum TLS version and cipher suites via `ssl.SSLContext`.
+2. **TLS security profile**: when `tls_security_profile` is configured, constrains minimum TLS version and cipher suites via `ssl.SSLContext`.
+
+CA trust for LLM provider connections is handled globally via the `SSL_CERT_FILE` environment variable set by the operator. Python's `ssl.create_default_context()` picks up the merged CA bundle automatically, so no per-provider certificate store is needed.
 
 Each OpenAI-compatible provider creates both sync and async clients (`http_client` and `http_async_client`).
 
