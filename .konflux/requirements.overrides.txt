@@ -4,6 +4,8 @@ aiohttp==3.14.1
 aiosqlite==0.22.1
 anyio==4.13.0
 attrs==26.1.0
+# CVE-2026-61536: RHOAI only ships vulnerable 2.4.2; force fixed PyPI version
+banks==2.5.0
 certifi==2026.5.20
 cryptography==49.0.0
 datasets==5.0.0

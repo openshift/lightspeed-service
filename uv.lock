@@ -233,7 +233,7 @@ wheels = [
 
 [[package]]
 name = "banks"
-version = "2.4.1"
+version = "2.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deprecated" },
@@ -243,9 +243,9 @@ dependencies = [
     { name = "platformdirs" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/5d/54c79aaaa9aa1278af24cae98d81d6ef635ad840f046bc2ccb5041ddeb1b/banks-2.4.1.tar.gz", hash = "sha256:8cbf1553f14c44d4f7e9c2064ad9212ce53ee4da000b2f8308d548b60db56655", size = 188033, upload-time = "2026-02-17T11:21:14.855Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/f0/ce5b3105a8551fdcedb509ab5340066247b3cd1b28e79f9296be2d6d3bf4/banks-2.5.0.tar.gz", hash = "sha256:fdd4fd54b84dbe31cb51a1173c960697c73d683a52fb0b1d1957a557a8d6fcc8", size = 194585, upload-time = "2026-08-08T15:54:16.548Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/5a/f38b49e8b225b0c774e97c9495e52ab9ccdf6d82bde68c513bd736820eb2/banks-2.4.1-py3-none-any.whl", hash = "sha256:40e6d9b6e9b69fb403fa31f2853b3297e4919c1b6f2179b2119d2d4473c6ed13", size = 35032, upload-time = "2026-02-17T11:21:13.236Z" },
+    { url = "https://files.pythonhosted.org/packages/07/9c/7dc7b15cecc03baa47d413b2599487b1fab270169b00feaa5e74978845f3/banks-2.5.0-py3-none-any.whl", hash = "sha256:8804c58f23e41a5aabe9ecfdf64235cdf1d5f3b16ad95ec2a54b6dc738dc1dfc", size = 38620, upload-time = "2026-08-08T15:54:15.505Z" },
 ]
 
 [[package]]
@@ -2643,6 +2643,7 @@ dependencies = [
     { name = "aiostream" },
     { name = "anthropic" },
     { name = "azure-identity" },
+    { name = "banks" },
     { name = "certifi" },
     { name = "cryptography" },
     { name = "faiss-cpu" },
@@ -2735,6 +2736,7 @@ requires-dist = [
     { name = "aiostream", specifier = ">=0.7.0" },
     { name = "anthropic", specifier = ">=0.40.0" },
     { name = "azure-identity", specifier = ">=1.18.0" },
+    { name = "banks", specifier = ">=2.4.3" },
     { name = "certifi", specifier = ">=2024.8.30" },
     { name = "cryptography", specifier = ">=44.0.1" },
     { name = "datasets", marker = "extra == 'evaluation'", specifier = ">=3.0.0" },
