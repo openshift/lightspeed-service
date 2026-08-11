@@ -12,6 +12,7 @@ from langchain_openai import AzureChatOpenAI
 
 from ols import constants
 from ols.app.models.config import AzureOpenAIConfig
+from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 
@@ -111,27 +112,22 @@ class AzureOpenAI(LLMProvider):
         """Load LLM."""
         return AzureChatOpenAI(**self.params)
 
-    def resolve_access_token(self, azure_config: AzureOpenAIConfig) -> Optional[str]:
+    def resolve_access_token(self, azure_config: AzureOpenAIConfig) -> str:
         """Retrieve and cache Azure OpenAI access token."""
         if TOKEN_CACHE.is_expired():
             logger.info(
                 "Cached AD token has expired (or missing) - generating a new one"
             )
             access_token = self.retrieve_access_token(azure_config)
-            if access_token:
-                TOKEN_CACHE.update_token(access_token.token, access_token.expires_on)
-            else:
-                return None
+            TOKEN_CACHE.update_token(access_token.token, access_token.expires_on)
         return TOKEN_CACHE.access_token
 
-    def retrieve_access_token(
-        self, azure_config: AzureOpenAIConfig
-    ) -> Optional[AccessToken]:
+    def retrieve_access_token(self, azure_config: AzureOpenAIConfig) -> AccessToken:
         """Retrieve access token to call Azure OpenAI."""
         if azure_config is None:
-            raise ValueError(
+            raise LLMConfigurationError(
                 "Credentials for API token is not set and "
-                "Azure-specific parameters are not provided."
+                "Azure-specific parameters are not provided. "
                 "It is not possible to retrieve access token."
             )
         if azure_config.tenant_id is None:
@@ -141,7 +137,6 @@ class AzureOpenAI(LLMProvider):
         if azure_config.client_secret is None:
             raise_missing_attribute_error("client_secret")
 
-        # everything is there, try to retrieve credential
         try:
             credential = ClientSecretCredential(
                 azure_config.tenant_id,
@@ -150,12 +145,14 @@ class AzureOpenAI(LLMProvider):
             )
             return credential.get_token("https://cognitiveservices.azure.com/.default")
         except Exception as e:
-            logger.error("Error retrieving access token: %s", e)
-            return None
+            logger.error("Failed to acquire Azure Entra ID access token: %s", e)
+            raise LLMConfigurationError(
+                f"Failed to acquire Azure Entra ID access token: {e}"
+            ) from e
 
 
 def raise_missing_attribute_error(attribute_name: str) -> None:
     """Raise exception when some attribute is missing in configuration."""
-    raise ValueError(
+    raise LLMConfigurationError(
         f"{attribute_name} should be set in azure_openai_config in order to retrieve access token."
     )
