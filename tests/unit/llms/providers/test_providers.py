@@ -241,5 +241,5 @@ def test_construct_httpx_client_with_ipv6_in_no_proxy_hosts() -> None:
     with patch("ols.src.llms.providers.provider.config") as mock_config:
         mock_config.ols_config.proxy_config = mock_proxy_config
         mock_config.dev_config.llm_params = None
-        client = llm_provider._construct_httpx_client(False, False)
+        client = llm_provider._construct_httpx_client(False)
         assert client is not None
