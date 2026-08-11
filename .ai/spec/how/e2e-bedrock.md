@@ -1,6 +1,20 @@
 # E2E Test Infrastructure — AWS Bedrock Provider
 
-Spec for [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327). Adds e2e test coverage for the AWS Bedrock provider, covering both model-prefix routing branches (Anthropic, OpenAI) and both IAM authentication modes (direct, assume-role).
+Spec for [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327). Adds e2e test coverage for the AWS Bedrock provider, covering two model families (Anthropic, DeepSeek) and both IAM authentication modes (direct, assume-role).
+
+## Coverage Note — `openai.*` Prefix Branch
+
+The Bedrock provider (`ols/src/llms/providers/bedrock.py`) has three model-prefix routing branches:
+
+| Branch | Prefix | `base_url` | `use_responses_api` | Client |
+|---|---|---|---|---|
+| Anthropic | `anthropic.*` | n/a (Converse API) | n/a | `ChatBedrockConverse` |
+| OpenAI | `openai.*` | `{url}/openai/v1` | `True` | `ChatOpenAI` |
+| Default | anything else | `{url}/v1` | `False` | `ChatOpenAI` |
+
+This e2e suite covers the **Anthropic** and **Default** branches. The **OpenAI** prefix branch (`/openai/v1` + Responses API) is **not** exercised by these tests. DeepSeek models use the `deepseek.` prefix, which falls through to the Default branch.
+
+The OpenAI-prefix branch coverage is deferred. If an `openai.*` model becomes available on the Mantle endpoint, a `bedrock_openai` suite can be added following the same pattern as DeepSeek.
 
 ## Dependencies
 
@@ -12,7 +26,7 @@ Spec for [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327). Adds e2e test
 ## Scope
 
 In scope:
-- OLSConfig CR templates for Bedrock (Anthropic model, OpenAI model, OpenAI tool calling)
+- OLSConfig CR templates for Bedrock (Anthropic model, DeepSeek model, DeepSeek tool calling)
 - IAM credential handling in `ols_installer.py` (new `ensure_bedrock_iam_secret()`)
 - `create_secrets()` Bedrock branch
 - `run_suite` entries in `test-e2e-cluster-periodics.sh` and `test-e2e-cluster.sh`
@@ -21,6 +35,7 @@ In scope:
 Out of scope:
 - Bedrock-specific e2e test cases — the existing generic suite runs with `PROVIDER=bedrock`
 - Operator CRD changes — covered by OLS-2605
+- `openai.*` prefix branch coverage — deferred (see Coverage Note above)
 
 ## Credential Architecture
 
@@ -118,9 +133,9 @@ spec:
         credentialsSecretRef:
           name: llmcreds
         models:
-          - name: anthropic.claude-opus-4-7
+          - name: anthropic.claude-sonnet-4-6
   ols:
-    defaultModel: anthropic.claude-opus-4-7
+    defaultModel: anthropic.claude-sonnet-4-6
     defaultProvider: bedrock
     deployment:
       replicas: 1
@@ -138,15 +153,26 @@ spec:
       transcriptsDisabled: true
 ```
 
-### `olsconfig.crd.bedrock_openai.yaml`
+### `olsconfig.crd.bedrock_deepseek.yaml`
 
 Same as above with:
-- `models[0].name: openai.gpt-5.4`
-- `defaultModel: openai.gpt-5.4`
+- `models[0].name: deepseek.v3.2`
+- `defaultModel: deepseek.v3.2`
 
-### `olsconfig.crd.bedrock_openai_tool_calling.yaml`
+### `olsconfig.crd.bedrock_deepseek_tool_calling.yaml`
 
-Same as `bedrock_openai.yaml` with `introspectionEnabled: true` added under `ols:` (this is the only difference that enables tool calling, matching the pattern in `olsconfig.crd.openai_tool_calling.yaml`).
+Same as `bedrock_deepseek.yaml` with `introspectionEnabled: true` added under `ols:` (this is the only difference that enables tool calling, matching the pattern in `olsconfig.crd.openai_tool_calling.yaml`).
+
+## Code Path Coverage Matrix
+
+| Suite | Model prefix | bedrock.py branch | `base_url` | `use_responses_api` | Auth |
+|---|---|---|---|---|---|
+| `bedrock_anthropic` | `anthropic.` | Anthropic | n/a (Converse) | n/a | Direct IAM |
+| `bedrock_deepseek` | `deepseek.` | Default | `{url}/v1` | `False` | Direct IAM |
+| `bedrock_anthropic_iam_role` | `anthropic.` | Anthropic | n/a (Converse) | n/a | Assume-role |
+| `bedrock_deepseek_iam_role` | `deepseek.` | Default | `{url}/v1` | `False` | Assume-role |
+| `bedrock_deepseek_tool_calling` | `deepseek.` | Default | `{url}/v1` | `False` | Direct IAM |
+| ~~`bedrock_openai`~~ | ~~`openai.`~~ | ~~OpenAI~~ | ~~`{url}/openai/v1`~~ | ~~`True`~~ | ~~Deferred~~ |
 
 ## Test Suites
 
@@ -154,11 +180,11 @@ Same as `bedrock_openai.yaml` with `introspectionEnabled: true` added under `ols
 
 | Suite ID | Test tags | Provider | PROVIDER_KEY_PATH | Model | OLS_CONFIG_SUFFIX |
 |---|---|---|---|---|---|
-| `bedrock_anthropic` | `not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export` | `bedrock_anthropic` | `iam` | `anthropic.claude-opus-4-7` | `default` |
-| `bedrock_openai` | same as above | `bedrock_openai` | `iam` | `openai.gpt-5.4` | `default` |
-| `bedrock_anthropic_iam_role` | `smoketest` | `bedrock_anthropic` | `iam_role` | `anthropic.claude-opus-4-7` | `default` |
-| `bedrock_openai_iam_role` | `smoketest` | `bedrock_openai` | `iam_role` | `openai.gpt-5.4` | `default` |
-| `bedrock_openai_tool_calling` | `tool_calling` | `bedrock_openai` | `iam` | `openai.gpt-5.4` | `tool_calling` |
+| `bedrock_anthropic` | `not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export` | `bedrock_anthropic` | `iam` | `anthropic.claude-sonnet-4-6` | `default` |
+| `bedrock_deepseek` | same as above | `bedrock_deepseek` | `iam` | `deepseek.v3.2` | `default` |
+| `bedrock_anthropic_iam_role` | `smoketest` | `bedrock_anthropic` | `iam_role` | `anthropic.claude-sonnet-4-6` | `default` |
+| `bedrock_deepseek_iam_role` | `smoketest` | `bedrock_deepseek` | `iam_role` | `deepseek.v3.2` | `default` |
+| `bedrock_deepseek_tool_calling` | `tool_calling` | `bedrock_deepseek` | `iam` | `deepseek.v3.2` | `tool_calling` |
 
 ### `test-e2e-cluster.sh`
 
@@ -171,11 +197,11 @@ The existing `adapt_ols_config.py` logic builds the CR filename as:
 olsconfig.crd.{provider}  →  if suffix != "default": += _{suffix}
 ```
 
-This does not work directly for Bedrock because the provider name is `bedrock` but the CR templates use `bedrock_anthropic` / `bedrock_openai`. The `run_suite` call controls the model via a CLI argument, but the CR template name is derived from `PROVIDER` alone.
+This does not work directly for Bedrock because the provider name is `bedrock` but the CR templates use `bedrock_anthropic` / `bedrock_deepseek`. The `run_suite` call controls the model via a CLI argument, but the CR template name is derived from `PROVIDER` alone.
 
-**Solution:** The CR template filename must encode the model family. Pass `PROVIDER` as `bedrock_anthropic` or `bedrock_openai` in the `run_suite` call. Then in `create_secrets()` and `conftest.py`, strip the model suffix to get the actual provider name (`bedrock`) for credential handling. Alternatively, use `OLS_CONFIG_SUFFIX` to carry the model variant — but this conflicts with the existing suffix values (`default`, `tool_calling`, etc.).
+**Solution:** The CR template filename must encode the model family. Pass `PROVIDER` as `bedrock_anthropic` or `bedrock_deepseek` in the `run_suite` call. Then in `create_secrets()` and `conftest.py`, strip the model suffix to get the actual provider name (`bedrock`) for credential handling. Alternatively, use `OLS_CONFIG_SUFFIX` to carry the model variant — but this conflicts with the existing suffix values (`default`, `tool_calling`, etc.).
 
-The cleanest approach: pass `PROVIDER=bedrock_anthropic` or `PROVIDER=bedrock_openai`. In `create_secrets()`, match on `provider_name.startswith("bedrock")` rather than `provider_name == "bedrock"`. The CR template selection then works naturally: `olsconfig.crd.bedrock_anthropic.yaml`, `olsconfig.crd.bedrock_openai_tool_calling.yaml`, etc.
+The cleanest approach: pass `PROVIDER=bedrock_anthropic` or `PROVIDER=bedrock_deepseek`. In `create_secrets()`, match on `provider_name.startswith("bedrock")` rather than `provider_name == "bedrock"`. The CR template selection then works naturally: `olsconfig.crd.bedrock_anthropic.yaml`, `olsconfig.crd.bedrock_deepseek_tool_calling.yaml`, etc.
 
 The `wait_for_ols` and test execution code only uses `PROVIDER` for display/logging — it does not parse the provider name for behavior.
 
@@ -202,7 +228,7 @@ Service PR can merge before operator PR since the new `run_suite` entries will n
 |---|---|
 | `tests/e2e/utils/ols_installer.py` | Add `ensure_bedrock_iam_secret()`, update `create_secrets()` |
 | `tests/config/operator_install/olsconfig.crd.bedrock_anthropic.yaml` | New file |
-| `tests/config/operator_install/olsconfig.crd.bedrock_openai.yaml` | New file |
-| `tests/config/operator_install/olsconfig.crd.bedrock_openai_tool_calling.yaml` | New file |
+| `tests/config/operator_install/olsconfig.crd.bedrock_deepseek.yaml` | New file |
+| `tests/config/operator_install/olsconfig.crd.bedrock_deepseek_tool_calling.yaml` | New file |
 | `tests/scripts/test-e2e-cluster-periodics.sh` | Add five `run_suite` calls |
 | `tests/scripts/test-e2e-cluster.sh` | Mirror periodics entries |
