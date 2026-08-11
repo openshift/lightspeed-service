@@ -677,8 +677,17 @@ def write_hashed_requirements(
     packages: dict[str, dict[str, Any]],
     output_path: str,
     index_url: str,
+    *,
+    hash_keys: tuple[str, ...] = (),
+    include_platforms: bool = False,
 ) -> None:
-    """Write a pip-compatible hashed requirements file."""
+    """Write a pip-compatible hashed requirements file.
+
+    Only hashes from the selected sources are written. Mixing sdist and wheel
+    hashes in ``requirements.hashes.source.txt`` lets installers prefer a
+    matching wheel under ``--require-hashes``, defeating the sdist-only
+    classification for PyPI source packages.
+    """
     lines: list[str] = [f"--index-url {index_url}\n"]
 
     for name in sorted(packages):
@@ -687,12 +696,12 @@ def write_hashed_requirements(
 
         hashes: set[str] = set()
 
-        if "platforms" in info:
+        if include_platforms and "platforms" in info:
             for _, sha in info["platforms"].values():
                 if sha:
                     hashes.add(sha)
 
-        for key in ("sdist_hashes", "wheel_hashes"):
+        for key in hash_keys:
             for sha in info.get(key, []):
                 if sha:
                     hashes.add(sha)
@@ -1154,16 +1163,19 @@ def main() -> None:
         buckets["rhoai_wheel"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel{suffix}.txt"),
         rhoai_index_url,
+        include_platforms=True,
     )
     write_hashed_requirements(
         buckets["pypi_sdist"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.source{suffix}.txt"),
         "https://pypi.org/simple",
+        hash_keys=("sdist_hashes",),
     )
     write_hashed_requirements(
         buckets["pypi_wheel"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel.pypi{suffix}.txt"),
         "https://pypi.org/simple",
+        hash_keys=("wheel_hashes",),
     )
 
     wheel_package_names = sorted(
