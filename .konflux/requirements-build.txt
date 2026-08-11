@@ -18,7 +18,7 @@ flit-core==4.0.2
     #   packaging
     #   pathspec
     #   pyproject-metadata
-hatchling==1.31.0
+hatchling==1.32.0
     # via
     #   banks
     #   langchain-aws
@@ -27,7 +27,7 @@ hatchling==1.31.0
     #   llama-index-vector-stores-faiss
 meson-python==0.20.0
     # via numpy
-meson==1.11.2
+meson==1.12.0
     # via meson-python
 pathspec==1.1.1
     # via hatchling
@@ -40,7 +40,9 @@ pkgconfig==1.6.0
 pluggy==1.6.0
     # via hatchling
 poetry-core==2.4.1
-    # via pkgconfig
+    # via
+    #   pkgconfig
+    #   tomlkit
 pyproject-hooks==1.2.0
     # via build
 pyproject-metadata==0.12.1
@@ -56,6 +58,8 @@ setuptools-scm==10.2.1
     #   pluggy
     #   pytest-runner
     #   setuptools-rust
+tomlkit==0.15.1
+    # via hatchling
 trove-classifiers==2026.6.1.19
     # via hatchling
 vcs-versioning==2.2.4
