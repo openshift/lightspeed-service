@@ -7,6 +7,7 @@ SCANNER_IMAGE="${SCANNER_IMAGE:-quay.io/openshift-lightspeed/ols-qe:tls-scanner}
 OLS_PID=""
 FAILURES=0
 TOTAL_CHECKS=0
+PODMAN_CONTAINER_CREATED=0
 
 log() {
     echo "[tls-scan] $*"
@@ -17,7 +18,9 @@ cleanup() {
         kill "${OLS_PID}" 2>/dev/null || true
         wait "${OLS_PID}" 2>/dev/null || true
     fi
-    podman rm "tls-scanner-extract-$$" 2>/dev/null || true
+    if [[ "${PODMAN_CONTAINER_CREATED}" == "1" ]]; then
+        podman rm "tls-scanner-extract-$$" 2>/dev/null || true
+    fi
     if [[ "${TLS_SCAN_KEEP_ARTIFACTS:-0}" != "1" ]]; then
         rm -rf "${SCAN_DIR}"
         log "Cleaned up ${SCAN_DIR}"
@@ -41,12 +44,19 @@ generate_certs() {
 }
 
 extract_scanner() {
-    log "Extracting tls-scanner from ${SCANNER_IMAGE}..."
-    local container_name="tls-scanner-extract-$$"
-    podman create --name "${container_name}" "${SCANNER_IMAGE}" >/dev/null 2>&1
-    podman cp "${container_name}:/usr/local/bin/tls-scanner" "${SCAN_DIR}/tls-scanner"
-    podman cp "${container_name}:/opt/testssl" "${SCAN_DIR}/testssl"
-    podman rm "${container_name}" >/dev/null 2>&1
+    if [[ -x "/usr/local/bin/tls-scanner" && -d "/opt/testssl" ]]; then
+        log "tls-scanner already installed, copying to ${SCAN_DIR}..."
+        cp /usr/local/bin/tls-scanner "${SCAN_DIR}/tls-scanner"
+        cp -r /opt/testssl "${SCAN_DIR}/testssl"
+    else
+        log "Extracting tls-scanner from ${SCANNER_IMAGE}..."
+        local container_name="tls-scanner-extract-$$"
+        PODMAN_CONTAINER_CREATED=1
+        podman create --name "${container_name}" "${SCANNER_IMAGE}" >/dev/null 2>&1
+        podman cp "${container_name}:/usr/local/bin/tls-scanner" "${SCAN_DIR}/tls-scanner"
+        podman cp "${container_name}:/opt/testssl" "${SCAN_DIR}/testssl"
+        podman rm "${container_name}" >/dev/null 2>&1
+    fi
     chmod +x "${SCAN_DIR}/tls-scanner"
     export PATH="${SCAN_DIR}/testssl:${PATH}"
     log "tls-scanner extracted"
