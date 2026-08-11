@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ols import config
+from ols.constants import DEFAULT_USER_UID
 from ols.src.tools.approval import ApprovalSetResult
 
 
@@ -37,7 +38,7 @@ def test_submit_tool_approval_decision_applied(_setup: None) -> None:
 
     assert response.status_code == 200
     assert response.json() is None
-    mock_set_decision.assert_called_once_with("approval-1", True)
+    mock_set_decision.assert_called_once_with("approval-1", DEFAULT_USER_UID, True)
 
 
 def test_submit_tool_approval_decision_not_found(_setup: None) -> None:

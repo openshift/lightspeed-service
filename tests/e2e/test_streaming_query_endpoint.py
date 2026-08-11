@@ -161,13 +161,13 @@ def test_valid_question_improper_conversation_id() -> None:
 
 def test_too_long_question() -> None:
     """Check the endpoint with too long question."""
-    # let's make the query really large, larger that context window size
+    # query exceeds the max_length=32_000 Pydantic validation on the query field
     query = "what is kubernetes?" * 25000
 
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
         STREAMING_QUERY_ENDPOINT,
-        status_code=requests.codes.ok,
+        status_code=requests.codes.unprocessable_entity,
     ):
         cid = suid.get_suid()
         response = post_with_defaults(
@@ -178,15 +178,15 @@ def test_too_long_question() -> None:
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.unprocessable_entity
 
-        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
-
-        events = parse_streaming_response_to_events(response.text)
-
-        assert len(events) == 2
-        assert events[1]["event"] == "error"
-        assert events[1]["data"]["response"] == "Prompt is too long"
+        response_utils.check_content_type(response, "application/json")
+        json_response = response.json()
+        assert "detail" in json_response
+        assert isinstance(json_response["detail"], list)
+        assert any(
+            err.get("type") == "string_too_long" for err in json_response["detail"]
+        )
 
 
 @pytest.mark.smoketest

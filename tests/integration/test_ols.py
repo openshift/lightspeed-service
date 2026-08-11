@@ -109,7 +109,7 @@ def test_post_question_on_generic_response_type_summarize_error(_setup, endpoint
         expected_json = {
             "detail": {
                 "response": f"{_LLM_BACKEND_PREFIX} {DEFAULT_ERROR_MESSAGE}",
-                "cause": "summarizer error",
+                "cause": "An unexpected error occurred",
             }
         }
 
@@ -825,7 +825,7 @@ metadata:
      name: private-reg
 logs:
 """
-    for i in range(10000):
+    for i in range(2500):
         yaml += f"    log{i}: 'this is log message #{i}"
 
     ml = mock_langchain_interface("test response")

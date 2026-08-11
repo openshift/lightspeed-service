@@ -414,7 +414,14 @@ async def _evaluate_and_emit_approval_event(
         return
 
     approval_id = str(uuid4())
-    register_pending_approval(approval_id=approval_id)
+    if audit_ctx is None:
+        logger.warning(
+            "Tool approval requested without audit context; "
+            "approval will be unresolvable for tool=%s",
+            tool_name,
+        )
+    user_id = audit_ctx.user_id if audit_ctx else ""
+    register_pending_approval(approval_id=approval_id, user_id=user_id)
 
     if audit_ctx:
         audit_ctx.logger.tool_approval_requested(

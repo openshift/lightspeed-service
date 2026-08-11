@@ -62,7 +62,7 @@ def test_parse_generic_llm_error_on_unknown_exception():
         error_message
         == f"{errors_parsing._LLM_BACKEND_PREFIX} {errors_parsing.DEFAULT_ERROR_MESSAGE}"
     )
-    assert cause == "Exception"
+    assert cause == "An unexpected error occurred"
 
 
 def test_parse_generic_llm_error_on_unknown_exception_without_message():
@@ -79,7 +79,7 @@ def test_parse_generic_llm_error_on_unknown_exception_without_message():
         error_message
         == f"{errors_parsing._LLM_BACKEND_PREFIX} {errors_parsing.DEFAULT_ERROR_MESSAGE}"
     )
-    assert cause == ""
+    assert cause == "An unexpected error occurred"
 
 
 def test_handle_known_errors():
@@ -149,7 +149,7 @@ def test_parse_generic_llm_error_on_httpx_connect_error():
 
     assert status_code == 502
     assert error_message.startswith(errors_parsing._NETWORK_PREFIX)
-    assert "Connection refused" in cause
+    assert cause == "Unable to connect to LLM provider"
 
 
 def test_parse_generic_llm_error_on_httpx_connect_timeout():
@@ -160,4 +160,4 @@ def test_parse_generic_llm_error_on_httpx_connect_timeout():
 
     assert status_code == 502
     assert error_message.startswith(errors_parsing._NETWORK_PREFIX)
-    assert "Timed out" in cause
+    assert cause == "Unable to connect to LLM provider"
