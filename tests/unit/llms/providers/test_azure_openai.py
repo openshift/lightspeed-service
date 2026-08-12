@@ -10,6 +10,7 @@ from langchain_openai import AzureChatOpenAI
 from pydantic import AnyHttpUrl
 
 from ols.app.models.config import AzureOpenAIConfig, ProviderConfig
+from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.azure_openai import (
     TOKEN_EXPIRATION_LEEWAY,
     AzureOpenAI,
@@ -357,7 +358,9 @@ def test_none_params_handling(provider_config):
 
 def test_missing_credentials_check(provider_config_without_credentials):
     """Test that check for missing credentials is in place ."""
-    with pytest.raises(ValueError, match="Credentials for API token is not set"):
+    with pytest.raises(
+        LLMConfigurationError, match="Credentials for API token is not set"
+    ):
         AzureOpenAI(
             model="uber-model",
             params={},
@@ -368,7 +371,7 @@ def test_missing_credentials_check(provider_config_without_credentials):
 def test_missing_tenant_id(provider_config_without_tenant_id):
     """Test that check for missing tenant_id is in place ."""
     with pytest.raises(
-        ValueError, match="tenant_id should be set in azure_openai_config"
+        LLMConfigurationError, match="tenant_id should be set in azure_openai_config"
     ):
         AzureOpenAI(
             model="uber-model",
@@ -380,7 +383,7 @@ def test_missing_tenant_id(provider_config_without_tenant_id):
 def test_missing_client_id(provider_config_without_client_id):
     """Test that check for missing client_id is in place ."""
     with pytest.raises(
-        ValueError, match="client_id should be set in azure_openai_config"
+        LLMConfigurationError, match="client_id should be set in azure_openai_config"
     ):
         AzureOpenAI(
             model="uber-model",
@@ -392,7 +395,8 @@ def test_missing_client_id(provider_config_without_client_id):
 def test_missing_client_secret(provider_config_without_client_secret):
     """Test that check for missing credentials_path is in place ."""
     with pytest.raises(
-        ValueError, match="client_secret should be set in azure_openai_config"
+        LLMConfigurationError,
+        match="client_secret should be set in azure_openai_config",
     ):
         AzureOpenAI(
             model="uber-model",
@@ -455,21 +459,23 @@ def test_retrieve_access_token(provider_config_access_token_related_parameters):
 def test_retrieve_access_token_on_error(
     provider_config_access_token_related_parameters,
 ):
-    """Test how error is handled during accessing token."""
+    """Test that LLMConfigurationError is raised when token acquisition fails."""
     with (
         patch(
             "ols.src.llms.providers.azure_openai.ClientSecretCredential",
             new=MockedCredentialThrowingException,
         ),
-        patch("ols.src.llms.providers.azure_openai.TokenCache.expires_on", new=0),
+        patch("ols.src.llms.providers.azure_openai.TOKEN_CACHE.expires_on", new=0),
+        pytest.raises(
+            LLMConfigurationError,
+            match="Failed to acquire Azure Entra ID access token",
+        ),
     ):
-        azure_openai = AzureOpenAI(
+        AzureOpenAI(
             model="uber-model",
             params={},
             provider_config=provider_config_access_token_related_parameters,
         )
-        assert "api_key" not in azure_openai.default_params
-        assert azure_openai.default_params["azure_ad_token"] is None
 
 
 def test_token_is_expired():
