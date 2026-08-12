@@ -102,7 +102,9 @@ start_ols() {
     local profile_type="$1"
     local config_file="${SCAN_DIR}/config-${profile_type}.yaml"
     log "Starting OLS with ${profile_type} profile..."
-    OLS_CONFIG_FILE="${config_file}" uv run python runner.py > "${SCAN_DIR}/ols-${profile_type}.log" 2>&1 &
+    mkdir -p "${SCAN_DIR}/certs/bundle"
+    SSL_CERT_FILE="${SCAN_DIR}/certs/bundle/ca-bundle.crt" \
+        OLS_CONFIG_FILE="${config_file}" uv run python runner.py > "${SCAN_DIR}/ols-${profile_type}.log" 2>&1 &
     OLS_PID=$!
 }
 
