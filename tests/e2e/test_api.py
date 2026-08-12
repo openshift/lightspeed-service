@@ -103,7 +103,7 @@ def test_model_provider():
     )
 
     # enabled model must be one of our expected combinations
-    assert model, provider in {
+    assert (model, provider) in {
         ("gpt-5.4-mini", "openai"),
         ("gpt-5.4-mini", "azure_openai"),
         ("ibm/granite-4-h-small", "watsonx"),

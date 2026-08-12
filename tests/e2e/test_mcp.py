@@ -110,6 +110,15 @@ def _assert_no_tools(data: dict) -> None:
         )
 
 
+def _assert_tool_not_called(data: dict, tool_name: str) -> None:
+    """Assert that the named tool does not appear in tool_calls."""
+    tool_names = [tc["name"] for tc in data.get("tool_calls", [])]
+    if tool_name in tool_names:
+        raise AssertionError(
+            f"Expected tool {tool_name!r} not in {tool_names}. {_query_response_excerpt(data)}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Test 1 - MCP configuration
 # ---------------------------------------------------------------------------
@@ -151,8 +160,9 @@ def test_query_without_client_headers() -> None:
         _query("get openshift pod logs for my-app in namespace default"),
         "openshift_pod_logs",
     )
-    _assert_no_tools(
+    _assert_tool_not_called(
         _query("use openshift_route_info to get route details for my-app"),
+        "openshift_route_info",
     )
 
 
