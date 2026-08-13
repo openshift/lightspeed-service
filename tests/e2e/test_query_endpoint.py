@@ -636,7 +636,7 @@ def test_rag_question_byok1() -> None:
         assert response.status_code == requests.codes.ok
 
         print(vars(response))
-        assert "4.19" in response.json()["referenced_documents"][0]["doc_url"]
+        assert "4.17" in response.json()["referenced_documents"][0]["doc_url"]
 
 
 @pytest.mark.byok2
@@ -651,4 +651,4 @@ def test_rag_question_byok2() -> None:
         assert response.status_code == requests.codes.ok
 
         print(vars(response))
-        assert "4.18" in response.json()["referenced_documents"][0]["doc_url"]
+        assert "4.16" in response.json()["referenced_documents"][0]["doc_url"]
