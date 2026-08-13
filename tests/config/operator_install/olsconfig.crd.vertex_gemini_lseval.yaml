@@ -13,8 +13,8 @@ spec:
         type: google_vertex
         googleVertexConfig:
           projectID: "openshift-lightspeed-tests"
-          location: "us-central1"
-        url: https://us-central1-aiplatform.googleapis.com/
+          location: "global"
+        url: https://aiplatform.googleapis.com/
   ols:
     defaultModel: gemini-3.1-flash-lite
     defaultProvider: google_vertex
