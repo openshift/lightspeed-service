@@ -107,6 +107,10 @@ def test_model_provider():
         ("gpt-5.4-mini", "openai"),
         ("gpt-5.4-mini", "azure_openai"),
         ("ibm/granite-4-h-small", "watsonx"),
+        ("anthropic.claude-sonnet-4-6", "bedrock"),
+        ("deepseek.v3.2", "bedrock"),
+        ("gemini-3.1-flash-lite", "google_vertex"),
+        ("claude-sonnet-4-6", "google_vertex_anthropic"),
     }
 
 

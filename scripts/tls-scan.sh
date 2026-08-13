@@ -109,7 +109,7 @@ start_ols() {
 }
 
 wait_for_ols() {
-    local max_wait=60
+    local max_wait=180
     local waited=0
     log "Waiting for OLS to be ready on port ${OLS_PORT}..."
     while ! curl -sk "https://localhost:${OLS_PORT}/liveness" >/dev/null 2>&1; do
