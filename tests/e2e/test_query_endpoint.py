@@ -41,14 +41,15 @@ def test_invalid_question():
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0
         assert not json_response["truncated"]
-        # LLM shouldn't answer non-ocp queries or
-        # at least acknowledges that query is non-ocp.
-        # Below assert is minimal due to model randomness.
+        response_lower = json_response["response"].lower()
+        assert not re.search(
+            r"\b(patty|bun|grill|ground beef|sesame|lettuce|condiment|season the meat)\b",
+            response_lower,
+        ), f"Response contains burger-recipe content: {json_response['response']}"
         assert re.search(
-            r"(sorry|questions|assist|can('t|not) help)",
-            json_response["response"],
-            re.IGNORECASE,
-        )
+            r"\b(openshift|red hat|ocp|kubernetes)\b",
+            response_lower,
+        ), f"Response does not mention OpenShift/Red Hat: {json_response['response']}"
 
 
 @retry(max_attempts=3, wait_between_runs=10)
@@ -70,15 +71,15 @@ def test_invalid_question_without_conversation_id():
         assert json_response["truncated"] is False
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0
-        # Query classification is disabled by default,
-        # and we rely on the model (controlled by prompt) to reject non-ocp queries.
-        # Randomness in response is expected.
-        # assert json_response["response"] == INVALID_QUERY_RESP
+        response_lower = json_response["response"].lower()
+        assert not re.search(
+            r"\b(patty|bun|grill|ground beef|sesame|lettuce|condiment|season the meat)\b",
+            response_lower,
+        ), f"Response contains burger-recipe content: {json_response['response']}"
         assert re.search(
-            r"(sorry|questions|assist|can('t|not) help)",
-            json_response["response"],
-            re.IGNORECASE,
-        )
+            r"\b(openshift|red hat|ocp|kubernetes)\b",
+            response_lower,
+        ), f"Response does not mention OpenShift/Red Hat: {json_response['response']}"
 
         # new conversation ID should be generated
         assert suid.check_suid(
