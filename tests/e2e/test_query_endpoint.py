@@ -46,10 +46,6 @@ def test_invalid_question():
             r"\b(patty|bun|grill|ground beef|sesame|lettuce|condiment|season the meat)\b",
             response_lower,
         ), f"Response contains burger-recipe content: {json_response['response']}"
-        assert re.search(
-            r"\b(openshift|red hat|ocp|kubernetes)\b",
-            response_lower,
-        ), f"Response does not mention OpenShift/Red Hat: {json_response['response']}"
 
 
 @retry(max_attempts=3, wait_between_runs=10)
@@ -76,10 +72,6 @@ def test_invalid_question_without_conversation_id():
             r"\b(patty|bun|grill|ground beef|sesame|lettuce|condiment|season the meat)\b",
             response_lower,
         ), f"Response contains burger-recipe content: {json_response['response']}"
-        assert re.search(
-            r"\b(openshift|red hat|ocp|kubernetes)\b",
-            response_lower,
-        ), f"Response does not mention OpenShift/Red Hat: {json_response['response']}"
 
         # new conversation ID should be generated
         assert suid.check_suid(

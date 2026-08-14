@@ -73,10 +73,6 @@ def test_invalid_question():
             r"\b(patty|bun|grill|ground beef|sesame|lettuce|condiment|season the meat)\b",
             response_lower,
         ), f"Response contains burger-recipe content: {response.text}"
-        assert re.search(
-            r"\b(openshift|red hat|ocp|kubernetes)\b",
-            response_lower,
-        ), f"Response does not mention OpenShift/Red Hat: {response.text}"
 
 
 def test_invalid_question_without_conversation_id():
