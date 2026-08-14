@@ -19,7 +19,7 @@ llm_providers:
     api_version: "2024-02-15-preview"
     deployment_name: <your-deployment-name>  # replace with your deployment name
     models:
-      - name: gpt-4.1-mini
+      - name: gpt-5.4-mini
 
 mcp_servers:
   - name: obs-mcp
@@ -41,7 +41,7 @@ ols_config:
     lib_log_level: warning
     uvicorn_log_level: info
   default_provider: azure_openai
-  default_model: gpt-4.1-mini
+  default_model: gpt-5.4-mini
   authentication_config:
     module: "noop-with-token"
   user_data_collection:

@@ -103,10 +103,14 @@ def test_model_provider():
     )
 
     # enabled model must be one of our expected combinations
-    assert model, provider in {
-        ("gpt-4.1-mini", "openai"),
-        ("gpt-4.1-mini", "azure_openai"),
+    assert (model, provider) in {
+        ("gpt-5.4-mini", "openai"),
+        ("gpt-5.4-mini", "azure_openai"),
         ("ibm/granite-4-h-small", "watsonx"),
+        ("anthropic.claude-sonnet-4-6", "bedrock"),
+        ("deepseek.v3.2", "bedrock"),
+        ("gemini-3.1-flash-lite", "google_vertex"),
+        ("claude-sonnet-4-6", "google_vertex_anthropic"),
     }
 
 
@@ -426,7 +430,7 @@ def test_azure_entra_id():
         json={
             "query": "what is kubernetes?",
             "provider": "azure_openai_with_entra_id",
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5.4-mini",
         },
         timeout=LLM_REST_API_TIMEOUT,
     )
