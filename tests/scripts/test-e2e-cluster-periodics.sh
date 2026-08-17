@@ -81,14 +81,12 @@ function run_suites() {
     (( rc = rc || $? ))
 
     # smoke tests for RHOAI VLLM-compatible provider
-    # Temporarily disabled: vLLM endpoints unreachable, OLS never becomes ready (503 on /readiness)
-    # run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
-    # (( rc = rc || $? ))
+    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
+    (( rc = rc || $? ))
 
     # smoke tests for RHELAI VLLM-compatible provider
-    # Temporarily disabled: vLLM endpoints unreachable, OLS never becomes ready (503 on /readiness)
-    # run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
-    # (( rc = rc || $? ))
+    run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
+    (( rc = rc || $? ))
 
     run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
@@ -126,7 +124,7 @@ function run_suites() {
     # Tests for disconnected environments
     # smoke tests for RHOAI VLLM-compatible provider
     # Temporarily disabled: vLLM endpoints unreachable, OLS never becomes ready (503 on /readiness)
-    # run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
+    # run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
     # (( rc = rc || $? ))
   
   cleanup_ols_operator

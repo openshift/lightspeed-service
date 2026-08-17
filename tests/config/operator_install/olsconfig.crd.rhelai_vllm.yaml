@@ -14,11 +14,11 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: gpt-3.5-turbo
+          - name: gpt-4.1-mini
         name: rhelai_vllm
         type: rhelai_vllm
   ols:
-    defaultModel: gpt-3.5-turbo
+    defaultModel: gpt-4.1-mini
     defaultProvider: rhelai_vllm
     deployment:
       replicas: 1
