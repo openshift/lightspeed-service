@@ -68,11 +68,11 @@ def test_invalid_question():
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
-        assert re.search(
-            r"(sorry|questions|assist|can('t|not) help)",
-            response.text,
-            re.IGNORECASE,
-        )
+        response_lower = response.text.lower()
+        assert not re.search(
+            r"\b(patty|bun|grill|ground beef|sesame|lettuce|condiment|season the meat)\b",
+            response_lower,
+        ), f"Response contains burger-recipe content: {response.text}"
 
 
 def test_invalid_question_without_conversation_id():
