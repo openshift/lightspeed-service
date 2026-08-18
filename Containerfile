@@ -5,6 +5,7 @@ ARG RUNTIME_BASE_IMAGE=registry.redhat.io/rhel9/python-312-minimal@sha256:804b92
 FROM --platform=$BUILDPLATFORM ${BUILDER_BASE_IMAGE} AS builder
 ARG BUILDER_DNF_COMMAND=dnf
 ARG APP_ROOT=/app-root
+ARG HERMETIC_BUILD=false
 
 USER root
 
@@ -27,12 +28,8 @@ WORKDIR /app-root
 COPY pyproject.toml uv.lock .konflux/requirements.hashes.wheel.txt .konflux/requirements.hashes.source.txt .konflux/requirements.hashes.wheel.pypi.txt .konflux/requirements.hermetic.txt .konflux/rank_bm25_version.py LICENSE README.md ./
 
 # Step 2: Install dependencies only (cached unless pyproject.toml/uv.lock change).
-# Source cachi2 environment for hermetic builds if available, otherwise use normal installation.
-# cachi2.env has these env vars:
-# PIP_FIND_LINKS=/cachi2/output/deps/pip
-# PIP_NO_INDEX=true
-RUN if [ -f /cachi2/cachi2.env ]; then \
-    . /cachi2/cachi2.env && \
+# In hermetic builds PIP_FIND_LINKS and PIP_NO_INDEX are injected by Konflux.
+RUN if [ "${HERMETIC_BUILD}" = "true" ]; then \
     pip install --no-cache-dir --no-index --find-links ${PIP_FIND_LINKS} uv && \
     uv venv && \
     for f in requirements.hashes.wheel.txt requirements.hashes.source.txt requirements.hashes.wheel.pypi.txt; do \
@@ -60,7 +57,7 @@ COPY runner.py ./
 COPY ols ./ols
 
 # Step 4: Install the project package itself (non-hermetic only).
-RUN if [ ! -f /cachi2/cachi2.env ]; then \
+RUN if [ "${HERMETIC_BUILD}" != "true" ]; then \
     uv sync --locked --no-dev --no-cache ;\
     fi
 
