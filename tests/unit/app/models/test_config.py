@@ -229,6 +229,7 @@ def test_model_parameters():
     assert default_params.reasoning_effort == ReasoningLevel.LOW
     assert default_params.reasoning_summary == ReasoningSummary.CONCISE
     assert default_params.verbosity == ReasoningLevel.LOW
+    assert default_params.temperature_supported is True
 
     parameters = ModelParameters(max_tokens_for_response=10, unknown_param="hello")
 
@@ -243,6 +244,9 @@ def test_model_parameters():
     assert reasoning_params.reasoning_effort == ReasoningLevel.HIGH
     assert reasoning_params.reasoning_summary == ReasoningSummary.DETAILED
     assert reasoning_params.verbosity == ReasoningLevel.MEDIUM
+
+    assert ModelParameters(temperature_supported=False).temperature_supported is False
+    assert ModelParameters(temperature_supported=True).temperature_supported is True
 
     # max_tokens_for_response needs to be positive integer
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
