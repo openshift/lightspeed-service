@@ -389,6 +389,36 @@ class TestFeedback:
             )
 
     @staticmethod
+    def test_feedback_user_question_max_length():
+        """Test user_question field rejects input exceeding 32000 characters."""
+        cid = suid.get_suid()
+        FeedbackRequest(
+            conversation_id=cid, user_question="x" * 32_000, llm_response="r", sentiment=1
+        )
+        with pytest.raises(ValidationError, match="String should have at most 32000"):
+            FeedbackRequest(
+                conversation_id=cid, user_question="x" * 32_001, llm_response="r", sentiment=1
+            )
+
+    @staticmethod
+    def test_feedback_user_feedback_max_length():
+        """Test user_feedback field rejects input exceeding 32000 characters."""
+        cid = suid.get_suid()
+        FeedbackRequest(
+            conversation_id=cid,
+            user_question="q",
+            llm_response="r",
+            user_feedback="x" * 32_000,
+        )
+        with pytest.raises(ValidationError, match="String should have at most 32000"):
+            FeedbackRequest(
+                conversation_id=cid,
+                user_question="q",
+                llm_response="r",
+                user_feedback="x" * 32_001,
+            )
+
+    @staticmethod
     def test_feedback_response():
         """Test the FeedbackResponse model."""
         feedback_response = "feedback received"

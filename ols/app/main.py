@@ -24,7 +24,6 @@ app = FastAPI(
     },
 )
 
-
 logger = logging.getLogger(__name__)
 
 # Endpoints that don't require security headers (health checks, metrics, etc.)
@@ -57,6 +56,17 @@ else:
 # update provider and model as soon as possible so the metrics will be visible
 # even for first scraping
 metrics.setup_model_metrics(config)
+
+
+@app.middleware("")
+async def request_body_limit(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Reject requests whose Content-Length exceeds MAX_REQUEST_BODY_SIZE."""
+    content_length = request.headers.get("content-length")
+    if content_length is not None and int(content_length) > constants.MAX_REQUEST_BODY_SIZE:
+        return Response(content="Request body too large", status_code=413)
+    return await call_next(request)
 
 
 @app.middleware("")
