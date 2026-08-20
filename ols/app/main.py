@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response
 from starlette.datastructures import Headers
 from starlette.responses import StreamingResponse
 from starlette.routing import BaseRoute, Mount, Route, WebSocketRoute
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ols import config, constants, version
 from ols.app import metrics, routers
@@ -58,15 +59,50 @@ else:
 metrics.setup_model_metrics(config)
 
 
-@app.middleware("")
-async def request_body_limit(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Reject requests whose Content-Length exceeds MAX_REQUEST_BODY_SIZE."""
-    content_length = request.headers.get("content-length")
-    if content_length is not None and int(content_length) > constants.MAX_REQUEST_BODY_SIZE:
-        return Response(content="Request body too large", status_code=413)
-    return await call_next(request)
+class _BodyTooLargeError(Exception):
+    """Sentinel raised when cumulative request bytes exceed the cap."""
+
+
+class _RequestBodyLimitMiddleware:
+    """ASGI middleware that rejects requests exceeding MAX_REQUEST_BODY_SIZE.
+
+    Wraps the ASGI ``receive`` callable to track cumulative bytes from
+    ``http.request`` chunks, catching both missing and understated
+    Content-Length values.  Installed via ``add_middleware`` so it runs
+    before all ``@app.middleware`` functions (including the debug logger
+    that would otherwise buffer an oversized body).
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Store the wrapped ASGI application."""
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Enforce the body-size limit for HTTP requests."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        limit = constants.MAX_REQUEST_BODY_SIZE
+        received = 0
+
+        async def limiting_receive() -> dict:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    raise _BodyTooLargeError
+            return message
+
+        try:
+            await self.app(scope, limiting_receive, send)
+        except _BodyTooLargeError:
+            response = Response(content="Request body too large", status_code=413)
+            await response(scope, receive, send)
+
+
+app.add_middleware(_RequestBodyLimitMiddleware)
 
 
 @app.middleware("")

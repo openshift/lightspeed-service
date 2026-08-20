@@ -1373,6 +1373,7 @@
                     },
                     "user_question": {
                         "type": "string",
+                        "maxLength": 32000,
                         "title": "User Question"
                     },
                     "llm_response": {
@@ -1393,7 +1394,8 @@
                     "user_feedback": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 32000
                             },
                             {
                                 "type": "null"
