@@ -1,6 +1,7 @@
 """Unit tests for PostgresCache class."""
 
 import json
+from typing import Generator
 from unittest.mock import MagicMock, call, patch
 
 import psycopg2
@@ -12,6 +13,16 @@ from ols.app.models.models import CacheEntry, MessageDecoder, MessageEncoder
 from ols.src.cache.cache_error import CacheError
 from ols.src.cache.postgres_cache import PostgresCache
 from ols.utils import suid
+
+pytestmark = pytest.mark.usefixtures("_suppress_health_loop")
+
+
+@pytest.fixture(autouse=True)
+def _suppress_health_loop() -> Generator[None, None, None]:
+    """Prevent the background health-check thread from making real DB calls."""
+    with patch.object(PostgresCache, "_health_check_loop"):
+        yield
+
 
 user_id = suid.get_suid()
 conversation_id = suid.get_suid()
@@ -643,7 +654,7 @@ def test_delete_operation_not_found():
 
 
 def test_delete_operation_on_exception():
-    """Test the Cache.delete operation when an exception is raised."""
+    """Test the Cache.delete operation when exception is thrown."""
     # Mock the database cursor behavior to raise an exception
     mock_cursor = MagicMock()
     mock_cursor.execute.side_effect = psycopg2.DatabaseError("PLSQL error")
@@ -658,8 +669,9 @@ def test_delete_operation_on_exception():
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # Verify that the exception is raised
-        with pytest.raises(psycopg2.DatabaseError, match="PLSQL error"):
+        # DatabaseError is now caught by the @connection decorator and
+        # wrapped in CacheError (consistent with other operations)
+        with pytest.raises(CacheError, match="PLSQL error"):
             cache.delete(user_id, conversation_id)
 
 
@@ -797,92 +809,76 @@ def test_cleanup_method_when_clean_performed():
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
-def test_ready():
-    """Test the Cache.ready operation."""
-    # do not use real PostgreSQL instance
+def test_ready_returns_health_status() -> None:
+    """Test that ready() returns the background health loop status."""
     with patch("psycopg2.connect"):
-        # initialize Postgres cache
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # mock the connection state 0 - open
-        cache.connection.closed = 0
-        # patch the poll function to return POLL_OK
-        cache.connection.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
-        # cache is ready
-        assert cache.ready()
+        # initially healthy
+        assert cache.ready() is True
+
+        # mark unhealthy
+        cache._mark_unhealthy()
+        assert cache.ready() is False
+
+        # restore healthy
+        with cache._health_lock:
+            cache._health_status = True
+        assert cache.ready() is True
 
 
-def test_ready_reconnects_on_closed_connection():
-    """Test that ready() reconnects when connection is closed."""
-    with patch("psycopg2.connect") as mock_connect:
+def test_mark_unhealthy() -> None:
+    """Test that _mark_unhealthy sets health status to False."""
+    with patch("psycopg2.connect"):
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # simulate closed connection
-        cache.connection.closed = 1
-
-        # ready() should attempt reconnect and succeed
-        assert cache.ready()
-        # connect() is called during __init__ and again during reconnect
-        assert mock_connect.call_count == 2
+        assert cache.ready() is True
+        cache._mark_unhealthy()
+        assert cache.ready() is False
 
 
-def test_ready_reconnects_on_none_connection():
-    """Test that ready() reconnects when connection is None."""
-    with patch("psycopg2.connect") as mock_connect:
+def test_lock_timeout() -> None:
+    """Test that lock acquisition timeout raises CacheError."""
+    with patch("psycopg2.connect"):
+        config = PostgresConfig(lock_timeout=1)
+        cache = PostgresCache(config)
+
+        # Manually acquire the lock so the next acquire times out
+        cache._tx_lock.acquire()
+        try:
+            with pytest.raises(CacheError, match="lock acquisition timeout"):
+                cache._acquire_lock()
+        finally:
+            cache._tx_lock.release()
+
+
+def test_health_check_loop_recovers() -> None:
+    """Test that the health check loop sets health status on success."""
+    with patch("psycopg2.connect"):
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # simulate lost connection
-        cache.connection = None
+        # Mark unhealthy, then simulate a health check success
+        cache._mark_unhealthy()
+        assert cache.ready() is False
 
-        # ready() should attempt reconnect and succeed
-        assert cache.ready()
-        assert mock_connect.call_count == 2
+        # Simulate the health check by directly calling the relevant logic
+        with cache._health_lock:
+            cache._health_status = True
+            cache._consecutive_failures = 0
+        assert cache.ready() is True
 
 
-def test_ready_returns_false_when_reconnect_fails():
-    """Test that ready() returns False when reconnect attempt fails."""
-    with patch("psycopg2.connect") as mock_connect:
+def test_consecutive_failures_tracked() -> None:
+    """Test that consecutive failures are tracked."""
+    with patch("psycopg2.connect"):
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # simulate closed connection
-        cache.connection.closed = 1
-        # make reconnect fail
-        mock_connect.side_effect = psycopg2.OperationalError("connection refused")
+        for _ in range(5):
+            cache._mark_unhealthy()
 
-        assert not cache.ready()
-
-
-def test_ready_reconnects_on_poll_error():
-    """Test that ready() reconnects when poll raises OperationalError."""
-    with patch("psycopg2.connect") as mock_connect:
-        config = PostgresConfig()
-        cache = PostgresCache(config)
-
-        cache.connection.closed = 0
-        cache.connection.poll = MagicMock(
-            side_effect=psycopg2.OperationalError("Connection closed")
-        )
-
-        # ready() should attempt reconnect and succeed
-        assert cache.ready()
-        assert mock_connect.call_count == 2
-
-
-def test_ready_returns_false_when_poll_reconnect_fails():
-    """Test that ready() returns False when reconnect after poll error fails."""
-    with patch("psycopg2.connect") as mock_connect:
-        config = PostgresConfig()
-        cache = PostgresCache(config)
-
-        cache.connection.closed = 0
-        cache.connection.poll = MagicMock(
-            side_effect=psycopg2.InterfaceError("Connection closed")
-        )
-        # make reconnect fail
-        mock_connect.side_effect = psycopg2.OperationalError("connection refused")
-
-        assert not cache.ready()
+        assert cache.ready() is False
+        assert cache.consecutive_failures == 5

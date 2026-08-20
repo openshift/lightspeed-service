@@ -11,21 +11,78 @@ from typing import Any, Callable
 import psycopg2
 
 from ols.app.models.config import PostgresConfig
+from ols.src.cache.cache_error import CacheError
 from ols.utils.ssl import libpq_tls_params
 
 logger = logging.getLogger(__name__)
 
 
+def _do_reconnect(connectable: Any, func_name: str) -> None:
+    """Perform reconnect, wrapping errors in CacheError."""
+    try:
+        connectable.connect()
+    except Exception as reconnect_err:
+        raise CacheError(
+            f"reconnect failed in {func_name}", reconnect_err
+        ) from reconnect_err
+
+
+def _handle_connection_error(connectable: Any, func_name: str) -> None:
+    """Handle connection error by marking unhealthy and reconnecting.
+
+    Note: Does NOT call _mark_healthy() here. The caller is responsible
+    for marking healthy only after the retry operation succeeds, to avoid
+    incorrectly reporting healthy status if the retry also fails.
+    """
+    if hasattr(connectable, "_mark_unhealthy"):
+        connectable._mark_unhealthy()
+
+    _do_reconnect(connectable, func_name)
+
+
 def connection(f: Callable) -> Callable:
     """Ensure the object is connected before calling the wrapped method.
 
-    If the connection is lost, reconnect transparently.
+    On connection-level errors (OperationalError, InterfaceError), attempt
+    a single reconnect and retry. On SQL/data errors (DatabaseError), wrap
+    in CacheError and propagate immediately.
+
+    Thread safety: If the connectable has a ``_tx_lock``, the reconnect is
+    performed while holding that lock to prevent races with concurrent
+    cache operations.
     """
 
     def wrapper(connectable: Any, *args: Any, **kwargs: Any) -> Callable:
-        if not connectable.connected():
-            connectable.connect()
-        return f(connectable, *args, **kwargs)
+        try:
+            if not connectable.connected():
+                try:
+                    connectable.connect()
+                except Exception as connect_err:
+                    if isinstance(
+                        connect_err,
+                        (psycopg2.OperationalError, psycopg2.InterfaceError),
+                    ):
+                        raise
+                    raise CacheError(
+                        f"initial connect failed in {f.__name__}", connect_err
+                    ) from connect_err
+            return f(connectable, *args, **kwargs)
+        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+            logger.warning(
+                "Connection error in %s, attempting reconnect: %s", f.__name__, e
+            )
+            _handle_connection_error(connectable, f.__name__)
+            try:
+                result = f(connectable, *args, **kwargs)
+                if hasattr(connectable, "_mark_healthy"):
+                    connectable._mark_healthy()
+                return result
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as retry_err:
+                raise CacheError(
+                    f"retry failed in {f.__name__}", retry_err
+                ) from retry_err
+        except psycopg2.DatabaseError as e:
+            raise CacheError(f"{f.__name__}", e) from e
 
     return wrapper
 
@@ -84,6 +141,13 @@ class PostgresBase(ABC):
             logger.exception("Error initializing Postgres schema:\n%s", e)
             raise
         self.connection.autocommit = True
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                "SET statement_timeout = %s", (str(config.statement_timeout),)
+            )
+        finally:
+            cursor.close()
 
     def connected(self) -> bool:
         """Check if the connection to Postgres is alive."""

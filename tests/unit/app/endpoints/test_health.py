@@ -1,6 +1,7 @@
 """Unit tests for health endpoints handlers."""
 
 import time
+from collections.abc import Generator
 from unittest.mock import Mock, patch
 
 import pytest
@@ -14,9 +15,17 @@ from ols.app.endpoints.health import (
     llm_is_ready,
     readiness_probe_get_method,
 )
-from ols.app.models.config import InMemoryCacheConfig
+from ols.app.models.config import InMemoryCacheConfig, PostgresConfig
 from ols.app.models.models import LivenessResponse, ReadinessResponse
 from ols.src.cache.in_memory_cache import InMemoryCache
+from ols.src.cache.postgres_cache import PostgresCache
+
+
+@pytest.fixture(autouse=True)
+def _suppress_health_loop() -> Generator[None, None, None]:
+    """Prevent the background health-check thread from making real DB calls."""
+    with patch.object(PostgresCache, "_health_check_loop"):
+        yield
 
 
 def mock_cache():
@@ -220,9 +229,58 @@ def test_readiness_probe_get_method_cache_not_ready():
             readiness_probe_get_method()
 
 
-def test_liveness_probe_get_method():
-    """Test the liveness_probe function."""
-    # the tested function returns constant right now
-    # i.e. it does not depend on application state
-    response = liveness_probe_get_method()
-    assert response == LivenessResponse(alive=True)
+def test_liveness_probe_get_method() -> None:
+    """Test the liveness_probe function when no postgres cache is configured."""
+    mock_response = Mock()
+    result = liveness_probe_get_method(mock_response)
+    assert result == LivenessResponse(alive=True)
+
+
+def test_liveness_probe_returns_alive_when_postgres_healthy() -> None:
+    """Test liveness probe returns alive when postgres failures below threshold."""
+    with patch("psycopg2.connect"):
+        pg_config = PostgresConfig()
+        cache = PostgresCache(pg_config)
+
+    with (
+        patch.object(config, "_conversation_cache", cache),
+        patch.object(config.ols_config, "liveness_db_failure_threshold", 3),
+    ):
+        mock_response = Mock()
+        result = liveness_probe_get_method(mock_response)
+        assert result == LivenessResponse(alive=True)
+
+
+def test_liveness_probe_returns_503_when_postgres_unhealthy() -> None:
+    """Test liveness probe returns 503 when postgres failures reach threshold."""
+    with patch("psycopg2.connect"):
+        pg_config = PostgresConfig()
+        cache = PostgresCache(pg_config)
+        for _ in range(3):
+            cache._mark_unhealthy()
+
+    with (
+        patch.object(config, "_conversation_cache", cache),
+        patch.object(config.ols_config, "liveness_db_failure_threshold", 3),
+    ):
+        mock_response = Mock()
+        result = liveness_probe_get_method(mock_response)
+        assert mock_response.status_code == 503
+        assert result == LivenessResponse(alive=False, reason="database unreachable")
+
+
+def test_liveness_probe_returns_alive_when_below_threshold() -> None:
+    """Test liveness probe returns alive when failures below threshold."""
+    with patch("psycopg2.connect"):
+        pg_config = PostgresConfig()
+        cache = PostgresCache(pg_config)
+        for _ in range(2):
+            cache._mark_unhealthy()
+
+    with (
+        patch.object(config, "_conversation_cache", cache),
+        patch.object(config.ols_config, "liveness_db_failure_threshold", 3),
+    ):
+        mock_response = Mock()
+        result = liveness_probe_get_method(mock_response)
+        assert result == LivenessResponse(alive=True)
