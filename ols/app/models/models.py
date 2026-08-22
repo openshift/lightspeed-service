@@ -401,10 +401,10 @@ class FeedbackRequest(BaseModel):
     """
 
     conversation_id: str
-    user_question: str
+    user_question: str = Field(max_length=32_000)
     llm_response: str
     sentiment: Optional[int] = None
-    user_feedback: Optional[str] = None
+    user_feedback: Optional[str] = Field(default=None, max_length=32_000)
 
     # provides examples for /docs endpoint
     model_config = {
