@@ -67,11 +67,15 @@ class PostgresBase(ABC):
             "sslmode": config.ssl_mode,
             "sslrootcert": config.ca_cert_path,
             "gssencmode": config.gss_encmode,
+            "connect_timeout": config.connect_timeout,
             **libpq_tls_params(config.tls_security_profile),
         }
         self.connection = psycopg2.connect(**connect_kwargs)
         try:
             cursor = self.connection.cursor()
+            cursor.execute(
+                "SET statement_timeout = %s", (str(config.statement_timeout),)
+            )
             cursor.execute("SET LOCAL lock_timeout = '60s'")
             logger.info("Acquiring advisory lock for schema initialization")
             cursor.execute(self.INIT_ADVISORY_LOCK)

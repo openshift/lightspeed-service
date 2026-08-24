@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 import psycopg2
 import pytest
 
-from ols.app.models.config import TLSSecurityProfile
+from ols.app.models.config import PostgresConfig, TLSSecurityProfile
 from ols.utils.postgres import PostgresBase, connection
 
 
@@ -125,6 +125,27 @@ class TestPostgresBaseConnect:
                 FakeComponent(config=MagicMock())
 
         assert mock_connect.return_value.autocommit is False
+
+    def test_connect_passes_connect_timeout(self):
+        """connect_timeout from config bounds how long a connect may block."""
+        config = PostgresConfig()
+        with patch("psycopg2.connect") as mock_connect:
+            FakeComponent(config=config)
+
+        assert (
+            mock_connect.call_args.kwargs["connect_timeout"] == config.connect_timeout
+        )
+
+    def test_connect_sets_statement_timeout(self):
+        """statement_timeout from config is applied on the new connection."""
+        config = PostgresConfig()
+        with patch("psycopg2.connect") as mock_connect:
+            cursor = mock_connect.return_value.cursor.return_value
+            FakeComponent(config=config)
+
+        cursor.execute.assert_any_call(
+            "SET statement_timeout = %s", (str(config.statement_timeout),)
+        )
 
 
 class TestPostgresBaseConnected:

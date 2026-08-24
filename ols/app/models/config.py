@@ -807,6 +807,8 @@ class PostgresConfig(BaseModel):
     gss_encmode: str = constants.POSTGRES_CACHE_GSSENCMODE
     ca_cert_path: Optional[FilePath] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
+    connect_timeout: PositiveInt = constants.POSTGRES_CACHE_CONNECT_TIMEOUT
+    statement_timeout: PositiveInt = constants.POSTGRES_CACHE_STATEMENT_TIMEOUT
     tls_security_profile: Optional["TLSSecurityProfile"] = None
 
     def __init__(self, **data: Any) -> None:
