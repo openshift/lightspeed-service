@@ -388,32 +388,29 @@ class PostgresCache(Cache, PostgresBase):
     def ready(self) -> bool:
         """Check if the cache is ready.
 
-        Postgres cache checks if the connection is alive. When a dead
-        connection is detected and the database is available again, the
-        connection is automatically re-established.
+        The connection is verified with a real ``SELECT 1`` round-trip so that
+        a server-side PostgreSQL restart is reliably detected. When the
+        connection is found to be dead and the database is available again, the
+        connection is automatically re-established, restoring readiness without
+        administrator intervention.
 
         Returns:
             True if the cache is ready, False otherwise.
         """
         with self._tx_lock:
-            if not self.connection or self.connection.closed == 1:
-                try:
-                    logger.info("Detected dead connection, attempting reconnect")
-                    self.connect()
+            if self.connected():
+                return True
+
+        try:
+            logger.info("Detected dead connection, attempting reconnect")
+            with self._tx_lock:
+                if self.connected():
                     return True
-                except Exception as e:
-                    logger.warning("Reconnect attempt failed: %s", e)
-                    return False
-            try:
-                return self.connection.poll() == psycopg2.extensions.POLL_OK
-            except (psycopg2.OperationalError, psycopg2.InterfaceError):
-                try:
-                    logger.info("Connection error during poll, attempting reconnect")
-                    self.connect()
-                    return True
-                except Exception as e:
-                    logger.warning("Reconnect attempt failed: %s", e)
-                    return False
+                self.connect()
+            return True
+        except (psycopg2.Error, OSError) as e:
+            logger.warning("Reconnect attempt failed: %s", e)
+            return False
 
     @staticmethod
     def _select(

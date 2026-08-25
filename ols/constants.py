@@ -138,6 +138,17 @@ POSTGRES_CACHE_DBNAME = "cache"
 POSTGRES_CACHE_USER = "postgres"
 POSTGRES_CACHE_MAX_ENTRIES = 1000
 
+# bound how long a (re)connect attempt may block, in seconds
+POSTGRES_CACHE_CONNECT_TIMEOUT = 5
+
+# server-side cap on how long a single statement may run, in milliseconds
+POSTGRES_CACHE_STATEMENT_TIMEOUT = 5000
+
+# TCP keepalive settings to detect dead connections at the network level
+POSTGRES_CACHE_KEEPALIVES_IDLE = 10
+POSTGRES_CACHE_KEEPALIVES_INTERVAL = 5
+POSTGRES_CACHE_KEEPALIVES_COUNT = 3
+
 # look at https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE
 # for all possible options
 POSTGRES_CACHE_SSL_MODE = "require"

@@ -67,6 +67,11 @@ class PostgresBase(ABC):
             "sslmode": config.ssl_mode,
             "sslrootcert": config.ca_cert_path,
             "gssencmode": config.gss_encmode,
+            "connect_timeout": config.connect_timeout,
+            "keepalives": 1,
+            "keepalives_idle": config.keepalives_idle,
+            "keepalives_interval": config.keepalives_interval,
+            "keepalives_count": config.keepalives_count,
             **libpq_tls_params(config.tls_security_profile),
         }
         self.connection = psycopg2.connect(**connect_kwargs)
@@ -84,6 +89,9 @@ class PostgresBase(ABC):
             logger.exception("Error initializing Postgres schema:\n%s", e)
             raise
         self.connection.autocommit = True
+        cursor = self.connection.cursor()
+        cursor.execute("SET statement_timeout = %s", (str(config.statement_timeout),))
+        cursor.close()
 
     def connected(self) -> bool:
         """Check if the connection to Postgres is alive."""
