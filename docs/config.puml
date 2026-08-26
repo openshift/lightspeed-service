@@ -119,6 +119,7 @@ class "OpenAIConfig" as ols.app.models.config.OpenAIConfig {
 }
 class "PostgresConfig" as ols.app.models.config.PostgresConfig {
   ca_cert_path : Optional[FilePath]
+  connect_timeout : Annotated
   dbname : str
   gss_encmode : str
   host : str
@@ -127,6 +128,7 @@ class "PostgresConfig" as ols.app.models.config.PostgresConfig {
   password_path : Optional[FilePath]
   port : Annotated
   ssl_mode : str
+  statement_timeout : Annotated
   user : str
   validate_yaml() -> Self
 }

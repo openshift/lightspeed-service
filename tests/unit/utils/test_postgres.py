@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 import psycopg2
 import pytest
 
-from ols.app.models.config import TLSSecurityProfile
+from ols.app.models.config import PostgresConfig, TLSSecurityProfile
 from ols.utils.postgres import PostgresBase, connection
 
 
@@ -93,7 +93,8 @@ class TestPostgresBaseConnect:
                 call("CREATE INDEX IF NOT EXISTS i1 ON t1 (id)"),
             ]
         )
-        cursor.close.assert_called_once()
+        cursor.close.assert_called()
+        assert cursor.close.call_count == 2
         mock_connect.return_value.commit.assert_called_once()
 
     def test_connect_sets_autocommit_after_init(self):
@@ -125,6 +126,39 @@ class TestPostgresBaseConnect:
                 FakeComponent(config=MagicMock())
 
         assert mock_connect.return_value.autocommit is False
+
+    def test_connect_passes_connect_timeout(self) -> None:
+        """Verify connect_timeout reaches psycopg2.connect."""
+        config = PostgresConfig()
+        with patch("psycopg2.connect") as mock_connect:
+            FakeComponent(config=config)
+
+        assert (
+            mock_connect.call_args.kwargs["connect_timeout"] == config.connect_timeout
+        )
+
+    def test_connect_sets_statement_timeout(self) -> None:
+        """Verify statement_timeout is applied after schema initialization."""
+        config = PostgresConfig()
+        with patch("psycopg2.connect") as mock_connect:
+            cursor = mock_connect.return_value.cursor.return_value
+            FakeComponent(config=config)
+
+        cursor.execute.assert_any_call(
+            "SET statement_timeout = %s", (str(config.statement_timeout),)
+        )
+
+    def test_connect_passes_keepalive_params(self) -> None:
+        """Verify TCP keepalive parameters reach psycopg2.connect."""
+        config = PostgresConfig()
+        with patch("psycopg2.connect") as mock_connect:
+            FakeComponent(config=config)
+
+        kwargs = mock_connect.call_args.kwargs
+        assert kwargs["keepalives"] == 1
+        assert kwargs["keepalives_idle"] == config.keepalives_idle
+        assert kwargs["keepalives_interval"] == config.keepalives_interval
+        assert kwargs["keepalives_count"] == config.keepalives_count
 
 
 class TestPostgresBaseConnected:
