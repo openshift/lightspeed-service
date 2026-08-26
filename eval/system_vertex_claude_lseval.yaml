@@ -78,6 +78,7 @@ environment:
   DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
   DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
   LITELLM_LOG: ERROR
+  LITELLM_DROP_PARAMS: "True"
 
 # Logging Configuration
 logging:
