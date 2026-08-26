@@ -104,6 +104,7 @@ dependencies = [
     "fastapi>=0.115.6",
     "langchain>=0.3.12",
     "langchain-ibm>=0.3.2",
+    "langsmith==0.8.0",
     "llama-index>=0.12.25",
     "llama-index-core>=0.12.44",
     # CVE-2026-61536: RCE via unsafe tool import_path; RHOAI index still on 2.4.2
