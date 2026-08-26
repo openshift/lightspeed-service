@@ -2,9 +2,20 @@
 
 This document describes how to regenerate the hashed requirements files used by the Konflux hermetic build pipeline.
 
+For the full bump sequence (when to change `pyproject.toml`, `uv lock --upgrade-package`, and this regen), see [CONTRIBUTING.md](../CONTRIBUTING.md#updating-dependencies).
+
 ## Prerequisites
 
-Standard `uv` package manager (installed via `pip install uv` or available in the project venv).
+Standard `uv` (`pip install uv` or the project venv). Regen must **not** inherit a RHOAI/default extra index. The sandbox image and some laptops ship a `uv.toml` whose default index is RHOAI (`console.redhat.com` or similar). `pybuild-deps` will then write that `--index-url` into `.konflux/requirements-build.txt`, and Hermeto prefetch fails (`PackageRejected: No distributions found for package …`).
+
+Before `make konflux-requirements`:
+
+```bash
+unset UV_CONFIG_FILE UV_INDEX_URL UV_DEFAULT_INDEX PIP_INDEX_URL PIP_EXTRA_INDEX_URL
+export UV_NO_CONFIG=1
+```
+
+Do not `export UV_CONFIG_FILE=""`. Unset it. `UV_NO_CONFIG=1` (or `uv --no-config`) ignores file config as well.
 
 ## Running
 
@@ -30,9 +41,11 @@ This runs `python3 scripts/konflux_resolve.py --profile cpu`, which:
 | `.konflux/requirements.hashes.wheel.txt` | RHOAI wheel packages with hashes |
 | `.konflux/requirements.hashes.source.txt` | PyPI source (sdist) packages with hashes |
 | `.konflux/requirements.hashes.wheel.pypi.txt` | PyPI wheel packages with hashes (no sdist available) |
-| `.konflux/requirements-build.txt` | Build-time dependencies for source packages |
+| `.konflux/requirements-build.txt` | Build-time dependencies for source packages. **PyPI only** — must not contain `--index-url`. |
 
 These files are referenced by `.tekton/lightspeed-service-pull-request.yaml` and `.tekton/lightspeed-service-push.yaml`.
+
+After regen, check `requirements-build.txt`. `.konflux/requirements.hashes.wheel.txt` **should** start with `--index-url https://packages.redhat.com/api/pypi/public-rhai/...` (RHOAI wheels). `requirements-build.txt` must **not**. If it gained `--index-url` (especially `console.redhat.com`), discard those generated files and rerun with a clean uv config. `make verify` / `scripts/verify_hermetic_requirements.sh` rejects a leaked index on that file.
 
 ## Configuration
 

@@ -61,6 +61,17 @@ for hash_file in "$SOURCE_HASH_FILE" "$WHEEL_HASH_FILE" "$WHEEL_PYPI_HASH_FILE";
     fi
 done
 
+# --- requirements-build.txt must stay PyPI-only (no leaked RHOAI --index-url) ---
+BUILD_REQ_FILE=".konflux/requirements-build.txt"
+if [[ -r "$BUILD_REQ_FILE" ]] && grep -qE '^--index-url ' "$BUILD_REQ_FILE"; then
+    echo "ERROR: $BUILD_REQ_FILE must not contain --index-url." >&2
+    echo "Build deps are fetched from public PyPI. A RHOAI/default uv index leaked into pybuild-deps." >&2
+    echo "Fix: unset UV_CONFIG_FILE and index env vars, set UV_NO_CONFIG=1, rerun 'make konflux-requirements'." >&2
+    echo "See docs/update-requirements.md." >&2
+    grep -E '^--index-url ' "$BUILD_REQ_FILE" | sed 's/^/  /' >&2
+    exit 1
+fi
+
 # --- Extract packages from all three hash files ---
 log "Parsing hash files"
 HASH_PKGS=$( {
