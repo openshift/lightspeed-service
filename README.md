@@ -1196,6 +1196,7 @@ Run this **after** `uv lock` / `uv lock --upgrade-package`. See [CONTRIBUTING.md
 **Files produced:**
 - `requirements.hashes.source.txt` – PyPI packages with hashes
 - `requirements.hashes.wheel.txt` – Red Hat registry packages with hashes
+- `requirements.hashes.wheel.pypi.txt` – PyPI wheel packages with hashes (no sdist)
 - `requirements-build.txt` – Build-time dependencies for source packages (PyPI; no `--index-url`)
 
 The script also updates the Tekton pipeline configurations (`.tekton/lightspeed-stack-*.yaml`) with the list of pre-built wheel packages.
