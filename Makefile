@@ -48,7 +48,7 @@ install-deps: install-tools uv-lock-check ## Install all required dependencies n
 install-deps-test: install-tools uv-lock-check ## Install all required dev dependencies needed to test the service, according to uv.lock
 	@for a in 1 2 3 4 5; do uv sync --group dev && break || sleep 15; done
 
-update-deps: ## Check pyproject.toml for changes, update the lock file if needed, then sync.
+update-deps: ## Upgrade ALL locked packages then sync. Do not use for a single CVE/package bump.
 	uv lock --upgrade && uv sync
 
 run: ## Run the service locally

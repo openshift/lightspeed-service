@@ -1191,10 +1191,13 @@ make konflux-requirements
 
 This compiles Python dependencies from `pyproject.toml` using `uv`, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
 
+Run this **after** `uv lock` / `uv lock --upgrade-package`. See [CONTRIBUTING.md](CONTRIBUTING.md#updating-dependencies) for the bump sequence and [docs/update-requirements.md](docs/update-requirements.md) for a clean uv config. `.konflux/requirements-build.txt` must not contain `--index-url` (PyPI-only); Hermeto prefetch fails if a RHOAI default index leaked into that file.
+
 **Files produced:**
 - `requirements.hashes.source.txt` – PyPI packages with hashes
 - `requirements.hashes.wheel.txt` – Red Hat registry packages with hashes
-- `requirements-build.txt` – Build-time dependencies for source packages
+- `requirements.hashes.wheel.pypi.txt` – PyPI wheel packages with hashes (no sdist)
+- `requirements-build.txt` – Build-time dependencies for source packages (PyPI; no `--index-url`)
 
 The script also updates the Tekton pipeline configurations (`.tekton/lightspeed-stack-*.yaml`) with the list of pre-built wheel packages.
 

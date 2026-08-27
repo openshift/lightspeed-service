@@ -15,8 +15,8 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 ### Python Version & Dependencies
 - **Python 3.12** - Target version py312 in all code
 - **uv** - Package manager (not pip/poetry/pdm)
-- **Dependencies** - Always check existing imports before adding new ones
-- **Konflux hermetic build** - The Konflux build installs from `.konflux/requirements.hashes.source.txt`, `.konflux/requirements.hashes.wheel.txt`, and `.konflux/requirements.hashes.wheel.pypi.txt`, NOT from `uv.lock`. Regenerate with `make konflux-requirements` (runs `scripts/konflux_resolve.py --profile cpu`). Uses stock `uv` — no custom fork needed. Config lives in `.konflux/profiles.toml`.
+- **Dependencies** - Always check existing imports before adding new ones. Bump procedure: `CONTRIBUTING.md` and `docs/ai/dependencies.md`. Never `make update-deps` for a single package.
+- **Konflux hermetic build** - Konflux installs from `.konflux/requirements.hashes.source.txt`, `.konflux/requirements.hashes.wheel.txt`, and `.konflux/requirements.hashes.wheel.pypi.txt`, **not** from `uv.lock`. After every lock change: `make konflux-requirements` (`scripts/konflux_resolve.py --profile cpu`) with a **clean uv config** (see `docs/update-requirements.md`). `.konflux/requirements-build.txt` is PyPI-only and must not contain `--index-url`. Config: `.konflux/profiles.toml`.
 
 ### Code Quality Tools
 - **Ruff** - Linting (Google docstring convention)
@@ -100,6 +100,7 @@ You MUST read the relevant file before working in a specific area — don't skip
 - Adding or modifying an LLM provider → `docs/ai/providers.md`
 - Adding or modifying config models → `docs/ai/config.md`
 - Writing or debugging tests → `docs/ai/testing.md`
+- Adding or bumping Python dependencies → `docs/ai/dependencies.md`
 
 ## Common Patterns
 

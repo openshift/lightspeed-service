@@ -420,19 +420,35 @@ Legend:
 
 ## Updating Dependencies
 
-We are using [uv](https://docs.astral.sh/uv/) to manage our dependencies.
+We use [uv](https://docs.astral.sh/uv/). Konflux does **not** install from `uv.lock`; it prefetches `.konflux/requirements.hashes.*.txt`. A complete bump is **lock and hermetic regen**. Stopping after `uv lock` leaves Konflux on the old pins (or a dirty regen fails prefetch).
 
-To add a new dependency do:
-1. `uv add mystery-package` - uv will add it to `pyproject.toml` automatically
-2. re-lock with `uv lock` - this will update `uv.lock` with the new dependency
+Do **not** use `make update-deps` for a single package or CVE. That target runs `uv lock --upgrade` and bumps everything.
 
-To update any package to higher version do:
-1. update the version in `pyproject.toml`
-2. run `uv lock --upgrade-package package_to_be_updated` - this will update the `uv.lock` file
+Do not edit `uv.lock` by hand.
 
-As we need to be Konflux-ready (https://redhat-appstudio.github.io/appstudio.docs.ui.io/), we need to have pinned versions in the `pyproject.toml`. If you added a new dependency without an explicit version pin, uv resolves its version in the lock. You need to search for the dependency you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
+### Add a new dependency
 
-NOTE: don't directly edit `uv.lock` file. It contains hashes that are checked, so any modification should be done via `uv` command only.
+1. `uv add mystery-package` — uv updates `pyproject.toml`.
+2. `uv lock` if the lock is not already current.
+3. Keep a lower bound in `pyproject.toml` (`>=x.y.z` from the lock), matching existing entries. Use exact `==` only when the version must not float.
+4. `make konflux-requirements` (see [docs/update-requirements.md](docs/update-requirements.md) — regen needs a clean uv config).
+
+### Update an existing package (including CVE bumps)
+
+If it is already a direct dependency, raise the floor in `pyproject.toml` (`>=fixed.version`), then:
+
+```bash
+uv lock --upgrade-package package_to_be_updated
+make konflux-requirements
+```
+
+If it is **transitive** (not listed under `[project].dependencies`):
+
+1. Prefer only `uv lock --upgrade-package PACKAGE` so the lock moves to a version that satisfies the CVE.
+2. Add it to `pyproject.toml` only when you need a floor uv will not keep otherwise. Use `>=VERSION`, like the existing CVE comments in that file. Do **not** add `PACKAGE==VERSION` — an exact pin can force Konflux to **downgrade** a newer wheel already on the RHOAI index.
+3. Always run `make konflux-requirements` after the lock changes.
+
+Hermetic regen details (clean uv config, `requirements-build.txt` must stay PyPI-only): [docs/update-requirements.md](docs/update-requirements.md).
 
 
 ## Code style
