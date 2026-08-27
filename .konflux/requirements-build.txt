@@ -8,7 +8,7 @@ build==1.5.0
     # via ibm-watsonx-ai
 calver==2025.10.20
     # via trove-classifiers
-cython==3.2.9
+cython==3.3.0
     # via numpy
 flit-core==3.12.0
     # via pyproject-hooks
@@ -35,14 +35,10 @@ pdm-backend==2.4.9
     # via
     #   langchain-ibm
     #   langchain-mcp-adapters
-pkgconfig==1.6.0
-    # via aiohttp
 pluggy==1.6.0
     # via hatchling
 poetry-core==2.4.1
-    # via
-    #   pkgconfig
-    #   tomlkit
+    # via tomlkit
 pyproject-hooks==1.2.0
     # via build
 pyproject-metadata==0.12.1
@@ -62,7 +58,7 @@ tomlkit==0.15.1
     # via hatchling
 trove-classifiers==2026.6.1.19
     # via hatchling
-vcs-versioning==2.2.4
+vcs-versioning==2.3.1
     # via setuptools-scm
 versioneer==0.29
     # via bottleneck

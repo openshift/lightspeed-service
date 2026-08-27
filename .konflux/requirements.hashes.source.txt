@@ -1,14 +1,12 @@
 --index-url https://pypi.org/simple
-aiohttp==3.14.3 \
-    --hash=sha256:9491196535a88924a60afd5b5f434b5b203b6cc616250878dbdb223a8f7844bc
 aiostream==0.7.1 \
     --hash=sha256:272aaa0d8f83beb906f5aa9022bb59046bb7a103fa3770f807c31f918595acf6
 banks==2.5.0 \
     --hash=sha256:fdd4fd54b84dbe31cb51a1173c960697c73d683a52fb0b1d1957a557a8d6fcc8
 bottleneck==1.6.0 \
     --hash=sha256:028d46ee4b025ad9ab4d79924113816f825f62b17b87c9e1d0d8ce144a4a0e31
-google-cloud-vectorsearch==0.11.1 \
-    --hash=sha256:fb4723a6668fc633a1e780dec85f436a417228f346b25477afbcf288c311c393
+google-cloud-vectorsearch==0.11.2 \
+    --hash=sha256:7079263ae702122a3fd865faabab61a10339786843c75506ee8e9f9593316244
 httpx-aws-auth==4.2.0 \
     --hash=sha256:56a620f05559910160430204116e2598aae306142c49a5a35d170497833cdcba
 ibm-cos-sdk==2.14.3 \
@@ -17,12 +15,12 @@ ibm-cos-sdk-core==2.14.3 \
     --hash=sha256:85dee7790c92e8db69bf39dae4c02cac211e3c1d81bb86e64fa2d1e929674623
 ibm-cos-sdk-s3transfer==2.14.3 \
     --hash=sha256:2251ebfc4a46144401e431f4a5d9f04c262a0d6f95c88a8e71071da056e55f72
-ibm-watsonx-ai==1.6.1 \
-    --hash=sha256:f73e6414b6188e4eb53a15e2aaf7437ee3e8868150ae4a61c063afbedd3e1dc5
+ibm-watsonx-ai==1.7.1 \
+    --hash=sha256:23d5885266b5f62b25dd96096319e1745df15f8477bd00dc4d5a338574e61efc
 jmespath==1.0.1 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
-langchain-aws==1.7.0 \
-    --hash=sha256:e4e8d578b4be8fd3ad970373fc72c3e321fea7f955cb6c075464e30636ec583d
+langchain-aws==1.7.4 \
+    --hash=sha256:93b814fb55aa8464d152b05b985cd6664ddf8fc37e1dc2717b9b0bf903ea551b
 langchain-google-vertexai==3.2.4 \
     --hash=sha256:f0c16b4b639037f60357dbf6d4aa3b0f301f23be6b33b0688c75902235cb9434
 langchain-ibm==1.1.0 \
