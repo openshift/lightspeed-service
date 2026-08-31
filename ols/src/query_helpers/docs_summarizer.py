@@ -98,6 +98,8 @@ class DocsSummarizer(QueryHelper):
             self._solr_hybrid is not None and self._solr_client is not None
         )
         self._solr_docs_tool_prompt_guidance = solr_docs_tool_active
+        ref = config.config.ols_config.reference_content
+        self._byok_active = ref is not None and bool(ref.indexes)
         self._tool_calling_enabled = bool(self.mcp_servers) or solr_docs_tool_active
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
@@ -177,6 +179,7 @@ class DocsSummarizer(QueryHelper):
             self._mode,
             self._cluster_version,
             solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
+            byok_active=self._byok_active,
         ).generate_prompt(self.model)
         prompt_tokens = self._tracker.count_tokens(
             temp_prompt.format(**temp_prompt_input)
@@ -286,6 +289,7 @@ class DocsSummarizer(QueryHelper):
             self._cluster_version,
             skill_content=skill_content,
             solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
+            byok_active=self._byok_active,
         ).generate_prompt(self.model)
 
         log_tool_loop_iteration(

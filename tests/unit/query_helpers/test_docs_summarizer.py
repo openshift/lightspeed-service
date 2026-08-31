@@ -196,6 +196,27 @@ def test_summarize_no_reference_content():
     assert not summary.history_truncated
 
 
+def test_byok_active_true_when_reference_content_configured():
+    """Verify _byok_active is True when BYOK indexes are configured."""
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(mock_langchain_interface("resp")())
+    )
+    assert summarizer._byok_active
+
+
+def test_byok_active_false_when_no_reference_content():
+    """Verify _byok_active is False when no BYOK indexes are configured."""
+    original = config.config.ols_config.reference_content
+    try:
+        config.config.ols_config.reference_content = None
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(mock_langchain_interface("resp")())
+        )
+        assert not summarizer._byok_active
+    finally:
+        config.config.ols_config.reference_content = original
+
+
 def test_summarize_retrieval_logging(caplog):
     """Basic test to ensure retrieval details are visible in logs."""
     logging_config = LoggingConfig(app_log_level="debug")

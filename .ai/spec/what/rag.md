@@ -16,7 +16,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 6. The tool returns JSON passages with `text`, `score`, `title`, and `docs_url`. The LLM uses these to compose a grounded answer with citations.
 
-7. When the OKP tool is active, supplementary prompt guidance (`SOLR_DOCS_TOOL_SUPPLEMENT`) is appended to agent instructions (ASK mode) directing the LLM to ground answers on retrieved passages and cite sources.
+7. When the OKP tool is active, supplementary prompt guidance is appended to agent instructions (ASK mode) directing the LLM to ground answers on retrieved passages and cite sources. Two variants exist: `SOLR_DOCS_TOOL_SUPPLEMENT` (mandatory OKP invocation — used when no BYOK is configured) and `SOLR_DOCS_TOOL_SUPPLEMENT_WITH_BYOK` (used when BYOK reference content is configured). The BYOK variant labels the provided context as domain-specific knowledge, instructs the LLM to use it directly when it answers the question, and restricts OKP to supplementary general OpenShift details. It explicitly prohibits contradicting or overriding relevant domain knowledge with OKP results.
 
 8. Solr failures degrade gracefully — the tool returns empty results or a structured error, and the request continues without OKP passages. The service never fails a user request due to Solr errors.
 

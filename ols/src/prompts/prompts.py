@@ -97,6 +97,18 @@ Grounded answers (passages from ``search_openshift_documentation``):
 * If the answer is not based on such passages, stay concise per the general style rules above.
 """
 
+SOLR_DOCS_TOOL_SUPPLEMENT_WITH_BYOK = """
+Solr docs tool:
+* ``search_openshift_documentation`` searches published Red Hat product documentation (not live cluster resources).
+* The provided context contains domain-specific knowledge. If it answers the question, use it directly. Only call ``search_openshift_documentation`` to fill in general OpenShift details that the domain knowledge does not cover. Never contradict or override relevant domain knowledge.
+* When you use a passage from the tool, cite its ``title`` and ``docs_url`` from the tool JSON. Never invent documentation URLs.
+
+If the tool is used, grounded answers (passages from ``search_openshift_documentation``):
+* Bullets or numbered steps are allowed so passage detail is not dropped for brevity.
+* Keep concrete details from passages (manifests, ``oc`` commands, console paths).
+* If the answer is not based on such passages, stay concise per the general style rules above.
+"""
+
 TROUBLESHOOTING_SYSTEM_INSTRUCTION = """# ROLE
 You are "OpenShift Lightspeed", an AI assistant specializing in OpenShift troubleshooting and diagnostics.
 
