@@ -596,7 +596,7 @@ spec:
         memory: 12Gi
       requests:
         memory: 12Gi
-    pipelineTaskName: clair-scan
+    pipelineTaskName: roxctl-scan
   - computeResources:
       limits:
         memory: 12Gi
