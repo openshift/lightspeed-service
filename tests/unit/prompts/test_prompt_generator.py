@@ -437,3 +437,42 @@ def test_solr_docs_tool_guidance_false_omits_supplement():
         solr_docs_tool_guidance=False,
     ).generate_prompt("gpt-4o-mini")
     assert "Grounded answers (passages from" not in prompt.messages[0].prompt.template
+
+
+def test_solr_docs_tool_guidance_with_byok_uses_relaxed_supplement():
+    """When BYOK is active, the relaxed Solr supplement is used instead of the mandatory one."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.ASK,
+        solr_docs_tool_guidance=True,
+        byok_active=True,
+    ).generate_prompt("gpt-4o-mini")
+    template = prompt.messages[0].prompt.template
+    assert "Solr docs tool:" in template
+    assert "search_openshift_documentation" in template
+    assert "ALWAYS call" not in template
+    assert "Do not rely on memory alone" not in template
+    assert "domain-specific knowledge" in template
+    assert "Never contradict or override" in template
+
+
+def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
+    """When BYOK is not active, the mandatory Solr supplement is used."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.ASK,
+        solr_docs_tool_guidance=True,
+        byok_active=False,
+    ).generate_prompt("gpt-4o-mini")
+    template = prompt.messages[0].prompt.template
+    assert "ALWAYS call" in template
+    assert "Do not rely on memory alone" in template
+    assert "domain-specific knowledge" not in template
