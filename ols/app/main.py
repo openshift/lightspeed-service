@@ -68,9 +68,14 @@ class _RequestBodyLimitMiddleware:
 
     Wraps the ASGI ``receive`` callable to track cumulative bytes from
     ``http.request`` chunks, catching both missing and understated
-    Content-Length values.  Installed via ``add_middleware`` so it runs
-    before all ``@app.middleware`` functions (including the debug logger
-    that would otherwise buffer an oversized body).
+    Content-Length values.
+
+    Starlette applies middleware outermost-first in reverse registration
+    order (each ``add_middleware``/``@app.middleware`` call inserts at the
+    front of the stack), so this middleware must be registered *after* all
+    ``@app.middleware`` functions to become the outermost layer. Only then
+    does it wrap ``receive`` before the debug logger's ``log_requests_responses``
+    reads (and would otherwise buffer and log) an oversized body.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -100,9 +105,6 @@ class _RequestBodyLimitMiddleware:
         except _BodyTooLargeError:
             response = Response(content="Request body too large", status_code=413)
             await response(scope, receive, send)
-
-
-app.add_middleware(_RequestBodyLimitMiddleware)
 
 
 @app.middleware("")
@@ -233,6 +235,11 @@ async def log_requests_responses(
         response = StreamingResponse(stream_response_body(iter([response_body])))
 
     return response
+
+
+# Registered last so Starlette places it outermost: it wraps ``receive`` before
+# the middlewares above (notably the debug logger) can buffer an oversized body.
+app.add_middleware(_RequestBodyLimitMiddleware)
 
 
 routers.include_routers(app)
