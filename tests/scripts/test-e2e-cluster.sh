@@ -40,7 +40,7 @@ function run_suites() {
   local rc=0
 
   set +e
-  # If changes are done in this file, please make sure they reflect in test-e2e-cluster-periodics.sh and test-evaluation.sh
+  # If changes are done in this file, please make sure they reflect in test-e2e-cluster-periodics.sh
 
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image os_config_suffix

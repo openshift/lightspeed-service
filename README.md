@@ -1239,13 +1239,6 @@ ACTIVATION_KEY and ORG_ID are for RHEL subscription manager.
 This creates `.konflux/rpms.lock.yaml` with pinned RPM versions.
 
 
-# Question and Answer Quality Evaluation
-There is an extensive suite of evaluation tools and scripts available in this
-repository if you are interested in exploring different LLMs and their
-performance. Please look at
-[scripts/evaluation/README](scripts/evaluation/README.md) to learn more.
-
-
 # Contributing
 
 * See [contributors](CONTRIBUTING.md) guide.
