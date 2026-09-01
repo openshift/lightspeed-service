@@ -43,7 +43,7 @@ The service must protect customer data, enforce transport-layer encryption, reda
 
 ### Credential handling
 
-23. API keys, passwords, and other secrets must never appear as plaintext values in the configuration file. All credentials must be specified as file paths; the service reads the secret value from the referenced file at startup.
+23. API keys, passwords, and other secrets must never appear as plaintext values in the configuration file. All credentials must be specified as file paths; the service reads the secret value from the referenced file at startup. When credential hot-reload is enabled (`ols_config.credential_hot_reload: true`, OLS-3450), LLM provider credentials are re-read from disk on each request via `ProviderConfig.get_credentials()` so that secret rotation takes effect without a pod restart. On read failure, the last good value is retained.
 24. Credential files may be individual files or directories containing named secret files (e.g., `apitoken`, `client_id`, `tenant_id`, `client_secret`).
 25. Sensitive HTTP request headers (`authorization`, `proxy-authorization`, `cookie`) and response headers (`www-authenticate`, `proxy-authenticate`, `set-cookie`) must be redacted in debug-level request/response logs.
 

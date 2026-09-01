@@ -29,7 +29,7 @@ Every provider must satisfy all of the following:
 
 9. Provider-specific configuration (e.g., `openai_config`, `azure_openai_config`) takes precedence over top-level provider fields (`url`, `credentials`) whenever both are present.
 
-10. Credentials must be read from files on disk (via `credentials_path`), not from environment variables or inline config values. The file path points to a directory or file containing the secret.
+10. Credentials must be read from files on disk (via `credentials_path`), not from environment variables or inline config values. The file path points to a directory or file containing the secret. When credential hot-reload is enabled (`credential_hot_reload: true`, OLS-3450), all providers call `ProviderConfig.get_credentials()` (or `get_aws_credentials()` for Bedrock IAM) which re-reads the credential file on every invocation via `read_secret_from_path()`. On read failure, the last successfully read value is retained. When hot-reload is disabled (default), `get_credentials()` returns the startup-cached value.
 
 ### Reasoning Model Support
 
@@ -206,6 +206,7 @@ The following sections describe only what differs from the standard contract abo
 
 ## Planned Changes
 
+- [OLS-3450] Credential hot-reload: all providers call `get_credentials()` / `get_aws_credentials()` instead of accessing `self.credentials` directly. When `credential_hot_reload` is enabled, credentials are re-read from disk on each call via `read_secret_from_path()`. See design spec `docs/superpowers/specs/2026-09-01-credential-hot-reload-design.md`.
 - ~~[PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider~~ — Implemented in OLS-1895. IAM credentials (access key + secret key) and STS assume-role supported. E2E coverage tracked by [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327).
 - [PLANNED: OLS-3442] Reasoning token support: per-model `reasoning_config` for all providers, vLLM `ChatVLLMReasoning` subclass, remove model-name detection from OpenAI/Azure providers. Replaces `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
 - [PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively. Anthropic models are currently available through the Google Vertex Anthropic provider.

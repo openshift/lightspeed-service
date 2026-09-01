@@ -28,6 +28,7 @@ The configuration system loads, validates, and manages the single YAML file that
 
 12. All credentials (API tokens, passwords, client secrets) must be read from files referenced by path in the configuration. Plaintext credential values must never appear directly in the YAML.
 13. Credential reading uses `checks.read_secret()`, which supports both file paths (reads the file content) and directory paths (reads a default-named file within the directory, e.g., `apitoken` for API tokens).
+13a. When `ols_config.credential_hot_reload` is `true` (OLS-3450), LLM provider credentials are re-read from disk on each request via `ProviderConfig.get_credentials()` and `checks.read_secret_from_path()`. This allows Kubernetes secret rotation to take effect without a pod restart. The `credential_hot_reload` flag is propagated from `Config` → `LLMProviders` → each `ProviderConfig` during construction. On read failure, the last good credential value is retained.
 14. The TLS key password, if needed, must also be read from a file path (`tls_key_password_path`), not stored as plaintext.
 
 ### Default Values
@@ -73,6 +74,7 @@ The YAML file has four top-level sections:
 | `ols_config.history_compression_enabled` | bool | true | Toggle conversation history compression | -- |
 | `ols_config.max_iterations` | int | mode-dependent | Tool-calling loop iteration cap (ask=5, troubleshooting=15) | -- |
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Max fraction of remaining tool token budget usable per round (0.3--0.8) | -- |
+| `ols_config.credential_hot_reload` | bool | false | When true, LLM credentials are re-read from disk on each request (OLS-3450) |
 | `ols_config.max_workers` | int | 1 | Number of concurrent workers | -- |
 | `ols_config.expire_llm_is_ready_persistent_state` | int | -1 | Expiration for LLM readiness cache (-1 = never) | -- |
 | `ols_config.tlsSecurityProfile` | object | none | TLS security profile for service endpoints | see what/security.md |
@@ -158,4 +160,5 @@ Each provider entry under `llm_providers` supports:
 
 ## Planned Changes
 
+- [OLS-3450] Credential hot-reload: `ols_config.credential_hot_reload` field. Propagated to `ProviderConfig` to enable per-request credential re-reads via `get_credentials()`. See design spec `docs/superpowers/specs/2026-09-01-credential-hot-reload-design.md`.
 - [PLANNED: OLS-2874] Enable Skills Configuration in OLSConfig CRD -- expose `ols_config.skills` through the operator's custom resource definition, allowing skills to be configured declaratively via the OLSConfig CR.
