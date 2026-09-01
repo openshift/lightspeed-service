@@ -271,6 +271,9 @@ CLUSTER_QUOTA_LIMITER = "cluster_limiter"
 # MCP transport default timeout
 MCP_HTTP_TRANSPORT_DEFAULT_TIMEOUT = 5  # in seconds
 
+# Maximum HTTP request body size (2 MB) — DoS protection per OLS-2795 / SD Elements T536
+MAX_REQUEST_BODY_SIZE = 2 * 1024 * 1024
+
 # Offloading defaults
 DEFAULT_OFFLOAD_STORAGE_PATH = "/tmp/ols-offloaded"  # noqa: S108
 OFFLOAD_MAX_SEARCH_MATCHES = 50

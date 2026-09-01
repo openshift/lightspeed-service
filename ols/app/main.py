@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response
 from starlette.datastructures import Headers
 from starlette.responses import StreamingResponse
 from starlette.routing import BaseRoute, Mount, Route, WebSocketRoute
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ols import config, constants, version
 from ols.app import metrics, routers
@@ -23,7 +24,6 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,54 @@ else:
 # update provider and model as soon as possible so the metrics will be visible
 # even for first scraping
 metrics.setup_model_metrics(config)
+
+
+class _BodyTooLargeError(Exception):
+    """Sentinel raised when cumulative request bytes exceed the cap."""
+
+
+class _RequestBodyLimitMiddleware:
+    """ASGI middleware that rejects requests exceeding MAX_REQUEST_BODY_SIZE.
+
+    Wraps the ASGI ``receive`` callable to track cumulative bytes from
+    ``http.request`` chunks, catching both missing and understated
+    Content-Length values.
+
+    Starlette applies middleware outermost-first in reverse registration
+    order (each ``add_middleware``/``@app.middleware`` call inserts at the
+    front of the stack), so this middleware must be registered *after* all
+    ``@app.middleware`` functions to become the outermost layer. Only then
+    does it wrap ``receive`` before the debug logger's ``log_requests_responses``
+    reads (and would otherwise buffer and log) an oversized body.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Store the wrapped ASGI application."""
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Enforce the body-size limit for HTTP requests."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        limit = constants.MAX_REQUEST_BODY_SIZE
+        received = 0
+
+        async def limiting_receive() -> dict:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    raise _BodyTooLargeError
+            return message
+
+        try:
+            await self.app(scope, limiting_receive, send)
+        except _BodyTooLargeError:
+            response = Response(content="Request body too large", status_code=413)
+            await response(scope, receive, send)
 
 
 @app.middleware("")
@@ -187,6 +235,11 @@ async def log_requests_responses(
         response = StreamingResponse(stream_response_body(iter([response_body])))
 
     return response
+
+
+# Registered last so Starlette places it outermost: it wraps ``receive`` before
+# the middlewares above (notably the debug logger) can buffer an oversized body.
+app.add_middleware(_RequestBodyLimitMiddleware)
 
 
 routers.include_routers(app)
