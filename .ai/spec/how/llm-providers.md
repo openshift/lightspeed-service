@@ -176,7 +176,7 @@ WatsonX also passes `params=self.params` to `ChatWatsonx` (as a nested dict), un
 
 `BedrockParameters` is a single union set covering kwargs from both `ChatBedrockConverse` and `ChatOpenAI`. `BedrockParametersMapping` maps `max_tokens_for_response` to `max_completion_tokens` (the OpenAI name). For the Anthropic branch, `load()` pops `max_completion_tokens` from params since `ChatBedrockConverse` uses `max_tokens` natively.
 
-Auth supports two pathways: Bearer token (Bedrock API key via `credentials_path` file) and IAM credentials (`aws_access_key_id`, `aws_secret_access_key`, optional `role_arn` read from the `credentials_path` directory). `_has_aws_credentials()` selects the path. For IAM, Anthropic models pass a pre-configured boto3 client; OpenAI/DeepSeek models use `httpx-aws-auth` SigV4 signing injected into `http_client`/`http_async_client`.
+Auth supports two pathways: Bearer token (Bedrock API key via `get_credentials()`) and IAM credentials (`get_aws_credentials()` returns access key, secret key, optional role ARN). For IAM, Anthropic models pass a pre-configured boto3 client; OpenAI/DeepSeek models use `httpx-aws-auth` SigV4 signing injected into `http_client`/`http_async_client`. When credential hot-reload is enabled (OLS-3450), both pathways re-read credentials from disk on each `load()` call.
 
 ### Reasoning model handling
 

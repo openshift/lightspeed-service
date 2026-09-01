@@ -138,6 +138,12 @@ config.reload_from_yaml_file(path)
 
 This supports both Kubernetes secret volume mounts (directory of files) and explicit file paths. The `directory_name_expected` flag (used by Azure) enforces directory-only mode. The `raise_on_error` flag controls whether missing secrets are fatal or silently ignored.
 
+### Credential hot-reload (OLS-3450)
+
+`checks.read_secret_from_path(path, default_filename)` is a lightweight re-read helper designed for per-request use. Unlike `read_secret()` (which takes a dict lookup), it takes a concrete path string and returns `None` on `OSError` (logging a warning). It is called by `ProviderConfig.get_credentials()` and `get_aws_credentials()` when `_credential_hot_reload` is `True`.
+
+The flag propagates through the config hierarchy: `Config.__init__` reads `credential_hot_reload` from the `ols_config` section and passes it to `LLMProviders(data, credential_hot_reload=...)`, which passes it to each `ProviderConfig(data, credential_hot_reload=...)`. `ProviderConfig` stores it as `_credential_hot_reload` (Pydantic `PrivateAttr`) alongside `_credentials_path`.
+
 ### TLS profile to cipher suite mapping
 
 `TLSSecurityProfile` validates against `ols/utils/tls.py`:
