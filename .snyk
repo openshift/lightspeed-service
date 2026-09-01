@@ -6,7 +6,6 @@ exclude:
     - 'scripts/transform_coverage_report.py'
     - 'scripts/questions_gen.py'
     - 'scripts/generate_openapi_schema.py'
-    - 'scripts/evaluation/**'
     - 'eval/scripts/**'
     # Entrypoint: SSL_CERT_FILE is operator-set; OpenShift CI Snyk Code
     # does not honor inline deepcode ignores for this false-positive PT finding.

@@ -107,7 +107,6 @@ configure model, and connect to it.
     - [When to Update Dependency Files](#when-to-update-dependency-files)
     - [Updating Python Dependencies](#updating-python-dependencies)
     - [Updating RPM Dependencies](#updating-rpm-dependencies)
-- [Question and Answer Quality Evaluation](#question-and-answer-quality-evaluation)
 - [Contributing](#contributing)
 - [License](#license)
 
