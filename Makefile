@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify verify-hermetic-requirements get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
+.PHONY: test test-unit test-e2e test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify verify-hermetic-requirements get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -87,12 +87,6 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	uv run pytest tests/e2e --ignore=tests/e2e/evaluation -s --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR}
-
-test-eval: ## Run evaluation tests - requires running OLS server
-	@echo "Running evaluation tests..."
-	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	uv run --extra evaluation pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
-	--eval_out_dir ${ARTIFACT_DIR} -m "not lseval and not cluster_updates"
 
 test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question dataset) - requires running OLS server with OpenAI keys
 	@echo "Running LSEval periodic evaluation..."

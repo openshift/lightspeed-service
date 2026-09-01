@@ -256,64 +256,10 @@ def pytest_addoption(parser):
         help="Model for which responses will be evaluated.",
     )
     parser.addoption(
-        "--eval_provider_model_id",
-        nargs="+",
-        default=[
-            "watsonx+ibm/granite-4-h-small",
-            "openai+gpt-5.4-mini",
-            "azure_openai+gpt-5.4-mini",
-        ],
-        type=str,
-        help="Identifier for Provider/Model to be used for model eval.",
-    )
-    parser.addoption(
         "--eval_out_dir",
         default=None,
         type=str,
         help="Result destination.",
-    )
-    parser.addoption(
-        "--eval_query_ids",
-        nargs="+",
-        default=None,
-        help="Ids of questions to be validated. Check json file for valid ids.",
-    )
-    parser.addoption(
-        "--eval_scenario",
-        choices=["with_rag", "without_rag"],
-        default="with_rag",
-        type=str,
-        help="Scenario for which responses will be evaluated.",
-    )
-    parser.addoption(
-        "--use_default_json_data",
-        default=True,
-        type=bool,
-        help="When True, default data will be used.",
-    )
-    parser.addoption(
-        "--qna_pool_file",
-        default=None,
-        type=str,
-        help="Additional file having QnA pool in parquet format.",
-    )
-    parser.addoption(
-        "--eval_type",
-        choices=["consistency", "model", "all"],
-        default="model",
-        help="Evaluation type.",
-    )
-    parser.addoption(
-        "--eval_metrics",
-        nargs="+",
-        default=["cos_score"],
-        help="Evaluation score/metric.",
-    )
-    parser.addoption(
-        "--eval_modes",
-        nargs="+",
-        default=["ols"],
-        help="Evaluation modes ex: with just prompt/rag etc.",
     )
     parser.addoption(
         "--lseval_provider",
