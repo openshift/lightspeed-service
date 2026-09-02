@@ -832,3 +832,60 @@ def test_bedrock_iam_picks_up_rotated_credentials(tmp_path: Path) -> None:
     access_key, secret_key, _ = config.get_aws_credentials()
     assert access_key == "rotated_access"
     assert secret_key == "rotated_secret"  # noqa: S105
+
+
+def test_bedrock_api_key_not_misclassified_as_iam(tmp_path: Path) -> None:
+    """Regression: API-key file must not be read as IAM credentials.
+
+    When credentials_path is a file (API-key layout), get_aws_credentials()
+    must not treat the API token as aws_access_key_id / aws_secret_access_key.
+    """
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("my-bedrock-api-key")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": str(secret_file),
+            "models": [{"name": "anthropic.claude-opus-4-7"}],
+        },
+        credential_hot_reload=True,
+    )
+
+    access_key, secret_key, role_arn = config.get_aws_credentials()
+    assert access_key is None
+    assert secret_key is None
+    assert role_arn is None
+
+
+@patch("ols.src.llms.providers.bedrock.ChatBedrockConverse")
+def test_bedrock_load_uses_api_key_path_with_file_credentials(
+    mock_chat: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """Regression: Bedrock.load() must use API-key auth when credentials_path is a file."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("my-bedrock-api-key")
+
+    provider_config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": str(secret_file),
+            "models": [{"name": "anthropic.claude-opus-4-7"}],
+        },
+        credential_hot_reload=True,
+    )
+
+    bedrock = Bedrock(
+        model="anthropic.claude-opus-4-7", params={}, provider_config=provider_config
+    )
+    bedrock.load()
+
+    mock_chat.assert_called_once()
+    call_kwargs = mock_chat.call_args[1]
+    assert call_kwargs["bedrock_api_key"] == "my-bedrock-api-key"
+    assert "client" not in call_kwargs
