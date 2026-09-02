@@ -639,6 +639,10 @@ class ProviderConfig(BaseModel):
     ) -> tuple[Optional[str], Optional[str], Optional[str]]:
         """Return AWS IAM credentials, re-reading from disk when hot-reload is enabled."""
         if self._credential_hot_reload and self._credentials_path is not None:
+            prev_access = self.aws_access_key_id
+            prev_secret = self.aws_secret_access_key
+            prev_role = self.role_arn
+
             access_key = checks.read_secret_from_path(
                 self._credentials_path, constants.BEDROCK_ACCESS_KEY_ID_FILENAME
             )
@@ -649,7 +653,8 @@ class ProviderConfig(BaseModel):
                 self.aws_access_key_id = access_key
             if secret_key is not None:
                 self.aws_secret_access_key = secret_key
-            # role_arn is optional — only re-read when the file exists
+
+            result_role = prev_role
             role_arn_path = os.path.join(
                 self._credentials_path, constants.BEDROCK_ROLE_ARN_FILENAME
             )
@@ -659,6 +664,13 @@ class ProviderConfig(BaseModel):
                 )
                 if role_arn is not None:
                     self.role_arn = role_arn
+                    result_role = role_arn
+
+            return (
+                access_key if access_key is not None else prev_access,
+                secret_key if secret_key is not None else prev_secret,
+                result_role,
+            )
         return self.aws_access_key_id, self.aws_secret_access_key, self.role_arn
 
 
