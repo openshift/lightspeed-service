@@ -42,7 +42,9 @@ The conversation history subsystem preserves prior exchanges within a conversati
 
 19. The in-memory cache must be a singleton: all threads within a process share one cache instance.
 
-### PostgreSQL Resilience [NEW: OLS-3221]
+### PostgreSQL Resilience [PLANNED: OLS-3221]
+
+_Already shipped: the `@connection` auto-reconnect decorator and `connected()` liveness check in `utils/postgres.py`, and the per-instance `_tx_lock` in `postgres_cache.py`. The remaining behavior below — connection/operational error distinction feeding health status, statement/lock timeouts, the background health-check loop, dual-feed health status, and health-status-backed readiness/liveness probes — is planned._
 
 20. Cache operations must distinguish between *connection errors* (broken TCP, connection refused, closed connection) and *operational errors* (SQL failures on a live connection such as constraint violations, disk full, or query syntax errors). Connection errors trigger the reconnection path via the `@connection` decorator. Operational errors are wrapped in `CacheError` and propagated immediately — reconnection would not resolve them.
 
@@ -69,9 +71,9 @@ The conversation history subsystem preserves prior exchanges within a conversati
 | `ols_config.conversation_cache.postgres.ca_cert_path` | Path to CA certificate for PostgreSQL TLS |
 | `ols_config.conversation_cache.postgres.max_entries` | Maximum total message entries for PostgreSQL cache |
 | `ols_config.history_compression_enabled` | Whether to use LLM-based history compression (default: true) |
-| `ols_config.cache_health_check_interval` | Interval in seconds for the background PostgreSQL health-check loop (default: 30) [NEW: OLS-3221] |
-| `ols_config.conversation_cache.postgres.statement_timeout` | Statement-level timeout in milliseconds for PostgreSQL operations (default: 5000) [NEW: OLS-3221] |
-| `ols_config.conversation_cache.postgres.lock_timeout` | Timeout in seconds for Python-level `_tx_lock` acquisition (default: 10) [NEW: OLS-3221] |
+| `ols_config.cache_health_check_interval` | [PLANNED: OLS-3221] Interval in seconds for the background PostgreSQL health-check loop (default: 30) |
+| `ols_config.conversation_cache.postgres.statement_timeout` | [PLANNED: OLS-3221] Statement-level timeout in milliseconds for PostgreSQL operations (default: 5000) |
+| `ols_config.conversation_cache.postgres.lock_timeout` | [PLANNED: OLS-3221] Timeout in seconds for Python-level `_tx_lock` acquisition (default: 10) |
 
 ## Constraints
 
