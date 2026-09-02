@@ -62,6 +62,7 @@ class ModelParameters(BaseModel):
     reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
     reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE
     verbosity: ReasoningLevel = ReasoningLevel.LOW
+    temperature_supported: bool = True
 
     @field_validator("tool_budget_ratio")
     @classmethod

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.bedrock import Bedrock
@@ -295,6 +296,130 @@ def test_anthropic_passes_temperature(
 
     call_kwargs = mock_chat.call_args[1]
     assert call_kwargs["temperature"] == 0.5
+
+
+@patch(
+    "ols.src.llms.providers.bedrock.ChatBedrockConverse",
+    autospec=True,
+)
+def test_temperature_stripped_when_not_supported(
+    mock_chat: MagicMock,
+) -> None:
+    """Test that temperature is omitted when model sets temperature_supported=False."""
+    pc = ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": "tests/config/secret/apitoken",
+            "models": [
+                {
+                    "name": "anthropic.claude-sonnet-5",
+                    "parameters": {"temperature_supported": False},
+                }
+            ],
+        }
+    )
+    bedrock = Bedrock(
+        model="anthropic.claude-sonnet-5",
+        params={},
+        provider_config=pc,
+    )
+    assert "temperature" not in bedrock.params
+
+    bedrock.load()
+    call_kwargs = mock_chat.call_args[1]
+    assert "temperature" not in call_kwargs
+
+
+@patch(
+    "ols.src.llms.providers.bedrock.ChatBedrockConverse",
+    autospec=True,
+)
+def test_temperature_present_when_supported(
+    mock_chat: MagicMock, provider_config: ProviderConfig
+) -> None:
+    """Test that temperature is present by default (temperature_supported=True)."""
+    bedrock = Bedrock(
+        model="anthropic.claude-opus-4-7",
+        params={},
+        provider_config=provider_config,
+    )
+    assert "temperature" in bedrock.params
+
+    bedrock.load()
+    call_kwargs = mock_chat.call_args[1]
+    assert "temperature" in call_kwargs
+
+
+@patch(
+    "ols.src.llms.providers.bedrock.ChatBedrockConverse",
+    autospec=True,
+)
+def test_temperature_stripped_even_when_caller_passes_it(
+    mock_chat: MagicMock,
+) -> None:
+    """Test that caller-supplied temperature is also stripped when not supported."""
+    pc = ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": "tests/config/secret/apitoken",
+            "models": [
+                {
+                    "name": "anthropic.claude-sonnet-5",
+                    "parameters": {"temperature_supported": False},
+                }
+            ],
+        }
+    )
+    bedrock = Bedrock(
+        model="anthropic.claude-sonnet-5",
+        params={"temperature": 0.5},
+        provider_config=pc,
+    )
+    assert "temperature" not in bedrock.params
+
+    bedrock.load()
+    call_kwargs = mock_chat.call_args[1]
+    assert "temperature" not in call_kwargs
+
+
+@patch(
+    "ols.src.llms.providers.bedrock.ChatBedrockConverse",
+    autospec=True,
+)
+def test_temperature_stripped_when_set_via_dev_config(
+    mock_chat: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that dev_config temperature override is stripped when model does not support it."""
+    monkeypatch.setattr(config.dev_config, "llm_params", {"temperature": 0.7})
+    pc = ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": "tests/config/secret/apitoken",
+            "models": [
+                {
+                    "name": "anthropic.claude-sonnet-5",
+                    "parameters": {"temperature_supported": False},
+                }
+            ],
+        }
+    )
+    bedrock = Bedrock(
+        model="anthropic.claude-sonnet-5",
+        params={},
+        provider_config=pc,
+    )
+    assert "temperature" not in bedrock.params
+
+    bedrock.load()
+    call_kwargs = mock_chat.call_args[1]
+    assert "temperature" not in call_kwargs
 
 
 def test_region_extraction(provider_config: ProviderConfig) -> None:
