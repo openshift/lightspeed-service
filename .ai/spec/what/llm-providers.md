@@ -90,7 +90,9 @@ The following sections describe only what differs from the standard contract abo
 
 28. Parameters are passed to the LLM constructor in a `params` dict (not as top-level keyword arguments). Uses `ChatWatsonx` from LangChain IBM. Does not use httpx clients or custom certificate stores.
 
-29. Default URL: `https://us-south.ml.cloud.ibm.com`.
+29. Default URL: `https://us-south.ml.cloud.ibm.com`. IBM Cloud SaaS hosts (`*.ml.cloud.ibm.com`) authenticate with `apitoken` / `apikey` only.
+
+29a. When the WatsonX URL is on-prem Cloud Pak for Data (any host other than `*.ml.cloud.ibm.com`), the credentials directory must also contain `username` and `version` files. Those values are passed to `ChatWatsonx` as `username` and `version`. `instance_id` is optional and defaults to `openshift`. If username or version is missing, the provider must raise a clear ValueError at load time (OLS-2190, OLS-2849). IBM Cloud watsonx must not require these fields.
 
 ### RHOAI vLLM (`rhoai_vllm`)
 
@@ -170,7 +172,7 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].tlsSecurityProfile` -- TLS security profile with `type`, `minTLSVersion`, and `ciphers`.
 - `llm_providers[].openai_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].azure_openai_config` -- Provider-specific: `url`, `deployment_name`, `credentials_path` (directory containing `apitoken`, `client_id`, `tenant_id`, `client_secret` files).
-- `llm_providers[].watsonx_config` -- Provider-specific: `url`, `credentials_path`, `project_id`.
+- `llm_providers[].watsonx_config` -- Provider-specific: `url`, `credentials_path`, `project_id`. For Cloud Pak for Data URLs, the credentials directory also holds `username` and `version` (optional `instance_id`).
 - `llm_providers[].rhoai_vllm_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].rhelai_vllm_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].google_vertex_config` -- Provider-specific: `project`, `location`.

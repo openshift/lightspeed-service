@@ -2,6 +2,7 @@
 
 import logging
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
@@ -14,6 +15,18 @@ from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 
 logger = logging.getLogger(__name__)
+
+IBM_CLOUD_WATSONX_HOST_SUFFIX = "ml.cloud.ibm.com"
+
+
+def is_ibm_cloud_watsonx_url(url: str) -> bool:
+    """Return True when the URL is IBM Cloud watsonx SaaS (apitoken only)."""
+    if not url:
+        return True
+    host = (urlparse(str(url)).hostname or "").lower()
+    return host == IBM_CLOUD_WATSONX_HOST_SUFFIX or host.endswith(
+        "." + IBM_CLOUD_WATSONX_HOST_SUFFIX
+    )
 
 
 @register_llm_provider_as(constants.PROVIDER_WATSONX)
@@ -59,16 +72,40 @@ class Watsonx(LLMProvider):
         if self.project_id is None:
             raise ValueError("Project ID must be specified")
 
+        constructor_kwargs: dict[str, Any] = {
+            "model_id": self.model,
+            "url": self.url,
+            "apikey": self.credentials,
+            "project_id": self.project_id,
+            "params": self.params,
+        }
+
+        if not is_ibm_cloud_watsonx_url(self.url):
+            username = self.provider_config.watsonx_username
+            version = self.provider_config.watsonx_version
+            missing = [
+                name
+                for name, value in (("username", username), ("version", version))
+                if not value
+            ]
+            if missing:
+                needed = " and ".join(missing)
+                raise ValueError(
+                    "On-prem Cloud Pak for Data watsonx needs "
+                    f"{needed} in the credentials secret (keys next to apitoken). "
+                    "IBM Cloud watsonx still only needs apitoken."
+                )
+            constructor_kwargs["username"] = username
+            constructor_kwargs["version"] = version
+            constructor_kwargs["instance_id"] = (
+                self.provider_config.watsonx_instance_id
+                or constants.WATSONX_DEFAULT_CPD_INSTANCE_ID
+            )
+
         logger.info(
             "Loading WatsonX LLM: model=%s, url=%s, project_id=%s",
             self.model,
             self.url,
             self.project_id,
         )
-        return ChatWatsonx(
-            model_id=self.model,
-            url=self.url,
-            apikey=self.credentials,
-            project_id=self.project_id,
-            params=self.params,
-        )
+        return ChatWatsonx(**constructor_kwargs)

@@ -254,13 +254,27 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
 ### WatsonX
 
-   Make sure the `project_id` is set up correctly.
+   IBM Cloud watsonx (default URL `https://us-south.ml.cloud.ibm.com`) only needs an API key. Put that key in `credentials_path` as a file named `apitoken`, or point `credentials_path` at the file itself.
+
+   Cloud Pak for Data (on-prem `https://cpd-....apps....`) also needs `username` and `version` in the same credentials directory. `instance_id` is optional and defaults to `openshift`.
 
   ```yaml
   - name: my_watsonx
     type: watsonx
     url: "https://us-south.ml.cloud.ibm.com"
     credentials_path: watsonx_api_key.txt
+    project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    models:
+      - name: <model name>
+  ```
+
+  On-prem example. The credentials directory contains `apitoken`, `username`, and `version`:
+
+  ```yaml
+  - name: my_watsonx_cpd
+    type: watsonx
+    url: "https://cpd-instance.apps.example.com"
+    credentials_path: /path/to/watsonx-secret
     project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     models:
       - name: <model name>

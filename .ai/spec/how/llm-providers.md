@@ -164,6 +164,8 @@ WatsonX uses IBM's `GenTextParamsMetaNames` constants for parameter keys instead
 
 WatsonX also passes `params=self.params` to `ChatWatsonx` (as a nested dict), unlike OpenAI-compatible providers that spread params as `**self.params`.
 
+IBM Cloud SaaS (`*.ml.cloud.ibm.com`, including the default `https://us-south.ml.cloud.ibm.com`) constructs `ChatWatsonx` with `apikey` only. A Cloud Pak for Data URL additionally passes `username`, `version`, and `instance_id` (default `openshift`) read from the credentials directory. Missing username or version raises a ValueError before `ChatWatsonx` is constructed (OLS-2190 / OLS-2849).
+
 ### Bedrock model-prefix routing
 
 `bedrock.py` serves multiple model families behind the Bedrock Mantle gateway. `load()` inspects `self.model` to select the LangChain class and construct the correct Mantle endpoint URL:
