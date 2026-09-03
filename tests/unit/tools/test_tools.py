@@ -642,6 +642,44 @@ async def test_execute_tool_calls_stream_no_approval_when_not_required(
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_calls_stream_blocks_non_streaming_approval_required_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test non-streaming requests fail closed for approval-required tools."""
+
+    async def _must_not_execute(
+        *args: object, **kwargs: object
+    ) -> tuple[str, str, bool]:
+        raise AssertionError(
+            "execute_tool_call should not run when non-streaming approval is required"
+        )
+
+    async def _must_not_wait(*args: object, **kwargs: object) -> str:
+        raise AssertionError(
+            "get_approval_decision should not run for non-streaming requests"
+        )
+
+    monkeypatch.setattr(tools_module, "need_validation", lambda **kwargs: True)
+    monkeypatch.setattr(tools_module, "execute_tool_call", _must_not_execute)
+    monkeypatch.setattr(tools_module, "get_approval_decision", _must_not_wait)
+
+    events = [
+        event
+        async for event in execute_tool_calls_stream(
+            [("call_blocked", {}, FakeTool("blocked_tool"))],
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
+            streaming=False,
+        )
+    ]
+
+    assert [event.event for event in events] == ["tool_result"]
+    assert events[0].data.status == "error"
+    assert events[0].data.tool_call_id == "call_blocked"
+    assert "requires approval" in events[0].data.content
+    assert "/v1/streaming_query" in events[0].data.content
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_calls_stream_retries_retryable_then_succeeds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
