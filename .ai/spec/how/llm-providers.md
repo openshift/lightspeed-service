@@ -28,8 +28,8 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 
 | File | Class | Decorator key | LangChain class | Notes |
 |---|---|---|---|---|
-| `openai.py` | `OpenAI` | `"openai"` | `ChatOpenAI` | Reasoning via `reasoning_config`; [PLANNED: OLS-3442 — replace model-name detection] |
-| `azure_openai.py` | `AzureOpenAI` | `"azure_openai"` | `AzureChatOpenAI` | Entra ID token caching; reasoning via `reasoning_config` [PLANNED: OLS-3442] |
+| `openai.py` | `OpenAI` | `"openai"` | `ChatOpenAI` | Reasoning via `reasoning_config` |
+| `azure_openai.py` | `AzureOpenAI` | `"azure_openai"` | `AzureChatOpenAI` | Entra ID token caching; reasoning via `reasoning_config` |
 | `watsonx.py` | `Watsonx` | `"watsonx"` | `ChatWatsonx` | IBM-specific parameter names; see below |
 | `rhoai_vllm.py` | `RHOAIVLLM` | `"rhoai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. [PLANNED: OLS-3442 — `ChatVLLMReasoning` when `reasoning_config.enabled`] |
 | `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. [PLANNED: OLS-3442 — `ChatVLLMReasoning` when `reasoning_config.enabled`] |
@@ -180,11 +180,11 @@ Auth supports two pathways: Bearer token (Bedrock API key via `get_credentials()
 
 ### Reasoning model handling
 
-[PLANNED: OLS-3442] Currently, `openai.py` and `azure_openai.py` detect o-series and gpt-5 models by name pattern (`self.model.startswith("o")` or `"gpt-5" in self.model`). This model-name detection will be replaced by config-driven enablement via `reasoning_config`.
+[IMPLEMENTED: OLS-3454/OLS-3455] `openai.py` and `azure_openai.py` use config-driven reasoning via `reasoning_config`; reasoning behavior is not inferred from the model name.
 
-When `reasoning_config` is present in a model's `ModelParameters`, the provider reads provider-specific keys from it and passes them to the LangChain adapter. Standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`) are skipped. When `reasoning_config` is absent, the provider applies standard sampling defaults.
+When `reasoning_config` is present in a model's `ModelParameters`, the provider reads provider-specific keys from it and passes them to the LangChain adapter. For OpenAI and Azure OpenAI, `verbosity` is mapped to the adapter's `verbose` parameter and the remaining keys are passed as the `reasoning` dict. Standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`) are skipped. When `reasoning_config` is absent, no reasoning or sampling parameters are added by OLS.
 
-The existing `ModelParameters` fields `reasoning_effort`, `reasoning_summary`, and `verbosity` will be removed and replaced by the freeform `reasoning_config` dict.
+The existing `ModelParameters` fields `reasoning_effort`, `reasoning_summary`, and `verbosity` are replaced by the freeform `reasoning_config` dict.
 
 ### vLLM reasoning subclass (`ChatVLLMReasoning`)
 

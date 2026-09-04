@@ -88,7 +88,7 @@ The YAML file has four top-level sections:
 | `dev_config.disable_tls` | bool | false | Disable TLS on service endpoints |
 | `dev_config.enable_system_prompt_override` | bool | false | Allow API requests to override system prompt |
 | `dev_config.k8s_auth_token` | string | none | Static Kubernetes auth token for testing |
-| `dev_config.run_on_localhost` | bool | false | Bind to localhost instead of all interfaces |
+| `dev_config.run_on_localhost` | bool | false | Run in local-development mode: bind to localhost instead of all interfaces and skip the deployment CA bundle construction in `runner.py`. Outbound HTTPS clients continue to use their normal platform trust store. |
 | `dev_config.uvicorn_port_number` | int | none | Custom HTTP server port |
 | `dev_config.pyroscope_url` | string | none | Continuous profiling service URL |
 | `dev_config.llm_params` | dict | {} | Override LLM parameters for testing |
@@ -117,7 +117,7 @@ Each provider entry under `llm_providers` supports:
 | `llm_providers[].models[].context_window_size` | int | 128000 | Context window size in tokens |
 | `llm_providers[].models[].parameters.max_tokens_for_response` | int | 4096 | Tokens reserved for response |
 | `llm_providers[].models[].parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window for tool outputs (0.1--0.6) |
-| `llm_providers[].models[].parameters.reasoning_config` | dict | none | [PLANNED: OLS-3442] Freeform dict of provider-specific reasoning/thinking parameters. See `what/llm-providers.md` rule 13 for valid keys per provider |
+| `llm_providers[].models[].parameters.reasoning_config` | dict | none | Freeform dict of provider-specific reasoning/thinking parameters. See `what/llm-providers.md` rule 13 for valid keys per provider |
 | `llm_providers[].models[].parameters.reasoning_effort` | enum | low | [DEPRECATED: OLS-3442] Reasoning effort level (low, medium, high). Replaced by `reasoning_config` |
 | `llm_providers[].models[].parameters.reasoning_summary` | enum | concise | [DEPRECATED: OLS-3442] Reasoning summary style (auto, concise, detailed). Replaced by `reasoning_config` |
 | `llm_providers[].models[].parameters.verbosity` | enum | low | [DEPRECATED: OLS-3442] General verbosity level (low, medium, high). Replaced by `reasoning_config` |

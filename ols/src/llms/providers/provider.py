@@ -57,6 +57,7 @@ AzureOpenAIParameters = {
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
+    ProviderParameter("reasoning", dict),
 }
 
 OpenAIParameters = {
@@ -75,7 +76,6 @@ OpenAIParameters = {
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
     ProviderParameter("reasoning", dict),
-    ProviderParameter("verbosity", str),
 }
 
 RHOAIVLLMParameters = {
@@ -92,6 +92,7 @@ RHOAIVLLMParameters = {
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
+    ProviderParameter("reasoning", dict),
 }
 
 RHELAIVLLMParameters = {
@@ -108,6 +109,7 @@ RHELAIVLLMParameters = {
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
+    ProviderParameter("reasoning", dict),
 }
 
 WatsonxParameters = {
@@ -139,6 +141,7 @@ GoogleVertexAnthropicParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("top_p", float),
     ProviderParameter("top_k", int),
+    ProviderParameter("reasoning", dict),
 }
 
 GoogleVertexParameters = {
@@ -153,6 +156,7 @@ GoogleVertexParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("top_p", float),
     ProviderParameter("top_k", int),
+    ProviderParameter("reasoning", dict),
 }
 
 BedrockParameters = {
@@ -162,6 +166,7 @@ BedrockParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("max_completion_tokens", int),
+    ProviderParameter("reasoning", dict),
 }
 
 # available parameters for all supported LLM providers

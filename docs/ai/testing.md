@@ -112,16 +112,16 @@ Use `@pytest.mark.parametrize` instead of duplicating test functions:
 
 ```python
 @pytest.mark.parametrize(
-    "model_name,should_have_temp",
+    "model_name",
     [
-        ("gpt-4o", True),
-        ("o1-mini", False),
-        ("gpt-5-mini", False),
+        "gpt-4o",
+        "o1-mini",
+        "gpt-5-mini",
     ],
 )
-def test_model_params(provider_config, model_name, should_have_temp):
+def test_model_params_without_reasoning_config(provider_config, model_name):
     provider = OpenAI(model=model_name, provider_config=provider_config)
-    assert ("temperature" in provider.default_params) == should_have_temp
+    assert "temperature" not in provider.default_params
 ```
 
 ## Test Naming
