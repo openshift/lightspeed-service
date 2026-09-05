@@ -169,38 +169,34 @@ def test_normalize_tool_annotation_variants() -> None:
 
 
 @pytest.mark.parametrize(
-    ("streaming", "approval_type", "expected"),
+    ("approval_type", "expected"),
     [
-        (False, ApprovalType.ALWAYS, False),
-        (True, ApprovalType.NEVER, False),
-        (True, ApprovalType.ALWAYS, True),
-        (True, ApprovalType.TOOL_ANNOTATIONS, True),
-        (True, ApprovalType.ALWAYS.value, True),
+        (ApprovalType.NEVER, False),
+        (ApprovalType.ALWAYS, True),
+        (ApprovalType.TOOL_ANNOTATIONS, True),
+        (ApprovalType.ALWAYS.value, True),
     ],
 )
-def test_is_approval_enabled(
-    streaming: bool, approval_type: ApprovalType | str, expected: bool
-) -> None:
+def test_is_approval_enabled(approval_type: ApprovalType | str, expected: bool) -> None:
     """Test approval enablement policy."""
-    assert is_approval_enabled(streaming, approval_type) is expected
+    assert is_approval_enabled(approval_type) is expected
 
 
 def test_need_validation_policies() -> None:
     """Test per-tool validation policy combinations."""
-    # Non-streaming always disables approval validation.
-    assert need_validation(False, ApprovalType.ALWAYS, None) is False
+    # Disabled approval never validates.
+    assert need_validation(ApprovalType.NEVER, None) is False
 
-    # Streaming + ALWAYS always validates.
-    assert need_validation(True, ApprovalType.ALWAYS, None) is True
+    # ALWAYS always validates.
+    assert need_validation(ApprovalType.ALWAYS, None) is True
 
-    # Streaming + TOOL_ANNOTATIONS defaults to validate when annotation missing.
-    assert need_validation(True, ApprovalType.TOOL_ANNOTATIONS, None) is True
-    assert need_validation(True, ApprovalType.TOOL_ANNOTATIONS, {}) is True
+    # TOOL_ANNOTATIONS defaults to validate when annotation is missing.
+    assert need_validation(ApprovalType.TOOL_ANNOTATIONS, None) is True
+    assert need_validation(ApprovalType.TOOL_ANNOTATIONS, {}) is True
 
     # readOnlyHint=True skips validation.
     assert (
         need_validation(
-            True,
             ApprovalType.TOOL_ANNOTATIONS,
             {"annotations": {"readOnlyHint": True}},
         )
@@ -208,7 +204,6 @@ def test_need_validation_policies() -> None:
     )
     assert (
         need_validation(
-            True,
             ApprovalType.TOOL_ANNOTATIONS,
             {"readOnlyHint": True},
         )
@@ -218,7 +213,6 @@ def test_need_validation_policies() -> None:
     # Non-boolean readOnlyHint does not disable validation.
     assert (
         need_validation(
-            True,
             ApprovalType.TOOL_ANNOTATIONS,
             {"readOnlyHint": "true"},
         )

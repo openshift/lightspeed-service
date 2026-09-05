@@ -204,13 +204,9 @@ def _approval_type_value(approval_type: ApprovalType | str) -> str:
 
 
 def is_approval_enabled(
-    streaming: bool,
     approval_type: ApprovalType | str,
 ) -> bool:
-    """Return true when approval flow is enabled for the request."""
-    # Current policy: approval workflow is supported only for streaming requests.
-    if not streaming:
-        return False
+    """Return true when approval flow is enabled."""
     # Normalize enum/string config value before strategy checks.
     approval_value = _approval_type_value(approval_type)
     # Approval flow is active only for explicit approval strategies.
@@ -221,13 +217,12 @@ def is_approval_enabled(
 
 
 def need_validation(
-    streaming: bool,
     approval_type: ApprovalType | str,
     tool_annotation: dict[str, object] | None = None,
 ) -> bool:
     """Return true when a tool call must go through approval validation."""
-    # Fast exit when approval flow is disabled for this request.
-    if not is_approval_enabled(streaming=streaming, approval_type=approval_type):
+    # Fast exit when approval flow is disabled.
+    if not is_approval_enabled(approval_type=approval_type):
         return False
 
     # Normalize enum/string config value before per-strategy decision.

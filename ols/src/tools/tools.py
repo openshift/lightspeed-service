@@ -406,12 +406,28 @@ async def _evaluate_and_emit_approval_event(
     tool_metadata = tool.metadata if isinstance(tool.metadata, dict) else {}
     tool_annotation = normalize_tool_annotation(tool_metadata)
     need_approval = need_validation(
-        streaming=streaming,
         approval_type=config.tools_approval.approval_type,
         tool_annotation=tool_annotation,
     )
     if not need_approval:
         return
+
+    if not streaming:
+        logger.warning(
+            "Blocking approval-required tool '%s' on non-streaming query path",
+            tool_name,
+        )
+        yield _tool_result_event(
+            content=(
+                f"Tool '{tool_name}' requires approval, but tool approval is only "
+                "supported on /v1/streaming_query. Use /v1/streaming_query to "
+                f"approve this tool call. {DO_NOT_RETRY_REMINDER}"
+            ),
+            status="error",
+            tool_call_id=tool_id,
+            truncated=False,
+        )
+        raise _ApprovalNotGrantedError()
 
     approval_id = str(uuid4())
     if audit_ctx is None:
