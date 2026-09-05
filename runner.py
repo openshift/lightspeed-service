@@ -95,7 +95,8 @@ if __name__ == "__main__":
     logger.info("Config loaded from %s", Path(cfg_file).resolve())
     logger.info("Running on Python version %s", sys.version)
     configure_hugging_face_envs()
-    _ensure_cert_bundle()
+    if not config.dev_config.run_on_localhost:
+        _ensure_cert_bundle()
 
     if use_k8s_auth(config.ols_config):
         logger.info("Initializing k8s auth")
@@ -110,7 +111,9 @@ if __name__ == "__main__":
     config.query_redactor  # pylint: disable=W0104
 
     # Let gRPC pick up the same CA bundle as Python ssl via SSL_CERT_FILE
-    if ssl_cert := os.environ.get("SSL_CERT_FILE"):
+    if not config.dev_config.run_on_localhost and (
+        ssl_cert := os.environ.get("SSL_CERT_FILE")
+    ):
         os.environ.setdefault("GRPC_DEFAULT_SSL_ROOTS_FILE_PATH", ssl_cert)
 
     # Initialize OTEL tracer for audit spans

@@ -45,20 +45,15 @@ class OpenAI(LLMProvider):
             "http_async_client": self._construct_httpx_client(True),
         }
 
-        # gpt-5 and o-series models use the Responses API for reasoning support
         model_config = self.provider_config.models.get(self.model)
         params = getattr(model_config, "parameters", None) or ModelParameters()
+        reasoning_config = params.reasoning_config or {}
 
-        if "gpt-5" in self.model or self.model.startswith("o"):
-            default_parameters["reasoning"] = {
-                "effort": params.reasoning_effort,
-                "summary": params.reasoning_summary,
-            }
-            default_parameters["verbosity"] = params.verbosity
-        else:
-            default_parameters["temperature"] = 0.01
-            default_parameters["top_p"] = 0.95
-            default_parameters["frequency_penalty"] = 1.03
+        if reasoning_config:
+            reasoning_parameters = dict(reasoning_config)
+            if "verbosity" in reasoning_parameters:
+                default_parameters["verbosity"] = reasoning_parameters.pop("verbosity")
+            default_parameters["reasoning"] = reasoning_parameters
         return default_parameters
 
     def load(self) -> BaseChatModel:

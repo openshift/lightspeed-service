@@ -22,22 +22,6 @@ from ols import constants
 from ols.utils import checks, tls
 
 
-class ReasoningLevel(StrEnum):
-    """Allowed levels for reasoning effort and verbosity."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
-
-class ReasoningSummary(StrEnum):
-    """Allowed values for reasoning summaries."""
-
-    AUTO = "auto"
-    CONCISE = "concise"
-    DETAILED = "detailed"
-
-
 def validate_tool_round_cap_fraction_config(v: float) -> float:
     """Validate ``tool_round_cap_fraction`` for ``OLSConfig``."""
     if not (
@@ -58,10 +42,7 @@ class ModelParameters(BaseModel):
 
     max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     tool_budget_ratio: float = constants.DEFAULT_TOOL_BUDGET_RATIO
-
-    reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
-    reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE
-    verbosity: ReasoningLevel = ReasoningLevel.LOW
+    reasoning_config: Optional[dict[str, Any]] = None
     temperature_supported: bool = True
 
     @field_validator("tool_budget_ratio")

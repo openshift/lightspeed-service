@@ -33,12 +33,12 @@ Every provider must satisfy all of the following:
 
 ### Reasoning Model Support
 
-11. Reasoning enablement is an explicit per-model configuration decision, not auto-detected from the model name. When a model's `parameters.reasoning_config` is present (a freeform `dict[str, Any]`), the provider must apply provider-specific reasoning/thinking parameters to the LLM invocation and must not set standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`). When `reasoning_config` is absent, the provider must apply standard sampling defaults. If `reasoning_config` is present alongside deprecated fields (`reasoning_effort`, `reasoning_summary`, `verbosity`), `reasoning_config` takes precedence and the deprecated fields are ignored — this ensures deterministic payload shape during migration.
+11. Reasoning enablement is an explicit per-model configuration decision, not auto-detected from the model name. When a model's `parameters.reasoning_config` is present (a freeform `dict[str, Any]`), the provider must apply provider-specific reasoning/thinking parameters to the LLM invocation and must not set standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`). When `reasoning_config` is absent, the provider must not add reasoning or sampling parameters. If `reasoning_config` is present alongside deprecated fields (`reasoning_effort`, `reasoning_summary`, `verbosity`), `reasoning_config` takes precedence and the deprecated fields are ignored — this ensures deterministic payload shape during migration.
 
-12. Each provider interprets the keys within `reasoning_config` according to its own backend API. Invalid keys produce a clear error from the provider API — OLS does not validate model-reasoning compatibility. The operator is responsible for correct configuration. [PLANNED: OLS-3442]
+12. Each provider interprets the keys within `reasoning_config` according to its own backend API. Invalid keys produce a clear error from the provider API — OLS does not validate model-reasoning compatibility. The operator is responsible for correct configuration.
 
 13. The valid `reasoning_config` keys vary by provider and model generation:
-    - **OpenAI / Azure OpenAI**: `effort` (low/medium/high), `summary` (auto/concise/detailed), `verbosity` (low/medium/high). Passed as the `reasoning` dict and `verbosity` param to `ChatOpenAI` / `AzureChatOpenAI`.
+    - **OpenAI / Azure OpenAI**: `effort` (low/medium/high), `summary` (auto/concise/detailed), `verbosity` (low/medium/high). The provider maps `verbosity` to the adapter's `verbose` parameter and passes the remaining keys as the `reasoning` dict to `ChatOpenAI` / `AzureChatOpenAI`.
     - **Gemini 3 (Vertex)**: `thinking_level` (low/medium/high), `include_thoughts` (bool). Passed as kwargs to `ChatGoogleGenerativeAI`.
     - **Gemini 2.5 (Vertex)**: `thinking_budget` (int token count), `include_thoughts` (bool). `thinking_budget` and `thinking_level` are mutually exclusive at the Gemini API level.
     - **Anthropic (Vertex)**: `type` (enabled/adaptive), `display` (omitted/summarized), optionally `budget_tokens` (int). Passed as the `thinking` dict to `ChatAnthropicVertex`.
@@ -64,7 +64,7 @@ The following sections describe only what differs from the standard contract abo
 
 ### OpenAI (`openai`)
 
-19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. Uses custom certificate store. When `reasoning_config` is present, passes it as the `reasoning` dict and `verbosity` param; skips temperature/top_p/frequency_penalty. [PLANNED: OLS-3442 — replace current model-name detection with reasoning_config]
+19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. Uses custom certificate store. When `reasoning_config` is present, maps `verbosity` to `verbose`, passes the remaining keys as the `reasoning` dict, and skips temperature/top_p/frequency_penalty.
 
 ### Azure OpenAI (`azure_openai`)
 
@@ -161,7 +161,7 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].models[].context_window_size` -- Token context window (default: 128000).
 - `llm_providers[].models[].credentials_path` -- Model-level credential override.
 - `llm_providers[].models[].parameters.max_tokens_for_response` -- Max tokens reserved for the LLM response (default: 4096).
-- `llm_providers[].models[].parameters.reasoning_config` -- [PLANNED: OLS-3442] Freeform dict of provider-specific reasoning/thinking parameters. Keys vary by provider and model generation (see rule 13). When absent, no reasoning params are sent to the provider.
+- `llm_providers[].models[].parameters.reasoning_config` -- Freeform dict of provider-specific reasoning/thinking parameters. Keys vary by provider and model generation (see rule 13). When absent, no reasoning params are sent to the provider.
 - `llm_providers[].models[].parameters.reasoning_effort` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning effort level: `low`, `medium`, or `high` (default: `low`).
 - `llm_providers[].models[].parameters.reasoning_summary` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning summary mode: `auto`, `concise`, or `detailed` (default: `concise`).
 - `llm_providers[].models[].parameters.verbosity` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Verbosity for reasoning models: `low`, `medium`, or `high` (default: `low`).
@@ -208,7 +208,7 @@ The following sections describe only what differs from the standard contract abo
 
 - [OLS-3450] Credential hot-reload: all providers call `get_credentials()` / `get_aws_credentials()` instead of accessing `self.credentials` directly. When `credential_hot_reload` is enabled, credentials are re-read from disk on each call via `read_secret_from_path()`. See design spec `docs/superpowers/specs/2026-09-01-credential-hot-reload-design.md`.
 - ~~[PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider~~ — Implemented in OLS-1895. IAM credentials (access key + secret key) and STS assume-role supported. E2E coverage tracked by [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327).
-- [PLANNED: OLS-3442] Reasoning token support: per-model `reasoning_config` for all providers, vLLM `ChatVLLMReasoning` subclass, remove model-name detection from OpenAI/Azure providers. Replaces `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
+- Reasoning token support: per-model `reasoning_config` for all providers, vLLM `ChatVLLMReasoning` subclass, and provider-specific reasoning configuration. The OpenAI/Azure model-name detection migration is implemented; vLLM reasoning support remains planned. Replaces `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
 - [PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively. Anthropic models are currently available through the Google Vertex Anthropic provider.
 - [PLANNED: OLS-1320] Support short-lived (rotating) tokens for all providers, replacing static API keys with tokens that are refreshed periodically.
 - [PLANNED: OLS-1999] Support IBM WatsonX short-lived token authentication, enabling token-based auth that refreshes automatically rather than using a static API key.

@@ -11,7 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI
 
 from ols import constants
-from ols.app.models.config import AzureOpenAIConfig
+from ols.app.models.config import AzureOpenAIConfig, ModelParameters
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
@@ -78,11 +78,14 @@ class AzureOpenAI(LLMProvider):
             "http_async_client": self._construct_httpx_client(True),
         }
 
-        # gpt-5 and o-series models don't support certain parameters
-        if not ("gpt-5" in self.model or self.model.startswith("o")):
-            default_parameters["temperature"] = 0.01
-            default_parameters["top_p"] = 0.95
-            default_parameters["frequency_penalty"] = 1.03
+        model_config = self.provider_config.models.get(self.model)
+        params = getattr(model_config, "parameters", None) or ModelParameters()
+        reasoning_config = params.reasoning_config or {}
+
+        if reasoning_config:
+            if "verbosity" in reasoning_config:
+                default_parameters["verbosity"] = reasoning_config.pop("verbosity")
+            default_parameters["reasoning"] = reasoning_config
 
         if self.credentials is not None:
             # if credentials with API key is set, use it to call Azure OpenAI endpoints

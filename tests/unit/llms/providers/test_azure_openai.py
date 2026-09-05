@@ -553,31 +553,17 @@ def test_token_is_reused(provider_config):
         assert access_token == token_cache.access_token  # cache is updated
 
 
-@pytest.mark.parametrize(
-    "model_name,should_have_params",
-    [
-        ("gpt-4o", True),
-        ("gpt-5-mini", False),
-        ("o1-mini", False),
-    ],
-)
-def test_gpt5_and_o_series_models_parameter_exclusion(
-    provider_config, model_name, should_have_params
+@pytest.mark.parametrize("model_name", ["gpt-4o", "gpt-5-mini", "o1-mini"])
+def test_models_do_not_get_sampling_defaults_without_reasoning_config(
+    provider_config, model_name
 ):
-    """Test that some parameters are excluded for gpt-5 and o-series models."""
+    """Test that sampling defaults are not inferred from the model name."""
     azure_openai = AzureOpenAI(model=model_name, provider_config=provider_config)
     azure_openai.load()
 
-    if should_have_params:
-        # should have the parameters
-        assert azure_openai.default_params["temperature"] == 0.01
-        assert azure_openai.default_params["top_p"] == 0.95
-        assert azure_openai.default_params["frequency_penalty"] == 1.03
-    else:
-        # gpt-5 and o-series models should not have the parameters
-        assert "temperature" not in azure_openai.default_params
-        assert "top_p" not in azure_openai.default_params
-        assert "frequency_penalty" not in azure_openai.default_params
+    assert "temperature" not in azure_openai.default_params
+    assert "top_p" not in azure_openai.default_params
+    assert "frequency_penalty" not in azure_openai.default_params
 
     # These parameters should always be present
     assert "azure_endpoint" in azure_openai.default_params
