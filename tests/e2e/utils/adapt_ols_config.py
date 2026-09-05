@@ -3,6 +3,7 @@
 Handles multi-provider test scenarios dynamically.
 """
 
+import json
 import os
 import time
 
@@ -19,6 +20,8 @@ disconnected = os.getenv("DISCONNECTED", "")
 
 _OLS_APP_DEPLOYMENT_WAIT_ATTEMPTS = 60
 _OLS_APP_DEPLOYMENT_WAIT_INTERVAL_S = 10
+_MCP_SERVER_READY_ATTEMPTS = 60
+_MCP_SERVER_READY_INTERVAL_S = 5
 
 
 def apply_olsconfig(provider_list: list[str]) -> None:
@@ -233,6 +236,65 @@ def _scale_down_existing_app_server() -> None:
         print(f"No existing app server to scale down (this is OK): {e}")
 
 
+def _openshift_mcp_server_is_enabled() -> bool:
+    """Return whether the reconciled OLSConfig enables the built-in MCP server."""
+    result = cluster_utils.run_oc(
+        [
+            "get",
+            "olsconfig",
+            "cluster",
+            "-o",
+            "jsonpath={.spec.ols.introspectionEnabled}",
+        ]
+    )
+    return result.stdout.strip().lower() != "false"
+
+
+def _openshift_mcp_server_is_available() -> bool:
+    """Return whether the OpenShift MCP server deployment is available."""
+    deployment = json.loads(
+        cluster_utils.run_oc(
+            [
+                "get",
+                "deployment",
+                "openshift-mcp-server",
+                "-n",
+                "openshift-lightspeed",
+                "-o",
+                "json",
+            ]
+        ).stdout
+    )
+    status = deployment.get("status", {})
+    return status.get("observedGeneration") == deployment["metadata"][
+        "generation"
+    ] and status.get("availableReplicas", 0) >= deployment["spec"].get("replicas", 1)
+
+
+def _wait_for_openshift_mcp_server() -> None:
+    """Wait for the built-in MCP server when introspection is enabled."""
+    if not _openshift_mcp_server_is_enabled():
+        return
+
+    if not retry_until_timeout_or_success(
+        _MCP_SERVER_READY_ATTEMPTS,
+        _MCP_SERVER_READY_INTERVAL_S,
+        lambda: cluster_utils.deployment_exists("openshift-mcp-server"),
+        "Waiting for openshift-mcp-server deployment to be created",
+    ):
+        raise RuntimeError("Timed out waiting for openshift-mcp-server Deployment")
+
+    if not retry_until_timeout_or_success(
+        _MCP_SERVER_READY_ATTEMPTS,
+        _MCP_SERVER_READY_INTERVAL_S,
+        _openshift_mcp_server_is_available,
+        "Waiting for openshift-mcp-server deployment to become available",
+    ):
+        raise RuntimeError(
+            "Timed out waiting for openshift-mcp-server Deployment to become available"
+        )
+
+
 def _reconcile_olsconfig_with_operator(provider_list: list[str]) -> None:
     """Scale up operator, apply OLSConfig CR, wait for reconciliation, then scale down."""
     # Scaling operator to 1 replica to allow finalizer to run for olsconfig
@@ -289,6 +351,8 @@ def _reconcile_olsconfig_with_operator(provider_list: list[str]) -> None:
             "Timed out waiting for lightspeed-app-server Deployment after OLSConfig "
             "reconcile (includes image pull); check operator logs and OLSConfig status"
         )
+    _wait_for_openshift_mcp_server()
+
     cluster_utils.run_oc(
         [
             "scale",
