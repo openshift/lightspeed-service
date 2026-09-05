@@ -201,6 +201,14 @@ ATTACHMENT_CONTENT_TYPES = frozenset(
 # Default name of file containing API token
 API_TOKEN_FILENAME = "apitoken"  # noqa: S105  # nosec: B105
 
+# Optional Cloud Pak for Data fields, read from the credentials directory
+# when the Watsonx URL is not IBM Cloud SaaS (OLS-2190, OLS-2849).
+WATSONX_USERNAME_FILENAME = "username"
+WATSONX_VERSION_FILENAME = "version"
+WATSONX_INSTANCE_ID_FILENAME = "instance_id"
+# Default CPD instance_id for watsonx.ai software on OpenShift.
+WATSONX_DEFAULT_CPD_INSTANCE_ID = "openshift"
+
 # Default name of file containing client ID to Azure OpenAI
 AZURE_CLIENT_ID_FILENAME = "client_id"
 

@@ -395,6 +395,9 @@ class ProviderConfig(BaseModel):
     google_vertex_config: Optional[GoogleVertexConfig] = None
     fake_provider_config: Optional[FakeConfig] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
+    watsonx_username: Optional[str] = None
+    watsonx_version: Optional[str] = None
+    watsonx_instance_id: Optional[str] = None
 
     def __init__(
         self,
@@ -421,6 +424,9 @@ class ProviderConfig(BaseModel):
 
         if self.type == constants.PROVIDER_BEDROCK:
             self._read_bedrock_iam_credentials(data)
+
+        if self.type == constants.PROVIDER_WATSONX:
+            self._read_watsonx_cpd_credentials(data)
 
         # OLS-622: Provider-specific configuration parameters in configuration file
         self.project_id = data.get("project_id", None)
@@ -543,6 +549,14 @@ class ProviderConfig(BaseModel):
                     self.check_provider_config(watsonx_config)
                     self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
+                    if self.watsonx_config.credentials_path is not None:
+                        self._read_watsonx_cpd_credentials(
+                            {
+                                constants.CREDENTIALS_PATH_SELECTOR: str(
+                                    self.watsonx_config.credentials_path
+                                )
+                            }
+                        )
                 case constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC:
                     google_vertex_anthropic_config = data.get(
                         "google_vertex_anthropic_config"
@@ -576,6 +590,47 @@ class ProviderConfig(BaseModel):
             constants.API_TOKEN_FILENAME,
             raise_on_error=False,
         )
+
+    def _watsonx_credentials_dir(self, data: Optional[dict]) -> Optional[str]:
+        """Directory that holds watsonx secret files (apitoken, username, version)."""
+        if data is None:
+            return None
+        path = data.get(constants.CREDENTIALS_PATH_SELECTOR)
+        if path is None:
+            return None
+        path = str(path)
+        if os.path.isdir(path):
+            return path
+        parent = os.path.dirname(path)
+        return parent or None
+
+    def _read_watsonx_cpd_credentials(self, data: Optional[dict]) -> None:
+        """Load optional Cloud Pak for Data fields from the credentials directory.
+
+        IBM Cloud watsonx only needs apitoken. On-prem CP4D also needs
+        username and version (OLS-2190 / OLS-2849). Files are optional at
+        config load; ChatWatsonx construction fails later if a CP4D URL is
+        used without them.
+        """
+        directory = self._watsonx_credentials_dir(data)
+        if directory is None:
+            return
+        dir_data = {constants.CREDENTIALS_PATH_SELECTOR: directory}
+
+        def _optional(filename: str) -> Optional[str]:
+            if not os.path.isfile(os.path.join(directory, filename)):
+                return None
+            return checks.read_secret(
+                dir_data,
+                constants.CREDENTIALS_PATH_SELECTOR,
+                filename,
+                directory_name_expected=True,
+                raise_on_error=False,
+            )
+
+        self.watsonx_username = _optional(constants.WATSONX_USERNAME_FILENAME)
+        self.watsonx_version = _optional(constants.WATSONX_VERSION_FILENAME)
+        self.watsonx_instance_id = _optional(constants.WATSONX_INSTANCE_ID_FILENAME)
 
     def _read_bedrock_iam_credentials(self, data: dict) -> None:
         """Read AWS IAM credentials from credentials_path directory for Bedrock."""

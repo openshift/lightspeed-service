@@ -1,13 +1,13 @@
 """Unit tests for Watsonx provider."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 
 from ols.app.models.config import ProviderConfig
 from ols.constants import GenericLLMParameters
-from ols.src.llms.providers.watsonx import Watsonx
+from ols.src.llms.providers.watsonx import Watsonx, is_ibm_cloud_watsonx_url
 from tests.mock_classes.mock_watsonxllm import ChatWatsonx
 
 
@@ -84,7 +84,7 @@ def provider_config_with_specific_params():
             "credentials_path": "tests/config/secret/apitoken",
             "project_id": "01234567-89ab-cdef-0123-456789abcdef",
             "watsonx_config": {
-                "url": "http://watsonx.example.com",
+                "url": "https://eu-de.ml.cloud.ibm.com",
                 "credentials_path": "tests/config/secret2/apitoken",
                 "project_id": "ffffffff-89ab-cdef-0123-456789abcdef",
             },
@@ -102,9 +102,7 @@ def provider_config_with_specific_params():
 def test_basic_interface(provider_config):
     """Test basic interface."""
     with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
-        watsonx = Watsonx(
-            model="uber-model", params={}, provider_config=provider_config
-        )
+        watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
         llm = watsonx.load()
         assert isinstance(llm, ChatWatsonx)
         assert watsonx.default_params
@@ -123,9 +121,7 @@ def test_params_handling(provider_config):
     }
 
     with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
-        watsonx = Watsonx(
-            model="uber-model", params=params, provider_config=provider_config
-        )
+        watsonx = Watsonx(model="uber-model", params=params, provider_config=provider_config)
         llm = watsonx.load()
         assert isinstance(llm, ChatWatsonx)
         assert watsonx.default_params
@@ -180,7 +176,7 @@ def test_params_handling_specific_params(provider_config_with_specific_params):
 
         # parameters taken from provier-specific configuration
         # which takes precedence over regular configuration
-        assert watsonx.url == "http://watsonx.example.com/"
+        assert watsonx.url == "https://eu-de.ml.cloud.ibm.com/"
         assert watsonx.credentials == "secret_key_2"
         assert watsonx.project_id == "ffffffff-89ab-cdef-0123-456789abcdef"
 
@@ -198,9 +194,7 @@ def test_params_handling_none_values(provider_config):
     }
 
     with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
-        watsonx = Watsonx(
-            model="uber-model", params=params, provider_config=provider_config
-        )
+        watsonx = Watsonx(model="uber-model", params=params, provider_config=provider_config)
         llm = watsonx.load()
         assert isinstance(llm, ChatWatsonx)
         assert watsonx.default_params
@@ -225,9 +219,7 @@ def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
     with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
         # provider initialization with empty set of params
-        watsonx = Watsonx(
-            model="uber-model", params={}, provider_config=provider_config
-        )
+        watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
         watsonx.load()
 
         # check default value
@@ -237,9 +229,7 @@ def test_params_replace_default_values_with_none(provider_config):
         # provider initialization where default parameter is overriden
         params = {"decoding_method": None}
 
-        watsonx = Watsonx(
-            model="uber-model", params=params, provider_config=provider_config
-        )
+        watsonx = Watsonx(model="uber-model", params=params, provider_config=provider_config)
         watsonx.load()
 
         # check default value overrided by None
@@ -300,3 +290,94 @@ def test_missing_project_id_check(provider_config):
     watsonx.provider_config.project_id = None
     with pytest.raises(ValueError, match="Project ID must be specified"):
         watsonx.load()
+
+
+def _cpd_secret_dir(tmp_path, *, username=True, version=True, instance_id=False):
+    secret_dir = tmp_path / "watsonx_cpd"
+    secret_dir.mkdir()
+    (secret_dir / "apitoken").write_text("cpd_api_key")
+    if username:
+        (secret_dir / "username").write_text("cpd_user")
+    if version:
+        (secret_dir / "version").write_text("5.1")
+    if instance_id:
+        (secret_dir / "instance_id").write_text("openshift")
+    return secret_dir
+
+
+def _cpd_provider_config(secret_dir):
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://cpd-instance.apps.example.com",
+            "credentials_path": str(secret_dir),
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test_model_url/",
+                    "credentials_path": str(secret_dir / "apitoken"),
+                }
+            ],
+        }
+    )
+
+
+def test_ibm_cloud_does_not_pass_cpd_fields(provider_config):
+    """IBM Cloud watsonx still constructs ChatWatsonx with apikey only."""
+    mock_cls = MagicMock()
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", mock_cls):
+        Watsonx(model="uber-model", params={}, provider_config=provider_config).load()
+    kwargs = mock_cls.call_args.kwargs
+    assert kwargs["apikey"] == "secret_key"
+    assert "username" not in kwargs
+    assert "version" not in kwargs
+    assert "instance_id" not in kwargs
+
+
+def test_cpd_passes_username_version_and_instance_id(tmp_path):
+    """CP4D URL must pass username, version, and instance_id into ChatWatsonx."""
+    provider_config = _cpd_provider_config(_cpd_secret_dir(tmp_path, instance_id=True))
+    mock_cls = MagicMock()
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", mock_cls):
+        Watsonx(model="uber-model", params={}, provider_config=provider_config).load()
+    kwargs = mock_cls.call_args.kwargs
+    assert kwargs["apikey"] == "cpd_api_key"
+    assert kwargs["username"] == "cpd_user"
+    assert kwargs["version"] == "5.1"
+    assert kwargs["instance_id"] == "openshift"
+
+
+def test_cpd_defaults_instance_id_when_missing(tmp_path):
+    """CP4D without instance_id still works; default is openshift."""
+    provider_config = _cpd_provider_config(_cpd_secret_dir(tmp_path))
+    mock_cls = MagicMock()
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", mock_cls):
+        Watsonx(model="uber-model", params={}, provider_config=provider_config).load()
+    assert mock_cls.call_args.kwargs["instance_id"] == "openshift"
+
+
+def test_cpd_missing_username(tmp_path):
+    """CP4D URL without username must fail clearly, not with WATSONX_USERNAME."""
+    provider_config = _cpd_provider_config(_cpd_secret_dir(tmp_path, username=False))
+    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
+    with pytest.raises(ValueError, match="username"):
+        watsonx.load()
+
+
+def test_cpd_missing_version(tmp_path):
+    """CP4D URL without version must fail clearly (OLS-2849)."""
+    provider_config = _cpd_provider_config(_cpd_secret_dir(tmp_path, version=False))
+    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
+    with pytest.raises(ValueError, match="version"):
+        watsonx.load()
+
+
+def test_is_ibm_cloud_watsonx_url():
+    """IBM Cloud SaaS hosts keep the apitoken-only path."""
+    assert is_ibm_cloud_watsonx_url("https://us-south.ml.cloud.ibm.com")
+    assert is_ibm_cloud_watsonx_url("https://eu-de.ml.cloud.ibm.com/ml")
+    assert is_ibm_cloud_watsonx_url("")
+    assert not is_ibm_cloud_watsonx_url("https://cpd-instance.apps.example.com")
+    assert not is_ibm_cloud_watsonx_url("https://watsonx.example.com")
