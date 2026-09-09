@@ -413,40 +413,44 @@ async def _evaluate_and_emit_approval_event(
     if not need_approval:
         return
 
-    approval_id = str(uuid4())
-    if audit_ctx is None:
-        logger.warning(
-            "Tool approval requested without audit context; "
-            "approval will be unresolvable for tool=%s",
-            tool_name,
-        )
-    user_id = audit_ctx.user_id if audit_ctx else ""
-    register_pending_approval(approval_id=approval_id, user_id=user_id)
+    outcome: str
+    if streaming:
+        approval_id = str(uuid4())
+        if audit_ctx is None:
+            logger.warning(
+                "Tool approval requested without audit context; "
+                "approval will be unresolvable for tool=%s",
+                tool_name,
+            )
+        user_id = audit_ctx.user_id if audit_ctx else ""
+        register_pending_approval(approval_id=approval_id, user_id=user_id)
 
-    if audit_ctx:
-        audit_ctx.logger.tool_approval_requested(
-            tool_name=tool_name,
+        if audit_ctx:
+            audit_ctx.logger.tool_approval_requested(
+                tool_name=tool_name,
+                approval_id=approval_id,
+            )
+
+        yield _approval_required_event(
             approval_id=approval_id,
-        )
-
-    yield _approval_required_event(
-        approval_id=approval_id,
-        tool_name=tool_name,
-        tool_description=tool.description,
-        tool_args=tool_args,
-        tool_annotation=tool_annotation,
-    )
-    outcome = await get_approval_decision(
-        approval_id=approval_id,
-        timeout_seconds=config.tools_approval.approval_timeout,
-    )
-
-    if audit_ctx:
-        audit_ctx.logger.tool_approval_decision(
-            approval_id=approval_id,
-            decision=outcome,
             tool_name=tool_name,
+            tool_description=tool.description,
+            tool_args=tool_args,
+            tool_annotation=tool_annotation,
         )
+        outcome = await get_approval_decision(
+            approval_id=approval_id,
+            timeout_seconds=config.tools_approval.approval_timeout,
+        )
+
+        if audit_ctx:
+            audit_ctx.logger.tool_approval_decision(
+                approval_id=approval_id,
+                decision=outcome,
+                tool_name=tool_name,
+            )
+    else:
+        outcome = "rejected"
 
     if outcome != "approved":
         yield _approval_rejection_event(

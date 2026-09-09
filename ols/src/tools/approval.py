@@ -208,9 +208,6 @@ def is_approval_enabled(
     approval_type: ApprovalType | str,
 ) -> bool:
     """Return true when approval flow is enabled for the request."""
-    # Current policy: approval workflow is supported only for streaming requests.
-    if not streaming:
-        return False
     # Normalize enum/string config value before strategy checks.
     approval_value = _approval_type_value(approval_type)
     # Approval flow is active only for explicit approval strategies.
