@@ -281,25 +281,22 @@ def get_pod_containers(pod, namespace: str = "openshift-lightspeed") -> list[str
 
 
 def list_path(pod_name: str, path: str) -> list[str]:
-    """List the contents of a path in a pod."""
+    """List the contents of a path in a pod, returning an empty list when absent."""
     try:
         result = run_oc(
             [
                 "rsh",
                 pod_name,
-                "ls",
+                "sh",
+                "-c",
+                'if [ -e "$1" ] || [ -L "$1" ]; then ls "$1"; fi',
+                "--",
                 path,
             ]
         )
         # files are returned as 'file1\nfile2\n'
         return [f for f in result.stdout.split("\n") if f]
     except subprocess.CalledProcessError as e:
-        print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
-        if e.returncode == 2 and (
-            "No such file or directory" in e.stdout
-            or "No such file or directory" in e.stderr
-        ):
-            return []
         raise Exception("Error listing pod path") from e
 
 

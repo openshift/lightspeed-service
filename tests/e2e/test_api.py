@@ -165,7 +165,7 @@ def test_transcripts_storing_cluster():
     transcripts = cluster_utils.list_path(pod_name, transcripts_path)
     if transcripts:
         cluster_utils.remove_dir(pod_name, transcripts_path)
-        assert cluster_utils.list_path(pod_name, transcripts_path) is None
+        assert cluster_utils.list_path(pod_name, transcripts_path) == []
 
     response = pytest.client.post(
         "/v1/query",
