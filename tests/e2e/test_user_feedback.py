@@ -42,7 +42,7 @@ def test_feedback_storing_cluster():
     feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
     if feedbacks:
         cluster_utils.remove_dir(pod_name, feedbacks_path)
-        assert cluster_utils.list_path(pod_name, feedbacks_path) is None
+        assert cluster_utils.list_path(pod_name, feedbacks_path) == []
 
     response = pytest.client.post(
         "/v1/feedback",
