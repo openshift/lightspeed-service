@@ -8,7 +8,7 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 
 | Path | Purpose |
 |---|---|
-| `app/main.py` | Creates the `FastAPI` instance, registers middleware (metrics counter, security headers, request/response logging), calls `routers.include_routers(app)`, optionally mounts Gradio dev UI, and stores config status. The module-level `app` object is the ASGI entry point referenced by Uvicorn as `ols.app.main:app`. |
+| `app/main.py` | Creates the `FastAPI` instance, registers middleware (metrics counter, security headers, request/response logging, and the outermost `_RequestBodyLimitMiddleware`), calls `routers.include_routers(app)`, optionally mounts Gradio dev UI, clears offloaded tool-output storage via `cleanup_offload_storage()`, and stores config status. The module-level `app` object is the ASGI entry point referenced by Uvicorn as `ols.app.main:app`. |
 | `app/routers.py` | Single function `include_routers(app)` that attaches all endpoint routers. v1-prefixed: `ols`, `streaming_ols`, `mcp_client_headers`, `mcp_apps`, `tool_approvals`, `feedback`, `conversations`. Root-level: `health`, `metrics`, `authorized`. |
 | `app/endpoints/ols.py` | `POST /v1/query` -- synchronous query endpoint. Orchestrates the full request lifecycle: auth, redaction, attachment processing, provider/model validation, quota check, `DocsSummarizer` invocation, conversation history storage, transcript storage, and quota consumption. |
 | `app/endpoints/streaming_ols.py` | `POST /v1/streaming_query` -- streaming variant of the query endpoint. Uses the same `DocsSummarizer` but yields `StreamedChunk` objects via SSE. |
@@ -19,7 +19,7 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `app/endpoints/mcp_client_headers.py` | MCP client header management endpoint. |
 | `app/endpoints/tool_approvals.py` | Human-in-the-loop tool approval endpoint. |
 | `app/endpoints/authorized.py` | Authorization check endpoint. |
-| `app/metrics/metrics.py` | Prometheus metric definitions: `ols_rest_api_calls_total`, `ols_response_duration_seconds`, `ols_llm_calls_total`, `ols_llm_calls_failures_total`, `ols_llm_token_sent_total`, `ols_llm_token_received_total`, `ols_provider_model_configuration`. Exposes `GET /metrics` with auth. |
+| `app/metrics/metrics.py` | Prometheus metric definitions: `ols_rest_api_calls_total`, `ols_response_duration_seconds`, `ols_llm_calls_total`, `ols_llm_calls_failures_total`, `ols_llm_token_sent_total`, `ols_llm_token_received_total`, `ols_llm_reasoning_token_total`, `ols_provider_model_configuration`, plus the OTel GenAI histograms `gen_ai_client_token_usage`, `gen_ai_client_operation_duration_seconds`, and `gen_ai_execute_tool_duration_seconds` (see `what/observability.md`). Exposes `GET /metrics` with auth. |
 | `app/metrics/token_counter.py` | `GenericTokenCounter` (LangChain callback) and `TokenMetricUpdater` (context manager) for tracking per-request token usage and updating Prometheus counters. |
 | `app/models/config.py` | All Pydantic configuration models: `Config`, `OLSConfig`, `LLMProviders`, `ProviderConfig`, `ModelConfig`, `DevConfig`, `ConversationCacheConfig`, `QuotaHandlersConfig`, `MCPServers`, `MCPServerConfig`, `ToolsApprovalConfig`, etc. |
 | `app/models/models.py` | Request/response Pydantic models: `LLMRequest`, `LLMResponse`, `CacheEntry`, `SummarizerResponse`, `StreamedChunk`, `RagChunk`, `Attachment`, `TokenCounter`, health response models, etc. |
@@ -46,8 +46,10 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `src/llms/providers/watsonx.py` | IBM WatsonX provider implementation. |
 | `src/llms/providers/rhoai_vllm.py` | Red Hat OpenShift AI vLLM provider. |
 | `src/llms/providers/rhelai_vllm.py` | RHEL AI vLLM provider. |
-| `src/llms/providers/google_vertex.py` | Google Vertex AI (Gemini and Anthropic Claude on Vertex). |
+| `src/llms/providers/google_vertex.py` | Google Vertex AI. Registers both `google_vertex` (Gemini via `ChatGoogleGenerativeAI`) and `google_vertex_anthropic` (Claude via `ChatAnthropicVertex`). |
+| `src/llms/providers/bedrock.py` | AWS Bedrock provider (Mantle gateway). Routes to `ChatBedrockConverse` (anthropic.*) or `ChatOpenAI` (openai.* / others) by model prefix; supports bearer-token and IAM/STS auth. |
 | `src/llms/providers/fake_provider.py` | Fake provider for testing and load testing. |
+| `src/llms/providers/utils.py` | Shared provider helpers (e.g. `VERTEX_AI_OAUTH_SCOPES` and credential parsing utilities). |
 | `src/prompts/prompts.py` | System prompt templates (`QUERY_SYSTEM_INSTRUCTION`, `TROUBLESHOOTING_SYSTEM_INSTRUCTION`). |
 | `src/prompts/prompt_generator.py` | `GeneratePrompt` class that assembles `ChatPromptTemplate` from query, RAG context, history, system prompt, tool-calling flag, mode, cluster version, and optional skill content. |
 | `src/query_helpers/query_helper.py` | `QueryHelper` base class for all query processing. Resolves provider/model defaults, selects system prompt by mode (`ask` or `troubleshooting`), and stores the LLM loader callable. |
@@ -63,9 +65,12 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `src/quota/quota_exceed_error.py` | `QuotaExceedError` exception. |
 | `src/quota/token_usage_history.py` | `TokenUsageHistory` -- records per-user token consumption to PostgreSQL for analytics. |
 | `src/rag/hybrid_rag.py` | Hybrid RAG retrieval logic. |
+| `src/rag/stop_words.py` | `ENGLISH_STOP_WORDS` -- inlined English stop-word set for hybrid RAG tokenization and Solr query normalization (avoids an NLTK dependency). |
 | `src/rag_index/index_loader.py` | `IndexLoader` -- loads LlamaIndex vector indexes from configured reference content paths. Provides `get_retriever()` and `embed_model` for reuse. Excluded from MyPy type checking. |
+| `src/rag_index/solr_support.py` | Solr hybrid-search client (`POST /hybrid-search`, lexical-primary edismax with KNN rerank). Dedupes hits by parent and truncates to a configured max. |
 | `src/skills/skills_rag.py` | `SkillsRAG` -- hybrid BM25 + vector retrieval for skill selection. `load_skills_from_directory()` parses skill files with YAML frontmatter. |
 | `src/tools/tools.py` | `execute_tool_calls_stream()` -- runs resolved MCP tool calls with token budget enforcement and approval flow. `enforce_tool_token_budget()` truncates tool outputs that exceed remaining budget. |
+| `src/tools/offloaded_content.py` | Offloads oversized tool outputs to disk (search + read retrieval) instead of inlining them into the prompt. `cleanup_offload_storage()` clears the offload directory at startup (called from `app/main.py`). Storage path from `ols_config.offload_storage_path`. |
 | `src/tools/approval.py` | `PendingApprovalStoreBase` and `create_pending_approval_store()` -- human-in-the-loop tool approval infrastructure. |
 | `src/tools/tools_rag/hybrid_tools_rag.py` | `ToolsRAG` -- hybrid BM25 + vector retrieval (using qdrant-client and rank-bm25) for filtering MCP tools by query relevance before sending to the LLM. |
 | `src/ui/gradio_ui.py` | `GradioUI` -- optional development UI that mounts a Gradio interface onto the FastAPI app. |
@@ -86,8 +91,10 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `utils/environments.py` | `configure_gradio_ui_envs()` and `configure_hugging_face_envs()` -- sets environment variables before other imports. |
 | `utils/checks.py` | `InvalidConfigurationError` and validation helpers. |
 | `utils/errors_parsing.py` | `parse_generic_llm_error()` and `handle_known_errors()` -- translates LLM provider exceptions into HTTP status codes and user-facing messages. |
-| `utils/postgres.py` | PostgreSQL connection utilities. |
+| `utils/postgres.py` | PostgreSQL connection utilities. `PostgresBase`, the `@connection` auto-reconnect decorator, and the `connected()` liveness check shared by Postgres-backed components. |
 | `utils/pyroscope.py` | Optional Pyroscope profiling integration. |
+| `utils/otel.py` | OpenTelemetry tracing setup for audit spans (TracerProvider, OTLP + stdout/console exporters). Implements the transport described in `what/audit-logging.md`. |
+| `utils/audit_logger.py` | Structured audit logger emitting OTel span events (`gen_ai.choice`, `tool.result`) for compliance. Implements `what/audit-logging.md`. |
 
 ### `ols/runners/` -- Process entry points
 
@@ -238,9 +245,10 @@ All endpoints use `APIRouter` instances with tag grouping. The `include_routers(
 
 ### Middleware stack (`app/main.py`)
 
-Two middleware functions registered via `@app.middleware("")`:
-- `log_requests_responses` -- debug-level request/response body and header logging (inner, runs first).
-- `rest_api_counter` -- Prometheus histogram for response duration, counter for API calls, and security header injection on non-health endpoints (outer, runs second).
+Two middleware functions registered via `@app.middleware("")`, plus one class-based ASGI middleware added via `app.add_middleware()`:
+- `log_requests_responses` -- debug-level request/response body and header logging (innermost, runs first).
+- `rest_api_counter` -- Prometheus histogram for response duration, counter for API calls, and security header injection on non-health endpoints.
+- `_RequestBodyLimitMiddleware` -- rejects requests whose body exceeds `constants.MAX_REQUEST_BODY_SIZE` (2 MiB) with HTTP 413. Because Starlette applies middleware outermost-first in reverse registration order, this is registered *after* the two `@app.middleware` functions so it becomes the outermost layer and can reject an oversized body before the debug logger buffers it.
 
 ## Integration Points
 
@@ -310,7 +318,7 @@ In `app/endpoints/ols.py` and `app/metrics/metrics.py`, `auth_dependency = get_a
 
 ### Tool calling uses a multi-round streaming loop
 
-`DocsSummarizer.iterate_with_tools()` implements the agentic tool-calling loop. It streams LLM chunks, detects tool call requests, executes them via MCP, appends results to the message history, and re-invokes the LLM -- up to `max_rounds` iterations. The final round binds tools with `tool_choice="none"` to force a text-only response. Tool outputs are truncated by `enforce_tool_token_budget()` when they exceed the remaining token budget.
+`LLMExecutionAgent` implements the agentic tool-calling loop (`_iterate_with_tools()`, `_invoke_llm()`, `_collect_round_llm_chunks()`, `_process_tool_calls_for_round()`); `DocsSummarizer.generate_response()` delegates to `self._llm_agent.execute()`. It streams LLM chunks, detects tool call requests, executes them via MCP, appends results to the message history, and re-invokes the LLM -- up to `max_rounds` iterations. The final round binds tools with `tool_choice="none"` to force a text-only response. Tool outputs are truncated by `enforce_tool_token_budget()` when they exceed the remaining token budget.
 
 ### Entry point and build system
 

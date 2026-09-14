@@ -18,7 +18,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [query-processing.md](what/query-processing.md) | 8-stage pipeline from user query to LLM response: redaction, RAG, history, skills, tools, storage |
 | [agent-modes.md](what/agent-modes.md) | ASK vs TROUBLESHOOTING: iteration limits, system prompts, behavioral differences |
 | [conversation-history.md](what/conversation-history.md) | Storage backends, CRUD operations, compression, user isolation, concurrency |
-| [llm-providers.md](what/llm-providers.md) | Provider contract, 8 providers with deviations, parameter system, reasoning models |
+| [llm-providers.md](what/llm-providers.md) | Provider contract, 9 provider types with deviations, parameter system, reasoning models |
 | [rag.md](what/rag.md) | Document retrieval via FAISS, multi-index, BYOK, hybrid RAG (tool/skill filtering only) |
 | [auth.md](what/auth.md) | Three auth modules (k8s, noop, noop-with-token), permission scopes, user identity |
 | [tools.md](what/tools.md) | MCP tool integration: gathering, execution, token budget, filtering, approval workflow |
