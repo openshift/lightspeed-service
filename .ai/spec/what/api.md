@@ -43,7 +43,7 @@ The REST API is the only external interface to the OpenShift LightSpeed service.
 ### Infrastructure Endpoints
 
 22. `POST /authorized` validates the caller's credentials and authorization. The authentication check itself is the purpose of this endpoint. No `/v1` prefix.
-23. `GET /readiness` checks three subsystems: RAG index loaded (if configured), default LLM reachable, and conversation cache ready (`Cache.ready()`; for PostgreSQL this polls the connection directly). All three must pass. The LLM readiness result is cached for a configurable duration. Returns 503 with cause if any subsystem fails. [PLANNED: OLS-3221] Cache health will instead be read from a background health-check loop's last-known status (see `what/conversation-history.md`, Rules 23–24) rather than a direct database query, making the probe non-blocking and immune to deadlocks in the cache operation path.
+23. `GET /readiness` checks three subsystems: RAG index loaded (if configured), default LLM reachable, and conversation cache ready (`Cache.ready()`; for PostgreSQL this polls the connection directly). All three must pass. The LLM readiness result is cached for a configurable duration. Returns 503 with cause if any subsystem fails. [PLANNED: OLS-3221] Cache health will instead be read from a background health-check loop's last-known status (see `what/conversation-history.md`, Rules 24–25) rather than a direct database query, making the probe non-blocking and immune to deadlocks in the cache operation path.
 24. `GET /liveness` returns `{"alive": true}` whenever the process is running. [PLANNED: OLS-3221] When the PostgreSQL cache backend is configured, the probe will read the database health status from the background health-check loop and, after N consecutive unhealthy readings (configurable via `liveness_db_failure_threshold`, default 3), return HTTP 503 with `{"alive": false, "reason": "database unreachable"}`. With the in-memory cache it always returns `{"alive": true}`. This keeps the probe non-blocking and only triggers a pod restart after sustained failure the background loop could not self-heal.
 25. `GET /metrics` returns Prometheus metrics in exposition format. Requires `ols-metrics-access` scope. No version prefix.
 
@@ -785,4 +785,4 @@ The service applies the following cross-cutting behaviors to all requests:
 - [PLANNED: OLS-2682] Remove `/v1/query` endpoint. The streaming endpoint becomes the sole query interface.
 - [PLANNED: OLS-2680] Add OpenAI `/responses` API compatibility layer.
 - [PLANNED: OLS-2684] Remove client MCP headers (`mcp_headers` field).
-- [PLANNED: OLS-3221] PostgreSQL resilience — liveness probe DB check via background health-check loop status, readiness probe reads loop status instead of direct DB query. See Rules 23–24.
+- [PLANNED: OLS-3221] PostgreSQL resilience — liveness probe DB check via background health-check loop status, readiness probe reads loop status instead of direct DB query. See Rules 24–25.

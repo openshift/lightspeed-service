@@ -219,13 +219,18 @@ objects. Deserialization reads the `bytea` column as `memoryview`, converts to
   `pg_advisory_xact_lock` provides row-level write serialization across
   processes/pods.
 - **Connection decorator**: The `@connection` decorator on `PostgresBase`
-  checks connection liveness and reconnects transparently before each public
-  method call: on a broken/closed connection it re-establishes via `connect()`
-  and retries the operation. [PLANNED: OLS-3221] Distinguish connection errors
+  performs a pre-check before each public method call: if the connection is
+  closed or broken it re-establishes via `connect()`, then invokes the method
+  once. It does not retry on mid-operation failure — if the connection drops
+  during execution the resulting exception propagates to the caller. This is
+  safe for reads and idempotent operations; for non-idempotent writes
+  (`insert_or_append`) the caller must not add automatic retry without an
+  idempotency key (see `what/conversation-history.md` Rule 20).
+  [PLANNED: OLS-3221] Distinguish connection errors
   (broken TCP, closed connection) from operational errors (SQL failures on a
   live connection) — wrapping the latter in `CacheError` and propagating
   immediately — and, on a connection error, immediately mark the shared health
-  status as unhealthy (dual-feed model, see `what/conversation-history.md` Rule 24).
+  status as unhealthy (dual-feed model, see `what/conversation-history.md` Rule 25).
 - **Operation timeouts** [PLANNED: OLS-3221]: All PostgreSQL operations use
   `statement_timeout` to prevent indefinite blocking on degraded databases. The
   `_tx_lock` mutex uses a bounded acquisition timeout to prevent application-level
