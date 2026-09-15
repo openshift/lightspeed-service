@@ -33,6 +33,8 @@ llama-index-vector-stores-faiss==0.7.0 \
     --hash=sha256:6531eb0de3fbda882a16e442beeeed590209c5fd7a09f2cf235977d94e97fd63
 lomond==0.3.3 \
     --hash=sha256:427936596b144b4ec387ead99aac1560b77c8a78107d3d49415d3abbe79acbd3
+nltk==3.10.3 \
+    --hash=sha256:bb9327a461c3811c2fa4900e03840401f2126adfb30c0072827c433bd2444ea4
 numexpr==2.14.2 \
     --hash=sha256:e7144e83ea9e581f2273e0304f15836736c4e470e2bd2e378ce617662a1ca278
 python-frontmatter==1.2.0 \
