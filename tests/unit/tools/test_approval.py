@@ -171,7 +171,7 @@ def test_normalize_tool_annotation_variants() -> None:
 @pytest.mark.parametrize(
     ("streaming", "approval_type", "expected"),
     [
-        (False, ApprovalType.ALWAYS, False),
+        (False, ApprovalType.ALWAYS, True),
         (True, ApprovalType.NEVER, False),
         (True, ApprovalType.ALWAYS, True),
         (True, ApprovalType.TOOL_ANNOTATIONS, True),
@@ -187,8 +187,8 @@ def test_is_approval_enabled(
 
 def test_need_validation_policies() -> None:
     """Test per-tool validation policy combinations."""
-    # Non-streaming always disables approval validation.
-    assert need_validation(False, ApprovalType.ALWAYS, None) is False
+    # Non-streaming still validates when approval is enabled.
+    assert need_validation(False, ApprovalType.ALWAYS, None) is True
 
     # Streaming + ALWAYS always validates.
     assert need_validation(True, ApprovalType.ALWAYS, None) is True
