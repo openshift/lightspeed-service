@@ -81,6 +81,10 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean). When `capture_content` is `true`, the event additionally carries an `output` attribute with the tool's text output. When `capture_content` is `false`, the `tool.result` event is still emitted with `success` but the `output` attribute is omitted.
 
+14c. [PLANNED: OLS-3928] Inspected tool-result content is an exception to rule 14b. A `tool.result` event can retain controlled metadata, but it MUST omit `output` regardless of `capture_content`.
+
+14d. [PLANNED: OLS-3928] The service MUST NOT emit a `tool.result` event for a rejected result. Inspection spans and logs MUST omit the result content.
+
 ### Content Capture Policy
 
 14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) contain LLM/tool output that may include PII or sensitive data. Recording these attributes MUST be opt-in, controlled by an `audit.capture_content` configuration flag (default: `false`). When `capture_content` is `false`, events are still emitted but content attributes are omitted. This aligns with the OTel GenAI semantic convention requirement level of Opt-In for content attributes.

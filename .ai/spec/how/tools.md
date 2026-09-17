@@ -9,7 +9,8 @@ execution with retry/backoff, and token-budget-aware result truncation.
 | File | Key symbols | Responsibility |
 |---|---|---|
 | `ols/utils/mcp_utils.py` | `build_mcp_config`, `gather_mcp_tools`, `get_mcp_tools`, `resolve_header_value`, `_normalize_tool_schema` | MCP client lifecycle: builds per-server transport configs with placeholder resolution, connects to servers via `MultiServerMCPClient`, gathers tools with fault isolation (one failing server does not block others), deduplicates by name (first-seen wins), and normalizes schemas for OpenAI compatibility. Optionally routes through ToolsRAG for query-based filtering. |
-| `ols/src/tools/tools.py` | `execute_tool_calls_stream`, `enforce_tool_token_budget`, `execute_tool_call`, `_execute_with_retries`, `_extract_text_from_tool_output` | Tool execution engine: runs tool calls in parallel via `aiostream.merge`, applies retry/backoff for transient errors, extracts text from both string and content-block outputs, enforces per-tool and aggregate token budgets with a 3-tier truncation strategy. Emits typed streaming events (`ApprovalRequiredEvent`, `ToolResultEvent`). |
+| `ols/src/tools/tools.py` | `execute_tool_calls_stream`, `enforce_tool_token_budget`, `execute_tool_call`, `_execute_with_retries`, `_extract_text_from_tool_output` | Tool execution engine: runs tool calls in parallel via `aiostream.merge`, applies retry/backoff for transient errors, extracts text from both string and content-block outputs, and enforces tool-result budgets. |
+| [PLANNED: OLS-3928] `ols/src/tools/result_inspection.py` | Result inspector, chunker, strict decision model, safety exception | Inspects effective tool results with separate calls to the active model. Owns chunking, retries, response validation, and controlled inspection spans. |
 | `ols/src/tools/approval.py` | `need_validation`, `get_approval_decision`, `set_approval_decision`, `register_pending_approval`, `InMemoryPendingApprovalStore` | Approval state machine: determines whether a tool call requires user approval (based on config strategy and tool annotations), registers pending approvals in an in-memory store backed by `asyncio.Event`, waits for decisions with configurable timeout, and cleans up state on completion. |
 | `ols/src/tools/tools_rag/hybrid_tools_rag.py` | `ToolsRAG`, `populate_tools`, `retrieve_hybrid`, `remove_tools` | Hybrid RAG for tool filtering: indexes tool name+description into Qdrant (in-memory) with dense embeddings and BM25 sparse vectors, retrieves relevant tools via reciprocal rank fusion (RRF) with configurable alpha weighting, grouped by server. Supports default servers (always included) and per-request client servers. |
 | `ols/app/endpoints/tool_approvals.py` | `submit_tool_approval_decision` | REST endpoint (`POST /tool-approvals/decision`) for receiving user approval/rejection decisions. Delegates to `set_approval_decision` and returns 404/409 for missing or already-resolved approvals. |
@@ -102,6 +103,12 @@ _process_tool_calls_for_round
          If longest message can absorb excess (>= 2x excess): shrink only that one
          Otherwise: scale all messages proportionally (ratio = budget/total)
          Cut at last newline, append truncation warning
+  -> [PLANNED: OLS-3928] Inspect the complete concurrent result batch
+       For each result or error: split into token-aware chunks with 256-token overlap
+       For each chunk: call the active model without tools or request history
+       Validate the strict decision; retry failures after 0.5s and 1s
+       All chunks benign: continue
+       Any malicious or unclassifiable chunk: raise the safety exception
   -> Yield tool_result streaming events, charge token budget
   -> Append ToolMessages to conversation, loop back to LLM
 ```
@@ -168,11 +175,11 @@ arbitrarily large raw tool outputs before they even reach the budget enforcer.
 
 | Boundary | How it connects |
 |---|---|
-| **DocsSummarizer** | Calls `get_mcp_tools` during init to discover tools, binds them to LLM. Calls `execute_tool_calls_stream` and `enforce_tool_token_budget` during the tool-call loop. Emits `tool_call`, `approval_required`, and `tool_result` streaming events. |
+| **DocsSummarizer** | Calls `get_mcp_tools` during init and binds tools to the LLM. It executes tools, enforces the result budget, and [PLANNED: OLS-3928] inspects the complete result batch before it emits any `tool_result` event. |
 | **Tool Approvals Endpoint** | `POST /tool-approvals/decision` receives `{approval_id, approved}` from the client. Calls `set_approval_decision` which sets the `asyncio.Event`, unblocking the waiter in `get_approval_decision`. |
 | **TokenBudgetTracker** | DocsSummarizer charges tool results via `tracker.charge(TokenCategory.TOOL_RESULT, count)`. The tools_token_budget passed to execution is derived from the tracker's remaining budget. |
 | **Streaming Protocol** | Three event types flow to the client: `StreamChunkType.TOOL_CALL` (before execution), `StreamChunkType.APPROVAL_REQUIRED` (when gated), `StreamChunkType.TOOL_RESULT` (after execution). Each carries structured data including tool name, args, output, truncation status, and optional structured_content from MCP artifacts. |
-| **Config** | `MCPServers` / `MCPServerConfig` models define servers. `ToolsApprovalConfig` sets approval strategy and timeout. `ToolsRAGConfig` controls filtering parameters (alpha, top_k, threshold). All live under `OLSConfig`. |
+| **Config** | `MCPServers` / `MCPServerConfig` models define servers. `ToolsApprovalConfig` sets approval strategy and timeout. `ToolsRAGConfig` controls filtering parameters. [PLANNED: OLS-3928] `GuardrailsConfig` controls tool-result inspection. All live under `OLSConfig`. |
 
 ## Implementation Notes
 
@@ -244,3 +251,15 @@ Each tool-call round (LLM streaming + tool execution) is wrapped in
 `asyncio.timeout(TOOL_CALL_ROUND_TIMEOUT)` (300 seconds) in the DocsSummarizer
 loop. This is separate from the per-tool retry timeouts and the approval
 decision timeout.
+
+### Tool-Result Inspection [PLANNED: OLS-3928]
+
+The result inspector runs after budget enforcement. Thus, it inspects the exact content that can enter model context.
+
+The inspector receives the active model interface from the query flow. It creates a new call without bound tools or main-request messages.
+
+The inspector processes all messages in one concurrent round before `DocsSummarizer` emits any result event. One failed message rejects the complete round.
+
+Classifier calls use the same request quota subject. Each reported classifier input and output token count contributes to request usage.
+
+The safety exception carries a controlled reason only. It does not carry rejected content into logs, SSE metadata, or stored history.

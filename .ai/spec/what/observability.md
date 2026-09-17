@@ -52,6 +52,26 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 13. Token counts must also be available per-request for quota enforcement and optionally recorded in the usage history database.
 
+### Tool-Result Inspection Telemetry
+
+13a. [PLANNED: OLS-3928] Each tool-result inspection must create a `tool_result.inspection` OpenTelemetry span.
+
+13b. The span can contain only controlled inspection fields, tool name, provider name, and model name.
+
+13c. Controlled inspection fields include runtime, result type, chunk count, chunk index, attempt count, outcome, category, and enabled state.
+
+13d. Inspection outcome must be `benign`, `malicious`, or `classifier_error`.
+
+13e. A malicious decision or exhausted classifier failure must set the inspection span and parent request span to error.
+
+13f. Logs must record configuration state, malicious decisions, classifier failures, and inspection-based termination.
+
+13g. Successful chunks must not produce one log per chunk.
+
+13h. Inspection logs and spans must not contain tool arguments, results, errors, rejected excerpts, classifier prompts, or free-form classifier output.
+
+13i. OLS-3928 must not add Prometheus metrics. Existing generic LLM metrics can include classifier calls through the normal LLM instrumentation.
+
 ### Transcript Recording
 
 14. The service must optionally record conversation transcripts as JSON files in a configurable directory.
@@ -117,3 +137,4 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 - [PLANNED: OLS-1805] Transcripts should be enhanced to include per-request token usage (input, output, reasoning token counts).
 - [PLANNED] Streaming metrics `gen_ai.client.operation.time_to_first_chunk` and `gen_ai.client.operation.time_per_output_chunk` (Histogram, unit `s`) for OLS when streaming is the default path.
 - [PLANNED] MCP metrics `mcp.client.operation.duration` and `mcp.client.session.duration` (Histogram, unit `s`) pending sufficient usage data.
+- [PLANNED: OLS-3928] Add tool-result inspection spans and controlled logs without new Prometheus metrics.

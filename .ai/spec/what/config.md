@@ -39,6 +39,12 @@ The configuration system loads, validates, and manages the single YAML file that
 18. When `history_compression_enabled` is not specified, it must default to `true`.
 19. Proxy URL and no-proxy hosts must fall back to the `https_proxy`/`HTTPS_PROXY` and `no_proxy` environment variables, respectively, when not specified in config.
 
+19a. [PLANNED: OLS-3928] `ols_config.guardrails.tool_result_inspection.enabled` must default to `true` when omitted.
+
+19b. When this value is `false`, the service must skip tool-result classifier calls and inspection-based termination.
+
+19c. A configuration reload must apply the new value to later tool results without resetting stateful subsystems.
+
 ## Configuration Surface
 
 ### Top-Level Sections
@@ -74,6 +80,7 @@ The YAML file has four top-level sections:
 | `ols_config.history_compression_enabled` | bool | true | Toggle conversation history compression | -- |
 | `ols_config.max_iterations` | int | mode-dependent | Tool-calling loop iteration cap (ask=5, troubleshooting=15) | -- |
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Max fraction of remaining tool token budget usable per round (0.3--0.8) | -- |
+| `ols_config.guardrails.tool_result_inspection.enabled` | bool | true | Enable LLM inspection of model-visible tool results and errors | see what/tools.md |
 | `ols_config.credential_hot_reload` | bool | false | When true, LLM credentials are re-read from disk on each request (OLS-3450) |
 | `ols_config.max_workers` | int | 1 | Number of concurrent workers | -- |
 | `ols_config.expire_llm_is_ready_persistent_state` | int | -1 | Expiration for LLM readiness cache (-1 = never) | -- |
@@ -162,3 +169,4 @@ Each provider entry under `llm_providers` supports:
 
 - [OLS-3450] Credential hot-reload: `ols_config.credential_hot_reload` field. Propagated to `ProviderConfig` to enable per-request credential re-reads via `get_credentials()`. See design spec `docs/superpowers/specs/2026-09-01-credential-hot-reload-design.md`.
 - [PLANNED: OLS-2874] Enable Skills Configuration in OLSConfig CRD -- expose `ols_config.skills` through the operator's custom resource definition, allowing skills to be configured declaratively via the OLSConfig CR.
+- [PLANNED: OLS-3928] Add `ols_config.guardrails.tool_result_inspection.enabled`, with a default value of `true`.

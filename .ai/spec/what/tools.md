@@ -105,6 +105,58 @@ solely on general knowledge.
     the CPU cost of tokenizing arbitrarily large responses. Strings are cut
     at the last newline boundary before the character limit.
 
+### Tool-Result Prompt-Injection Inspection
+
+18a. [PLANNED: OLS-3928] When inspection is enabled, the service must inspect every model-visible tool result and error.
+
+18b. The service must inspect the effective result after the existing tool-budget limit applies.
+
+18c. The service must inspect results before it emits `tool_result`, reinjects content, or stores the conversation turn.
+
+18d. The service must not inspect tool calls. Existing schema, approval, authorization, RBAC, and network controls remain active.
+
+18e. A separate classifier call must use the active provider, model, endpoint, and credentials.
+
+18f. The classifier call must contain no tools, conversation history, RAG content, attachments, skills, or main-request system prompt.
+
+18g. The classifier must return only `injectionDetected` and `category` in a strict structured response. Additional fields, missing fields, and free-form reasoning are invalid.
+
+18h. The allowed categories are `none`, `instruction_override`, `role_change`, `prompt_extraction`, `data_exfiltration`, `tool_manipulation`, and `unknown`. A benign response must use `none`. A malicious response must use another category.
+
+18i. A technical or response-validation failure permits three total attempts. Delays before attempts two and three are 0.5 seconds and 1 second. Failure of the third attempt is unclassifiable and fails closed.
+
+18j. A valid malicious decision is final and must not receive another attempt.
+
+18k. A long result must use sequential token-aware chunks with a 256-token overlap. The service must impose no explicit chunk-count limit.
+
+18k.1. The service must not truncate model-visible content only to reduce inspection work. Inspection remains subject to the existing request and tool-round deadlines.
+
+18l. Every result from one concurrent tool round must pass before the service emits or reinjects any result from that round.
+
+18m. One malicious or unclassifiable chunk must terminate the complete request. The service must discard all results from that round.
+
+18n. The failure response must contain only this text:
+
+```text
+Lightspeed stopped the operation because a tool result failed the safety inspection.
+```
+
+18o. The service must emit the fixed response in an `error` SSE event and stop the stream.
+
+18p. The service must not store the failed conversation turn or rejected result content.
+
+18q. When inspection is disabled, the service skips classifier calls and inspection-based termination. Main-model tool-safety instructions remain active.
+
+18r. An opaque result stored through offloaded-content storage does not require inspection at rest.
+
+18s. The service must inspect each model-visible offload reference, preview, search result, and read result.
+
+18t. No path can insert offloaded content directly into model context without inspection.
+
+18u. The feature must not add a deterministic prompt-injection engine, guardrail framework, local classifier, or model weights.
+
+18v. Inspection logs, spans, events, errors, and stored records must not contain inspected content, rejected excerpts, classifier prompts, tool arguments, credentials, or free-form classifier output.
+
 ### Tool Filtering via Hybrid RAG
 
 19. When `ols_config.tool_filtering` is configured, the system must use
@@ -201,6 +253,7 @@ solely on general knowledge.
 | `mcp_servers.servers[].headers` | map | {} | Authorization headers (values are file paths, `"kubernetes"`, or `"client"`) |
 | `model.parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window reserved for tool traffic (0.10--0.60) |
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Fraction of remaining tool budget usable per round (0.3--0.8) |
+| `ols_config.guardrails.tool_result_inspection.enabled` | bool | true | Enable LLM inspection of model-visible tool results and errors |
 | `ols_config.tool_filtering` | object | none | Enables hybrid RAG tool filtering when present |
 | `ols_config.tool_filtering.embed_model_path` | string | none | Path to sentence transformer model for embeddings |
 | `ols_config.tool_filtering.alpha` | float | 0.8 | Dense vs sparse retrieval weight (0.0--1.0) |
@@ -244,6 +297,12 @@ solely on general knowledge.
    falls back to all tools. The system must never return an empty tool set
    due to a filtering infrastructure failure.
 
+## Verification
+
+- [PLANNED: OLS-3928] Fast tests use mock classifier responses. They cover strict schema validation, retry timing, chunk overlap, all-chunk pass behavior, concurrent-round atomicity, disabled inspection, quota debit, and controlled failure content.
+- Integration tests verify that inspection occurs before SSE, model reinjection, history, transcript storage, and audit events.
+- A separate real-model evaluation uses labeled attacks, benign OpenShift output, quoted attacks, and multilingual content. It reports false positives and false negatives by provider and model.
+
 ## Planned Changes
 
 | Jira Key | Summary |
@@ -253,4 +312,5 @@ solely on general knowledge.
 | OLS-2684 | Remove client MCP headers -- eliminate the `"client"` header placeholder mechanism |
 | OLS-2491 | MCP client improvements -- transport and reliability enhancements |
 | OLS-1797 | Block sensitive tool args -- reject tool calls whose arguments match blocked patterns before execution |
+| OLS-3928 | Inspect model-visible tool results and errors with a separate LLM classifier call |
 | OLS-3526 | Operator may later move OpenShift MCP from localhost sidecar to a standalone HTTPS service. Still in refinement — not near-term. No service code changes expected when it lands (URL/CA via `olsconfig.yaml`; Rule 5). |
