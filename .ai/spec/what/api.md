@@ -111,7 +111,20 @@ Submit a question and receive a complete JSON response.
 | 403    | Caller lacks permission |
 | 413    | Prompt exceeds the LLM context window limit |
 | 422    | Invalid provider/model pair, invalid attachment type/content type, invalid media_type, or extra fields |
-| 500    | LLM unreachable, quota database error, quota exceeded, query redaction failure, conversation storage failure, or other internal error |
+| 500    | LLM unreachable, quota database error, quota exceeded, query redaction failure, conversation storage failure, tool-result safety-inspection failure, or other internal error |
+
+[PLANNED: OLS-3928] A tool-result safety-inspection failure returns this exact body:
+
+```json
+{
+  "detail": {
+    "response": "Lightspeed stopped the operation because a tool result failed the safety inspection.",
+    "cause": ""
+  }
+}
+```
+
+The service must not include rejected content or classifier details in this response.
 
 ---
 

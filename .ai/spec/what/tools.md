@@ -119,9 +119,9 @@ solely on general knowledge.
 
 18f. The classifier call must contain no tools, conversation history, RAG content, attachments, skills, or main-request system prompt.
 
-18g. The classifier must return only `injectionDetected` and `category` in a strict structured response. Additional fields, missing fields, and free-form reasoning are invalid.
+18g. The classifier must return only `injectionDetected` and `category` in a strict structured response. `injectionDetected` must be a Boolean. Additional fields, missing fields, and free-form reasoning are invalid.
 
-18h. The allowed categories are `none`, `instruction_override`, `role_change`, `prompt_extraction`, `data_exfiltration`, `tool_manipulation`, and `unknown`. A benign response must use `none`. A malicious response must use another category.
+18h. The allowed categories are `none`, `instruction_override`, `role_change`, `prompt_extraction`, `data_exfiltration`, `tool_manipulation`, and `unknown`. `false` is valid only with `none`. `true` is valid only with a non-`none` category, including `unknown`. `true` with `unknown` is a valid malicious decision, not an unclassifiable result. An invalid field type or inconsistent field combination is a response-validation failure.
 
 18i. A technical or response-validation failure permits three total attempts. Delays before attempts two and three are 0.5 seconds and 1 second. Failure of the third attempt is unclassifiable and fails closed.
 
@@ -141,7 +141,20 @@ solely on general knowledge.
 Lightspeed stopped the operation because a tool result failed the safety inspection.
 ```
 
-18o. The service must emit the fixed response in an `error` SSE event and stop the stream.
+18o. The streaming endpoint must emit the fixed response in an `error` SSE event and stop the stream.
+
+18o.1. `POST /v1/query` must return HTTP 500 with this exact body:
+
+```json
+{
+  "detail": {
+    "response": "Lightspeed stopped the operation because a tool result failed the safety inspection.",
+    "cause": ""
+  }
+}
+```
+
+18o.2. A non-streaming integration test must verify the HTTP status and exact body.
 
 18p. The service must not store the failed conversation turn or rejected result content.
 
@@ -155,7 +168,7 @@ Lightspeed stopped the operation because a tool result failed the safety inspect
 
 18u. The feature must not add a deterministic prompt-injection engine, guardrail framework, local classifier, or model weights.
 
-18v. Inspection logs, spans, events, errors, and stored records must not contain inspected content, rejected excerpts, classifier prompts, tool arguments, credentials, or free-form classifier output.
+18v. Inspection logs, spans, events, errors, and inspection or audit records must not contain inspected content, rejected excerpts, classifier prompts, tool arguments, credentials, or free-form classifier output. This rule does not prohibit approved conversation-history or transcript storage for a passing result.
 
 ### Tool Filtering via Hybrid RAG
 
