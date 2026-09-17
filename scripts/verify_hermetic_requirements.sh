@@ -13,30 +13,19 @@ EXPECTED_MISSING=(
     # Platform-specific (not built for linux x86_64)
     pywin32
 
-    # Test packages pulled in transitively via langchain-google-vertexai
-    # → langchain-tests → pytest (and its plugin ecosystem)
-    iniconfig
-    langchain_tests
-    llama_index_cli
-    pluggy
-    py_cpuinfo
-    pytest
-    pytest_asyncio
-    pytest_benchmark
-    pytest_codspeed
-    pytest_recording
-    pytest_socket
-    syrupy
-    vcrpy
-
     # Transitive deps resolved differently by uv export vs uv pip compile
     # (extras, conditional markers, RHOAI overrides)
+    cloudpickle
     durationpy
     grpcio_status
     h2
     hpack
+    httpcore2
+    httpx2
+    httpx2_jsfetch
     hyperframe
-    importlib_metadata
+    narwhals
+    truststore
 )
 
 log() { echo "==> $*"; }
