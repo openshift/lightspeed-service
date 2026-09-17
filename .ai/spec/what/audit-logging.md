@@ -81,9 +81,9 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean). When `capture_content` is `true`, the event additionally carries an `output` attribute with the tool's text output. When `capture_content` is `false`, the `tool.result` event is still emitted with `success` but the `output` attribute is omitted.
 
-14c. [PLANNED: OLS-3928] Inspected tool-result content is an exception to rule 14b. A `tool.result` event can retain controlled metadata, but it MUST omit `output` regardless of `capture_content`.
+14c. [PLANNED: OLS-3928] Tool-result inspection MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`. An inspected `tool.result` event can retain controlled metadata. The event MUST omit `output` regardless of `capture_content`.
 
-14d. [PLANNED: OLS-3928] The service MUST NOT emit a `tool.result` event for a rejected result. Inspection spans and logs MUST omit the result content.
+14d. The service MUST NOT emit a `tool.result` event for a rejected result.
 
 ### Content Capture Policy
 

@@ -10,7 +10,7 @@ execution with retry/backoff, and token-budget-aware result truncation.
 |---|---|---|
 | `ols/utils/mcp_utils.py` | `build_mcp_config`, `gather_mcp_tools`, `get_mcp_tools`, `resolve_header_value`, `_normalize_tool_schema` | MCP client lifecycle: builds per-server transport configs with placeholder resolution, connects to servers via `MultiServerMCPClient`, gathers tools with fault isolation (one failing server does not block others), deduplicates by name (first-seen wins), and normalizes schemas for OpenAI compatibility. Optionally routes through ToolsRAG for query-based filtering. |
 | `ols/src/tools/tools.py` | `execute_tool_calls_stream`, `enforce_tool_token_budget`, `execute_tool_call`, `_execute_with_retries`, `_extract_text_from_tool_output` | Tool execution engine: runs tool calls in parallel via `aiostream.merge`, applies retry/backoff for transient errors, extracts text from both string and content-block outputs, and enforces tool-result budgets. |
-| [PLANNED: OLS-3928] `ols/src/tools/result_inspection.py` | Result inspector, chunker, strict decision model, safety exception | Inspects effective tool results with separate calls to the active model. Owns chunking, retries, response validation, and controlled inspection spans. |
+| [PLANNED: OLS-3928] `ols/src/tools/result_inspection.py` | Result inspector and safety exception | Applies the normative inspection contract through the active model and emits the controlled service failure signal. |
 | `ols/src/tools/approval.py` | `need_validation`, `get_approval_decision`, `set_approval_decision`, `register_pending_approval`, `InMemoryPendingApprovalStore` | Approval state machine: determines whether a tool call requires user approval (based on config strategy and tool annotations), registers pending approvals in an in-memory store backed by `asyncio.Event`, waits for decisions with configurable timeout, and cleans up state on completion. |
 | `ols/src/tools/tools_rag/hybrid_tools_rag.py` | `ToolsRAG`, `populate_tools`, `retrieve_hybrid`, `remove_tools` | Hybrid RAG for tool filtering: indexes tool name+description into Qdrant (in-memory) with dense embeddings and BM25 sparse vectors, retrieves relevant tools via reciprocal rank fusion (RRF) with configurable alpha weighting, grouped by server. Supports default servers (always included) and per-request client servers. |
 | `ols/app/endpoints/tool_approvals.py` | `submit_tool_approval_decision` | REST endpoint (`POST /tool-approvals/decision`) for receiving user approval/rejection decisions. Delegates to `set_approval_decision` and returns 404/409 for missing or already-resolved approvals. |
@@ -104,11 +104,9 @@ _process_tool_calls_for_round
          Otherwise: scale all messages proportionally (ratio = budget/total)
          Cut at last newline, append truncation warning
   -> [PLANNED: OLS-3928] Inspect the complete concurrent result batch
-       For each result or error: split into token-aware chunks with 256-token overlap
-       For each chunk: call the active model without tools or request history
-       Validate the strict decision; retry failures after 0.5s and 1s
-       All chunks benign: continue
-       Any malicious or unclassifiable chunk: raise the safety exception
+       Apply the normative classifier contract to every effective result or error
+       Complete batch passes: continue
+       Inspection failure: raise the controlled safety exception
   -> Yield tool_result streaming events, charge token budget
   -> Append ToolMessages to conversation, loop back to LLM
 ```
@@ -254,12 +252,10 @@ decision timeout.
 
 ### Tool-Result Inspection [PLANNED: OLS-3928]
 
-The result inspector runs after budget enforcement. Thus, it inspects the exact content that can enter model context.
+The normative contract is `openshift/ols/.ai/spec/what/tool-result-inspection.md`. This repository conforms at the Classic service integration points.
 
-The inspector receives the active model interface from the query flow. It creates a new call without bound tools or main-request messages.
+The result inspector runs after budget enforcement. Thus, it inspects the exact content that can enter model context. The query flow supplies the active model interface. The inspector creates an isolated call.
 
-The inspector processes all messages in one concurrent round before `DocsSummarizer` emits any result event. One failed message rejects the complete round.
+The inspector processes the complete concurrent round before `DocsSummarizer` emits a result event. A failed result rejects the complete round.
 
-Classifier calls use the same request quota subject. Each reported classifier input and output token count contributes to request usage.
-
-The safety exception carries a controlled reason only. It does not carry rejected content into logs, SSE metadata, or stored history.
+Classifier calls use the initiating request's quota subject. The safety exception carries only the controlled reason used by the endpoint and storage paths.

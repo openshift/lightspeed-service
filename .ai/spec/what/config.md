@@ -39,11 +39,11 @@ The configuration system loads, validates, and manages the single YAML file that
 18. When `history_compression_enabled` is not specified, it must default to `true`.
 19. Proxy URL and no-proxy hosts must fall back to the `https_proxy`/`HTTPS_PROXY` and `no_proxy` environment variables, respectively, when not specified in config.
 
-19a. [PLANNED: OLS-3928] `ols_config.guardrails.tool_result_inspection.enabled` must default to `true` when omitted.
+19a. [PLANNED: OLS-3928] The service configuration MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`. If `ols_config.guardrails.tool_result_inspection.enabled` is omitted, it MUST default to `true`.
 
-19b. When this value is `false`, the service must skip tool-result classifier calls and inspection-based termination.
+19b. When this value is `false`, the service MUST skip inspection calls and inspection-based termination.
 
-19c. A configuration reload must apply the new value to later tool results without resetting stateful subsystems.
+19c. A configuration reload MUST apply the new value to later tool results without resetting stateful subsystems.
 
 ## Configuration Surface
 

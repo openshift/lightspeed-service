@@ -107,68 +107,21 @@ solely on general knowledge.
 
 ### Tool-Result Prompt-Injection Inspection
 
-18a. [PLANNED: OLS-3928] When inspection is enabled, the service must inspect every model-visible tool result and error.
+18a. [PLANNED: OLS-3928] The service MUST conform to the normative contract in `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
 
-18b. The service must inspect the effective result after the existing tool-budget limit applies.
+18b. The Classic interception point is the effective model-visible result after existing tool-budget enforcement.
 
-18c. The service must inspect results before it emits `tool_result`, reinjects content, or stores the conversation turn.
+18c. The service MUST inspect the complete concurrent result batch before it emits `tool_result`, reinjects content, or stores the conversation turn. If one result fails, the service MUST expose no passing subset.
 
-18d. The service must not inspect tool calls. Existing schema, approval, authorization, RBAC, and network controls remain active.
+18d. The classifier MUST use the active service provider and model configuration through an isolated service invocation.
 
-18e. A separate classifier call must use the active provider, model, endpoint, and credentials.
+18e. The streaming endpoint MUST emit the contract's controlled message in an `error` SSE event and stop without another main-model call.
 
-18f. The classifier call must contain no tools, conversation history, RAG content, attachments, skills, or main-request system prompt.
+18f. `POST /v1/query` MUST return the HTTP 500 status and exact structured body defined in `api.md`.
 
-18g. The classifier must return only `injectionDetected` and `category` in a strict structured response. `injectionDetected` must be a Boolean. Additional fields, missing fields, and free-form reasoning are invalid.
+18g. The service MUST NOT store the failed conversation turn or rejected result. A passing result can enter approved conversation history and transcript storage.
 
-18h. The allowed categories are `none`, `instruction_override`, `role_change`, `prompt_extraction`, `data_exfiltration`, `tool_manipulation`, and `unknown`. `false` is valid only with `none`. `true` is valid only with a non-`none` category, including `unknown`. `true` with `unknown` is a valid malicious decision, not an unclassifiable result. An invalid field type or inconsistent field combination is a response-validation failure.
-
-18i. A technical or response-validation failure permits three total attempts. Delays before attempts two and three are 0.5 seconds and 1 second. Failure of the third attempt is unclassifiable and fails closed.
-
-18j. A valid malicious decision is final and must not receive another attempt.
-
-18k. A long result must use sequential token-aware chunks with a 256-token overlap. The service must impose no explicit chunk-count limit.
-
-18k.1. The service must not truncate model-visible content only to reduce inspection work. Inspection remains subject to the existing request and tool-round deadlines.
-
-18l. Every result from one concurrent tool round must pass before the service emits or reinjects any result from that round.
-
-18m. One malicious or unclassifiable chunk must terminate the complete request. The service must discard all results from that round.
-
-18n. The failure response must contain only this text:
-
-```text
-Lightspeed stopped the operation because a tool result failed the safety inspection.
-```
-
-18o. The streaming endpoint must emit the fixed response in an `error` SSE event and stop the stream.
-
-18o.1. `POST /v1/query` must return HTTP 500 with this exact body:
-
-```json
-{
-  "detail": {
-    "response": "Lightspeed stopped the operation because a tool result failed the safety inspection.",
-    "cause": ""
-  }
-}
-```
-
-18o.2. A non-streaming integration test must verify the HTTP status and exact body.
-
-18p. The service must not store the failed conversation turn or rejected result content.
-
-18q. When inspection is disabled, the service skips classifier calls and inspection-based termination. Main-model tool-safety instructions remain active.
-
-18r. An opaque result stored through offloaded-content storage does not require inspection at rest.
-
-18s. The service must inspect each model-visible offload reference, preview, search result, and read result.
-
-18t. No path can insert offloaded content directly into model context without inspection.
-
-18u. The feature must not add a deterministic prompt-injection engine, guardrail framework, local classifier, or model weights.
-
-18v. Inspection logs, spans, events, errors, and inspection or audit records must not contain inspected content, rejected excerpts, classifier prompts, tool arguments, credentials, or free-form classifier output. This rule does not prohibit approved conversation-history or transcript storage for a passing result.
+18h. The service MUST inspect every model-visible offload reference, preview, search result, and read result. Every service path for offloaded content MUST use inspection before model exposure.
 
 ### Tool Filtering via Hybrid RAG
 
@@ -312,9 +265,9 @@ Lightspeed stopped the operation because a tool result failed the safety inspect
 
 ## Verification
 
-- [PLANNED: OLS-3928] Fast tests use mock classifier responses. They cover strict schema validation, retry timing, chunk overlap, all-chunk pass behavior, concurrent-round atomicity, disabled inspection, quota debit, and controlled failure content.
-- Integration tests verify that inspection occurs before SSE, model reinjection, history, transcript storage, and audit events.
-- A separate real-model evaluation uses labeled attacks, benign OpenShift output, quoted attacks, and multilingual content. It reports false positives and false negatives by provider and model.
+- [PLANNED: OLS-3928] Fast mock tests verify contract conformance, concurrent-round atomicity, disabled inspection, quota debit, and controlled failures.
+- Integration tests verify inspection ordering before SSE, model reinjection, history, transcript storage, and audit events. A non-streaming test verifies the exact HTTP status and body.
+- The cross-repository real-model corpus and reporting requirements are owned by `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
 
 ## Planned Changes
 

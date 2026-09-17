@@ -54,23 +54,13 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 ### Tool-Result Inspection Telemetry
 
-13a. [PLANNED: OLS-3928] Each tool-result inspection must create a `tool_result.inspection` OpenTelemetry span.
+13a. [PLANNED: OLS-3928] Service telemetry MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
 
-13b. The span can contain only controlled inspection fields, tool name, provider name, and model name.
+13b. Each Classic inspection MUST create the contract's `tool_result.inspection` span and attach it to the parent request trace.
 
-13c. Controlled inspection fields include runtime, result type, chunk count, chunk index, attempt count, outcome, category, and enabled state.
+13c. The service can add controlled tool, provider, and model identifiers to the contract-defined inspection attributes.
 
-13d. Inspection outcome must be `benign`, `malicious`, or `classifier_error`.
-
-13e. A malicious decision or exhausted classifier failure must set the inspection span and parent request span to error.
-
-13f. Logs must record configuration state, malicious decisions, classifier failures, and inspection-based termination.
-
-13g. Successful chunks must not produce one log per chunk.
-
-13h. Inspection logs and spans must not contain tool arguments, results, errors, rejected excerpts, classifier prompts, or free-form classifier output.
-
-13i. OLS-3928 must not add Prometheus metrics. Existing generic LLM metrics can include classifier calls through the normal LLM instrumentation.
+13d. Existing generic LLM instrumentation can observe classifier calls. The service MUST add no feature-specific Prometheus metric.
 
 ### Transcript Recording
 
