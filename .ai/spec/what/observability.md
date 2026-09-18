@@ -52,6 +52,16 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 13. Token counts must also be available per-request for quota enforcement and optionally recorded in the usage history database.
 
+### Tool-Result Inspection Telemetry
+
+13a. [PLANNED: OLS-3928] Service telemetry MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
+
+13b. Each Classic inspection MUST create the contract's `tool_result.inspection` span and attach it to the parent request trace.
+
+13c. The service can add controlled tool, provider, and model identifiers to the contract-defined inspection attributes.
+
+13d. Existing generic LLM instrumentation can observe classifier calls. The service MUST add no feature-specific Prometheus metric.
+
 ### Transcript Recording
 
 14. The service must optionally record conversation transcripts as JSON files in a configurable directory.
@@ -117,3 +127,4 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 - [PLANNED: OLS-1805] Transcripts should be enhanced to include per-request token usage (input, output, reasoning token counts).
 - [PLANNED] Streaming metrics `gen_ai.client.operation.time_to_first_chunk` and `gen_ai.client.operation.time_per_output_chunk` (Histogram, unit `s`) for OLS when streaming is the default path.
 - [PLANNED] MCP metrics `mcp.client.operation.duration` and `mcp.client.session.duration` (Histogram, unit `s`) pending sufficient usage data.
+- [PLANNED: OLS-3928] Add tool-result inspection spans and controlled logs without new Prometheus metrics.

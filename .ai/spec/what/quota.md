@@ -12,6 +12,18 @@ The quota subsystem enforces token consumption limits on LLM requests, preventin
 
 4. **Post-response consumption**: After the LLM produces a response, the service must debit the sum of input tokens and output tokens from every configured limiter. The available balance may go negative due to concurrent requests; the pre-flight check prevents this under normal load.
 
+4a. [PLANNED: OLS-3928] Tool-result classifier calls use the same quota subject as the main request.
+
+4b. The service must apply the pre-flight quota check before each classifier attempt.
+
+4c. The service must debit each classifier attempt that reports input or output token use.
+
+4d. The debit remains when a later chunk, classifier attempt, or complete request fails.
+
+4e. If quota is insufficient, the service must stop before the classifier call and use the existing quota error.
+
+4f. If a failed provider call does not report usage, the service must not estimate actual provider consumption.
+
 5. **Auto-initialization**: When a subject (user or cluster) is queried for the first time and no quota record exists, the system must automatically create a record with the available balance set to the configured initial quota value. No manual provisioning is required.
 
 6. **Revoke (reset)**: It must be possible to reset a subject's available balance to the configured initial quota value. This is the mechanism used by the scheduler to restore quotas on a recurring basis.
@@ -62,3 +74,4 @@ The quota subsystem enforces token consumption limits on LLM requests, preventin
 
 - [PLANNED: OLS-1470] When cluster awareness is enabled by default, a default quota must be automatically set so that the system operates with quota enforcement out of the box.
 - [PLANNED: OLS-2823] Per-user LLM provider API keys, enabling individual token quota management tied to each user's own provider credentials rather than a shared service credential.
+- [PLANNED: OLS-3928] Count tool-result classifier usage against the initiating user and cluster quota.

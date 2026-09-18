@@ -105,6 +105,24 @@ solely on general knowledge.
     the CPU cost of tokenizing arbitrarily large responses. Strings are cut
     at the last newline boundary before the character limit.
 
+### Tool-Result Prompt-Injection Inspection
+
+18a. [PLANNED: OLS-3928] The service MUST conform to the normative contract in `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
+
+18b. The Classic interception point is the effective model-visible result after existing tool-budget enforcement.
+
+18c. The service MUST inspect the complete concurrent result batch before it emits `tool_result`, reinjects content, or stores the conversation turn. If one result fails, the service MUST expose no passing subset.
+
+18d. The classifier MUST use the active service provider and model configuration through an isolated service invocation.
+
+18e. The streaming endpoint MUST emit the contract's controlled message in an `error` SSE event and stop without another main-model call.
+
+18f. `POST /v1/query` MUST return the HTTP 500 status and exact structured body defined in `api.md`.
+
+18g. The service MUST NOT store the failed conversation turn or rejected result. A passing result can enter approved conversation history and transcript storage.
+
+18h. The service MUST inspect every model-visible offload reference, preview, search result, and read result. Every service path for offloaded content MUST use inspection before model exposure.
+
 ### Tool Filtering via Hybrid RAG
 
 19. When `ols_config.tool_filtering` is configured, the system must use
@@ -201,6 +219,7 @@ solely on general knowledge.
 | `mcp_servers.servers[].headers` | map | {} | Authorization headers (values are file paths, `"kubernetes"`, or `"client"`) |
 | `model.parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window reserved for tool traffic (0.10--0.60) |
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Fraction of remaining tool budget usable per round (0.3--0.8) |
+| `ols_config.guardrails.tool_result_inspection.enabled` | bool | true | Enable LLM inspection of model-visible tool results and errors |
 | `ols_config.tool_filtering` | object | none | Enables hybrid RAG tool filtering when present |
 | `ols_config.tool_filtering.embed_model_path` | string | none | Path to sentence transformer model for embeddings |
 | `ols_config.tool_filtering.alpha` | float | 0.8 | Dense vs sparse retrieval weight (0.0--1.0) |
@@ -244,6 +263,12 @@ solely on general knowledge.
    falls back to all tools. The system must never return an empty tool set
    due to a filtering infrastructure failure.
 
+## Verification
+
+- [PLANNED: OLS-3928] Fast mock tests verify contract conformance, concurrent-round atomicity, disabled inspection, quota debit, and controlled failures.
+- Integration tests verify inspection ordering before SSE, model reinjection, history, transcript storage, and audit events. A non-streaming test verifies the exact HTTP status and body.
+- The cross-repository real-model corpus and reporting requirements are owned by `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
+
 ## Planned Changes
 
 | Jira Key | Summary |
@@ -253,4 +278,5 @@ solely on general knowledge.
 | OLS-2684 | Remove client MCP headers -- eliminate the `"client"` header placeholder mechanism |
 | OLS-2491 | MCP client improvements -- transport and reliability enhancements |
 | OLS-1797 | Block sensitive tool args -- reject tool calls whose arguments match blocked patterns before execution |
+| OLS-3928 | Inspect model-visible tool results and errors with a separate LLM classifier call |
 | OLS-3526 | Operator may later move OpenShift MCP from localhost sidecar to a standalone HTTPS service. Still in refinement — not near-term. No service code changes expected when it lands (URL/CA via `olsconfig.yaml`; Rule 5). |
