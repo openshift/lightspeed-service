@@ -21,6 +21,10 @@ from ols.src.query_helpers.llm_execution_agent import (  # noqa: E402
     LLMExecutionAgent,
     RoundLLMResult,
 )
+from ols.src.tools.tool_result_inspection import (  # noqa: E402
+    ToolResultInspectionError,
+    ToolResultRejectedError,
+)
 from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
 from ols.utils.audit_logger import AuditContext, AuditLogger  # noqa: E402
 from ols.utils.token_handler import (  # noqa: E402
@@ -85,6 +89,69 @@ def _make_agent(**overrides: object) -> LLMExecutionAgent:
     }
     defaults.update(overrides)
     return LLMExecutionAgent(**defaults)
+
+
+@pytest.mark.asyncio
+async def test_inspect_tool_messages_checks_every_result_before_delivery() -> None:
+    """Inspect all tool messages before the loop exposes any result."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock()
+    agent = _make_agent(tool_result_classifier=classifier)
+    agent.model_config.context_window_size = 613
+    agent.model_config.parameters.max_tokens_for_response = 100
+    messages = [
+        ToolMessage(content="first", tool_call_id="call-1"),
+        ToolMessage(content="second", tool_call_id="call-2", status="error"),
+    ]
+
+    await agent._inspect_tool_messages(
+        messages, {"call-1": "first_tool", "call-2": "second_tool"}
+    )
+
+    assert classifier.inspect.await_count == 2
+    assert classifier.inspect.await_args_list[0].args[:3] == (
+        "first_tool",
+        "result",
+        "first",
+    )
+    assert classifier.inspect.await_args_list[1].args[:3] == (
+        "second_tool",
+        "error",
+        "second",
+    )
+    assert classifier.inspect.await_args_list[0].kwargs["overlap_tokens"] == 0
+
+
+@pytest.mark.asyncio
+async def test_inspect_tool_messages_rejects_insufficient_classifier_budget() -> None:
+    """Reject inspection when the model context cannot hold a classifier request."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock()
+    agent = _make_agent(tool_result_classifier=classifier)
+    agent.model_config.context_window_size = 600
+    agent.model_config.parameters.max_tokens_for_response = 1000
+
+    with pytest.raises(ToolResultInspectionError, match="context budget"):
+        await agent._inspect_tool_messages(
+            [ToolMessage(content="result", tool_call_id="call-1")],
+            {"call-1": "get_pods"},
+        )
+
+    classifier.inspect.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_inspect_tool_messages_propagates_rejection() -> None:
+    """Stop the tool loop when inspection rejects a result."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(side_effect=ToolResultRejectedError("rejected"))
+    agent = _make_agent(tool_result_classifier=classifier)
+
+    with pytest.raises(ToolResultRejectedError):
+        await agent._inspect_tool_messages(
+            [ToolMessage(content="unsafe", tool_call_id="call-1")],
+            {"call-1": "get_pods"},
+        )
 
 
 def test_resolve_tool_call_definitions_targeted_paths():
@@ -390,6 +457,51 @@ async def test_collect_round_llm_chunks_with_reasoning_list_content():
     assert streamed[0].text == "thinking hard"
     assert streamed[1].type == StreamChunkType.TEXT
     assert streamed[1].text == "the answer"
+
+
+@pytest.mark.asyncio
+async def test_process_tool_calls_for_round_propagates_inspection_failure():
+    """Propagate inspection failures to the streaming endpoint."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(
+        side_effect=ToolResultInspectionError("classifier failed")
+    )
+    agent = _make_agent(tool_result_classifier=classifier)
+    messages: list = []
+
+    async def _fake_execute(*args, **kwargs):
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content="unsafe",
+                status="success",
+                tool_call_id="call_1",
+            )
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_1"}],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        with pytest.raises(ToolResultInspectionError, match="classifier failed"):
+            [
+                chunk
+                async for chunk in agent._process_tool_calls_for_round(
+                    round_index=1,
+                    tool_call_chunks=tool_call_chunks,
+                    all_chunks=[],
+                    all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                    duplicate_tool_names=set(),
+                    messages=messages,
+                )
+            ]
 
 
 @pytest.mark.asyncio

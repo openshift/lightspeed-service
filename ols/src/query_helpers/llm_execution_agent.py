@@ -14,7 +14,7 @@ from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
 from langchain_openai import ChatOpenAI
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, StatusCode, get_current_span
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
@@ -22,6 +22,12 @@ from ols.app.metrics.metrics import gen_ai_client_operation_duration_seconds
 from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.config import ModelConfig
 from ols.app.models.models import RagChunk, StreamChunkType, StreamedChunk
+from ols.src.tools.tool_result_inspection import (
+    ToolResultClassifier,
+    ToolResultInspectionError,
+    ToolResultRejectedError,
+    chunk_text,
+)
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
 from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import TokenBudgetTracker, TokenCategory
@@ -130,6 +136,7 @@ class LLMExecutionAgent:
         streaming: bool,
         token_budget_tracker: TokenBudgetTracker,
         audit_ctx: Optional[AuditContext] = None,
+        tool_result_classifier: ToolResultClassifier | None = None,
     ) -> None:
         """Initialize the tool calling agent.
 
@@ -142,6 +149,7 @@ class LLMExecutionAgent:
             streaming: Whether the request uses the streaming endpoint.
             token_budget_tracker: Shared per-request token budget tracker.
             audit_ctx: Audit context for structured event logging.
+            tool_result_classifier: Optional classifier for model-visible tool results.
         """
         self.bare_llm = bare_llm
         self.model = model
@@ -151,6 +159,7 @@ class LLMExecutionAgent:
         self.streaming = streaming
         self._tracker = token_budget_tracker
         self._audit_ctx = audit_ctx
+        self._tool_result_classifier = tool_result_classifier
 
     async def execute(
         self,
@@ -281,7 +290,7 @@ class LLMExecutionAgent:
         )
         return cur_input, cur_output
 
-    async def _iterate_with_tools(
+    async def _iterate_with_tools(  # noqa: C901
         self,
         messages: ChatPromptTemplate,
         max_rounds: int,
@@ -392,6 +401,8 @@ class LLMExecutionAgent:
                         "Registered offload retrieval tools: %s",
                         [rt.name for rt in retrieval_tools],
                     )
+            except ToolResultInspectionError:
+                raise
             except Exception:
                 log_tool_loop_iteration(
                     self._tracker, i, max_rounds, "tool_execution_failed"
@@ -761,7 +772,6 @@ class LLMExecutionAgent:
                     "status": tool_status,
                     "truncated": was_truncated,
                     "has_meta": has_meta,
-                    "output_snippet": str(tool_call_message.content)[:1000],
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -789,6 +799,88 @@ class LLMExecutionAgent:
         return content_token_count, StreamedChunk(
             type=StreamChunkType.TOOL_RESULT, data=tool_result_data
         )
+
+    async def _inspect_tool_messages(
+        self,
+        tool_messages: list[ToolMessage],
+        tool_id_to_name: dict[str, str],
+    ) -> None:
+        """Inspect all model-visible tool messages before delivery."""
+        if self._tool_result_classifier is None:
+            return
+
+        classifier_budget = (
+            self.model_config.context_window_size
+            - self.model_config.parameters.max_tokens_for_response
+            - 512
+        )
+        if classifier_budget <= 0:
+            raise ToolResultInspectionError("insufficient classifier context budget")
+        max_tokens = classifier_budget
+        overlap_tokens = min(256, max_tokens - 1)
+        for message in tool_messages:
+            content = (
+                message.content
+                if isinstance(message.content, str)
+                else json.dumps(message.content, ensure_ascii=False)
+            )
+            tool_name = tool_id_to_name.get(message.tool_call_id, "unknown")
+            result_type = "error" if message.status == "error" else "result"
+            chunk_count = len(
+                chunk_text(
+                    content,
+                    max_tokens=max_tokens,
+                    overlap_tokens=overlap_tokens,
+                    token_handler=self._tracker.token_handler,
+                )
+            )
+            parent_span = get_current_span()
+            span_context = (
+                self._audit_ctx.span(
+                    "tool_result.inspection",
+                    runtime="classic",
+                    **{
+                        "inspection.runtime": "classic",
+                        "inspection.result_type": result_type,
+                        "inspection.chunk_count": chunk_count,
+                        "inspection.enabled": True,
+                        "tool.name": tool_name,
+                        "llm.provider": self.provider_type,
+                        "llm.model": self.model,
+                    },
+                )
+                if self._audit_ctx
+                else nullcontext()
+            )
+            with span_context as inspection_span:
+                try:
+                    await self._tool_result_classifier.inspect(
+                        tool_name,
+                        result_type,
+                        content,
+                        max_tokens=max_tokens,
+                        token_handler=self._tracker.token_handler,
+                        overlap_tokens=overlap_tokens,
+                    )
+                    if self._audit_ctx:
+                        inspection_span.set_attribute("inspection.outcome", "benign")
+                except ToolResultRejectedError as error:
+                    if self._audit_ctx:
+                        inspection_span.set_attribute("inspection.outcome", "malicious")
+                        inspection_span.set_attribute(
+                            "inspection.category", error.category
+                        )
+                        inspection_span.set_status(StatusCode.ERROR, "malicious")
+                        parent_span.set_status(StatusCode.ERROR, "malicious")
+                    raise
+                except ToolResultInspectionError:
+                    if self._audit_ctx:
+                        inspection_span.set_attribute(
+                            "inspection.outcome", "classifier_error"
+                        )
+                        inspection_span.set_status(StatusCode.ERROR, "classifier_error")
+                        parent_span.set_status(StatusCode.ERROR, "classifier_error")
+                    raise
 
     async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912
         self,
@@ -916,6 +1008,7 @@ class LLMExecutionAgent:
             all_tool_messages = enforce_tool_token_budget(
                 all_tool_messages, remaining, self._tracker.token_handler
             )
+        await self._inspect_tool_messages(all_tool_messages, tool_id_to_name)
         messages.extend(all_tool_messages)
 
         for tool_call_message in all_tool_messages:

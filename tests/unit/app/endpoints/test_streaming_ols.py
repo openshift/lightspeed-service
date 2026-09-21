@@ -33,6 +33,7 @@ from ols.app.models.models import (  # noqa:E402
     StreamedChunk,
     TokenCounter,
 )
+from ols.src.tools.tool_result_inspection import ToolResultRejectedError  # noqa: E402
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import (  # noqa:E402
     _LLM_BACKEND_PREFIX,
@@ -200,6 +201,27 @@ def test_generic_llm_error():
             "data": {
                 "response": prefixed_msg,
                 "cause": "An unexpected error occurred",
+            },
+        }
+    )
+
+
+def test_generic_llm_error_uses_fixed_tool_safety_message():
+    """Return only the approved message for inspection failures."""
+    error = ToolResultRejectedError("secret rejected content")
+
+    assert generic_llm_error(error, constants.MEDIA_TYPE_TEXT) == (
+        "Lightspeed stopped the operation because a tool result failed the safety inspection."
+    )
+    assert generic_llm_error(error, constants.MEDIA_TYPE_JSON) == format_stream_data(
+        {
+            "event": "error",
+            "data": {
+                "response": (
+                    "Lightspeed stopped the operation because a tool result failed "
+                    "the safety inspection."
+                ),
+                "cause": "",
             },
         }
     )

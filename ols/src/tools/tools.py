@@ -608,7 +608,6 @@ async def _execute_single_tool_call_stream(
                 output_length=len(tool_output),
                 success=status == "success",
                 duration_ms=duration_ms,
-                output_content=tool_output if audit_ctx.capture_content else None,
             )
 
         yield _tool_result_event(

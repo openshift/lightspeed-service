@@ -181,7 +181,7 @@ class TestAuditLoggerMethods:
         result_event = span.events[0]
         assert result_event.name == "tool.result"
         assert result_event.attributes["success"] is True
-        assert result_event.attributes["output"] == "ok"
+        assert "output" not in result_event.attributes
 
     def test_tool_result_no_content(self, audit_ctx, otel_setup) -> None:
         """Verify tool_result omits output when content not provided."""
