@@ -231,6 +231,13 @@ _AZURE_ENTRA_ENV_KEYS: tuple[str, ...] = (
 )
 
 
+def _mask(value: str) -> str:
+    """Return a masked representation showing first/last 4 chars and length."""
+    if len(value) <= 8:
+        return f"****(len={len(value)})"
+    return f"{value[:4]}...{value[-4:]} (len={len(value)})"
+
+
 def ensure_azure_entra_id_secret() -> None:
     """Create openshift-lightspeed/azure-entra-id when Entra credentials are available."""
     values = {k: os.getenv(k) for k in _AZURE_ENTRA_ENV_KEYS}
@@ -247,6 +254,13 @@ def ensure_azure_entra_id_secret() -> None:
     tenant_id = values["AZUREOPENAI_ENTRA_ID_TENANT_ID"]
     client_id = values["AZUREOPENAI_ENTRA_ID_CLIENT_ID"]
     client_secret = values["AZUREOPENAI_ENTRA_ID_CLIENT_SECRET"]
+
+    print(
+        "azure-entra-id credentials debug:\n"
+        f"  tenant_id: {_mask(tenant_id)}\n"
+        f"  client_id: {_mask(client_id)}\n"
+        f"  client_secret: {_mask(client_secret)}"
+    )
 
     print("Ensuring azure-entra-id secret exists...")
     cluster_utils.run_oc(
