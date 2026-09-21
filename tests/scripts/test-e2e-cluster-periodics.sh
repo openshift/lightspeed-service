@@ -110,7 +110,8 @@ function run_suites() {
     # Temporarily disabled: watsonx_byok1 endpoint intermittently unreachable, OLS fails readiness
     # run_suite "watsonx_byok1" "byok1" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "byok1"
     # (( rc = rc || $? ))
-    run_suite "watsonx_byok2" "byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "byok2"
+    # Temporarily disabled: watsonx_byok2 references a retired Konflux rag-content image, OLS pod never reaches ready. Reactivate as part of OLS-4242.
+    # run_suite "watsonx_byok2" "byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "byok2"
 
     # quota limits tests, independent of provider therefore only testing one
     run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "quota"
