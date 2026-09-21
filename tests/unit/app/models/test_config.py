@@ -2236,6 +2236,31 @@ def test_ols_config(tmpdir):
     assert ols_config.solr_hybrid is None
 
 
+def test_ols_config_tool_result_inspection_defaults_to_enabled():
+    """Enable tool-result inspection when the guardrail is omitted."""
+    ols_config = OLSConfig()
+
+    assert ols_config.guardrails.tool_result_inspection.enabled is True
+
+
+def test_ols_config_tool_result_inspection_accepts_explicit_false():
+    """Allow administrators to disable tool-result inspection explicitly."""
+    ols_config = OLSConfig(
+        {"guardrails": {"tool_result_inspection": {"enabled": False}}}
+    )
+
+    assert ols_config.guardrails.tool_result_inspection.enabled is False
+
+
+def test_ols_config_tool_result_inspection_accepts_operator_key():
+    """Read the generated snake-case guardrail configuration key."""
+    ols_config = OLSConfig(
+        {"guardrails": {"tool_result_inspection": {"enabled": True}}}
+    )
+
+    assert ols_config.guardrails.tool_result_inspection.enabled is True
+
+
 def test_ols_config_with_custom_offload_storage_path():
     """Test OLSConfig offload_storage_path override."""
     ols_config = OLSConfig(
