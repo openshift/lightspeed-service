@@ -346,6 +346,7 @@ class GoogleVertexConfig(BaseModel, extra="forbid"):
 class AnthropicConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to direct Anthropic API provider."""
 
+    url: AnyHttpUrl = AnyHttpUrl("https://api.anthropic.com")
     credentials_path: str  # required attribute
 
 

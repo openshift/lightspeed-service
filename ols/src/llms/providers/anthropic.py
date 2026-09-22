@@ -28,7 +28,7 @@ class Anthropic(LLMProvider):
         # provider-specific configuration has precedence over regular configuration
         if self.provider_config.anthropic_config is not None:
             anthropic_config = self.provider_config.anthropic_config
-            self.url = str(anthropic_config.url)
+            self.url = str(anthropic_config.url or self.url)
             if anthropic_config.api_key is not None:
                 self.credentials = anthropic_config.api_key
 
@@ -39,19 +39,13 @@ class Anthropic(LLMProvider):
             "max_tokens": constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE,
             "temperature": 0.01,
             "top_p": 0.95,
-            "http_client": self._construct_httpx_client(False),
-            "http_async_client": self._construct_httpx_client(True),
         }
 
-        # Extended thinking support via model options reasoning_config
         model_config = self.provider_config.models.get(self.model)
-        if model_config and model_config.options:
-            reasoning_config = model_config.options.get("reasoning_config")
-            if reasoning_config:
-                default_parameters["thinking"] = reasoning_config
-                # Anthropic requires default temperature when thinking is enabled
-                default_parameters.pop("temperature", None)
-                default_parameters.pop("top_p", None)
+        if model_config and model_config.parameters.reasoning_config:
+            default_parameters["thinking"] = model_config.parameters.reasoning_config
+            default_parameters.pop("temperature", None)
+            default_parameters.pop("top_p", None)
 
         return default_parameters
 

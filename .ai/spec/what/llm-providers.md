@@ -126,9 +126,9 @@ The following sections describe only what differs from the standard contract abo
 
 ### Anthropic (`anthropic`)
 
-42. Default URL: `https://api.anthropic.com`. Uses `ChatAnthropic` from `langchain-anthropic`. Credentials are a direct Anthropic API key read from `credentials_path` via the standard `apitoken` pattern. Uses httpx clients and custom certificate store. `max_tokens_for_response` maps to `max_tokens`.
+42. Default URL: `https://api.anthropic.com`. Uses `ChatAnthropic` from `langchain-anthropic`. Credentials are a direct Anthropic API key read from `credentials_path` via the standard `apitoken` pattern. Does not use httpx clients or custom certificate store. `max_tokens_for_response` maps to `max_tokens`.
 
-43. [PLANNED: OLS-3442] When `reasoning_config` is present, passes it as the `thinking` dict to `ChatAnthropic`. Same semantics as the Vertex Anthropic variant (rule 13) — extended thinking requires `type` (enabled/adaptive) and optionally `budget_tokens`. Standard sampling parameters (`temperature`, `top_p`) are skipped when reasoning is enabled.
+43. When `reasoning_config` is present, passes it as the `thinking` dict to `ChatAnthropic`. Same semantics as the Vertex Anthropic variant (rule 13) — extended thinking requires `type` (enabled/adaptive) and optionally `budget_tokens`. Standard sampling parameters (`temperature`, `top_p`) are skipped when reasoning is enabled.
 
 ### AWS Bedrock (`bedrock`)
 

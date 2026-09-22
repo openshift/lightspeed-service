@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-import httpx
 import pytest
 
 from ols.app.models.config import ProviderConfig
@@ -20,7 +19,7 @@ def provider_config():
             "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
-                    "name": "claude-sonnet-4-20250514",
+                    "name": "claude-sonnet-4-6",
                     "url": "https://api.anthropic.com",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
@@ -44,7 +43,7 @@ def provider_config_with_specific_parameters():
             },
             "models": [
                 {
-                    "name": "claude-sonnet-4-20250514",
+                    "name": "claude-sonnet-4-6",
                     "url": "https://api.anthropic.com",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
@@ -64,10 +63,10 @@ def provider_config_with_thinking():
             "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
-                    "name": "claude-sonnet-4-20250514",
+                    "name": "claude-sonnet-4-6",
                     "url": "https://api.anthropic.com",
                     "credentials_path": "tests/config/secret/apitoken",
-                    "options": {
+                    "parameters": {
                         "reasoning_config": {
                             "type": "enabled",
                             "budget_tokens": 10000,
@@ -86,7 +85,7 @@ def provider_config_with_thinking():
 def test_basic_interface(mock_chat_anthropic, provider_config):
     """Test basic interface."""
     anthropic = Anthropic(
-        model="claude-sonnet-4-20250514", params={}, provider_config=provider_config
+        model="claude-sonnet-4-6", params={}, provider_config=provider_config
     )
     llm = anthropic.load()
     assert llm is not None
@@ -95,14 +94,6 @@ def test_basic_interface(mock_chat_anthropic, provider_config):
     assert "model" in anthropic.default_params
     assert "max_tokens" in anthropic.default_params
     assert "anthropic_api_key" in anthropic.default_params
-
-    assert "http_client" in anthropic.default_params
-    assert anthropic.default_params["http_client"] is not None
-    assert "http_async_client" in anthropic.default_params
-    assert anthropic.default_params["http_async_client"] is not None
-
-    client = anthropic.default_params["http_client"]
-    assert isinstance(client, httpx.Client)
 
 
 @patch(
@@ -120,7 +111,7 @@ def test_params_handling(mock_chat_anthropic, provider_config):
     }
 
     anthropic = Anthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         params=params,
         provider_config=provider_config,
     )
@@ -156,7 +147,7 @@ def test_loading_provider_specific_parameters(
 ):
     """Test that provider-specific config takes precedence."""
     anthropic = Anthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         params={},
         provider_config=provider_config_with_specific_parameters,
     )
@@ -183,6 +174,41 @@ def test_loading_provider_specific_parameters(
     "ols.src.llms.providers.anthropic.ChatAnthropic",
     autospec=True,
 )
+def test_anthropic_config_without_url(mock_chat_anthropic):
+    """Test that anthropic_config without url falls back to default."""
+    config = ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "anthropic",
+            "url": "https://api.anthropic.com",
+            "credentials_path": "tests/config/secret/apitoken",
+            "anthropic_config": {
+                "credentials_path": "tests/config/secret2/apitoken",
+            },
+            "models": [
+                {
+                    "name": "claude-sonnet-4-6",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+    anthropic = Anthropic(
+        model="claude-sonnet-4-6",
+        params={},
+        provider_config=config,
+    )
+    anthropic.load()
+
+    assert anthropic.url == "https://api.anthropic.com/"
+    assert anthropic.credentials == "secret_key_2"
+    assert anthropic.default_params["base_url"] == "https://api.anthropic.com/"
+
+
+@patch(
+    "ols.src.llms.providers.anthropic.ChatAnthropic",
+    autospec=True,
+)
 def test_none_params_handling(mock_chat_anthropic, provider_config):
     """Test that None-valued known parameters are kept."""
     params = {
@@ -194,7 +220,7 @@ def test_none_params_handling(mock_chat_anthropic, provider_config):
     }
 
     anthropic = Anthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         params=params,
         provider_config=provider_config,
     )
@@ -210,12 +236,10 @@ def test_none_params_handling(mock_chat_anthropic, provider_config):
     "ols.src.llms.providers.anthropic.ChatAnthropic",
     autospec=True,
 )
-def test_thinking_config(
-    mock_chat_anthropic, provider_config_with_thinking
-):
+def test_thinking_config(mock_chat_anthropic, provider_config_with_thinking):
     """Test that reasoning_config in options produces thinking param."""
     anthropic = Anthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         params={},
         provider_config=provider_config_with_thinking,
     )
