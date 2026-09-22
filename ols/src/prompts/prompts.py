@@ -57,6 +57,11 @@ practices."""
 
 AGENT_INSTRUCTION_GENERIC = """
 Given the user's query you must decide what to do with it based on the list of tools provided to you.
+"""
+
+# Shared topic guard appended to the selected agent instructions (generic or
+# Granite) so every model refuses clearly unrelated questions before using tools.
+AGENT_INSTRUCTION_TOPIC_GUARD = """
 * Before calling any tool, assess whether the user's question is about your specified topics (OpenShift, Kubernetes, and the Red Hat products listed in your role definition). If the question is clearly unrelated to these topics (e.g., cooking, sports, entertainment, general trivia), refuse immediately without calling any tools.
 """
 
@@ -103,6 +108,8 @@ SOLR_DOCS_TOOL_SUPPLEMENT_WITH_BYOK = """
 Solr docs tool:
 * ``search_openshift_documentation`` searches published Red Hat product documentation (not live cluster resources).
 * The provided context contains domain-specific knowledge. If it answers the question, use it directly. Only call ``search_openshift_documentation`` to fill in general OpenShift details that the domain knowledge does not cover. Never contradict or override relevant domain knowledge.
+* If results are empty or irrelevant to the user's actual question, say so briefly, then you may use general knowledge.
+* Even if the tool returns results, always evaluate whether the user's original question is about your specified topics. If the question is off-topic, refuse it regardless of what the tool returned. Do not use incidentally matching documentation to answer off-topic questions.
 * When you use a passage from the tool, cite its ``title`` and ``docs_url`` from the tool JSON. Never invent documentation URLs.
 
 If the tool is used, grounded answers (passages from ``search_openshift_documentation``):

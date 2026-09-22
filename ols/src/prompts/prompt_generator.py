@@ -59,6 +59,9 @@ class GeneratePrompt:
         agent_instructions = prompts.AGENT_INSTRUCTION_GENERIC.strip()
         if ModelFamily.GRANITE in model:
             agent_instructions = prompts.AGENT_INSTRUCTION_GRANITE.strip()
+        agent_instructions = (
+            agent_instructions + "\n" + prompts.AGENT_INSTRUCTION_TOPIC_GUARD.strip()
+        )
         return agent_instructions + "\n" + prompts.AGENT_SYSTEM_INSTRUCTION.strip()
 
     def generate_prompt(self, model: str) -> tuple[ChatPromptTemplate, dict]:

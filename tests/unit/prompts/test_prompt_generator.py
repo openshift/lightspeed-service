@@ -26,6 +26,9 @@ Agent Instruction Granite.
 agent_instruction_generic = """
 Agent Instruction generic.
 """
+agent_instruction_topic_guard = """
+Agent Instruction topic guard.
+"""
 agent_system_instruction = """
 Agent Instruction default.
 """
@@ -185,6 +188,10 @@ def test_generate_prompt_with_tool_call(model):
             agent_instruction_generic,
         ),
         patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_TOPIC_GUARD",
+            agent_instruction_topic_guard,
+        ),
+        patch(
             "ols.src.prompts.prompts.AGENT_SYSTEM_INSTRUCTION",
             agent_system_instruction,
         ),
@@ -205,6 +212,7 @@ def test_generate_prompt_with_tool_call(model):
     agent_instruction = agent_instruction_generic.strip()
     if ModelFamily.GRANITE in model:
         agent_instruction = agent_instruction_granite.strip()
+    agent_instruction = agent_instruction + "\n" + agent_instruction_topic_guard.strip()
     agent_instruction = agent_instruction + "\n" + agent_system_instruction.strip()
 
     assert prompt.messages[0].prompt.template == (
@@ -458,6 +466,10 @@ def test_solr_docs_tool_guidance_with_byok_uses_relaxed_supplement():
     assert "Do not rely on memory alone" not in template
     assert "domain-specific knowledge" in template
     assert "Never contradict or override" in template
+    # Post-result topic guard mirrors the non-BYOK supplement so off-topic
+    # questions are refused even when the tool returns incidental matches.
+    assert "then you may use general knowledge" in template
+    assert "refuse it regardless of what the tool returned" in template
 
 
 def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
