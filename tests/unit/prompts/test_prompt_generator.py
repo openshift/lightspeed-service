@@ -407,7 +407,7 @@ def test_solr_docs_tool_guidance_appended_for_ask_tool_mode():
     assert "Grounded answers (passages from" in template
     assert "search_openshift_documentation" in template
     assert "ALWAYS call" in template
-    assert "Do not rely on memory alone" in template
+    assert "do not rely on memory alone" in template
     assert prompt.format(**llm_input_values).startswith("System: SYS")
 
 
@@ -474,5 +474,5 @@ def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
     ).generate_prompt("gpt-4o-mini")
     template = prompt.messages[0].prompt.template
     assert "ALWAYS call" in template
-    assert "Do not rely on memory alone" in template
+    assert "do not rely on memory alone" in template
     assert "domain-specific knowledge" not in template
