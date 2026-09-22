@@ -150,6 +150,35 @@ fail the daily job instead of silently resetting the history; a missing snapshot
 from a failed run is skipped. History is retained only as long as CI retains
 these GCS artifacts. `BUILD_ID` must be available in CI.
 
+## Tool-result inspection evaluation
+
+The Classic tool-result inspection evaluation is separate from the Q&A datasets.
+It uses labeled cases in `eval/tool_result_inspection/` and reports externally
+observable benign responses, safety-stop responses, service failures, and
+false-positive/false-negative metrics by provider and model.
+
+Run the credentialed smoke evaluation against a deployed Classic service:
+
+```bash
+API_KEY="$OLS_API_KEY" \
+uv run python -m eval.tool_result_inspection.runner \
+  --base-url http://localhost:8080 \
+  --dataset eval/tool_result_inspection/corpus_smoke.yaml \
+  --output-dir /tmp/ols-tool-result-inspection \
+  --provider openai \
+  --model gpt-5-mini
+```
+
+Use `corpus_full.yaml` only when a real-model evaluation is required. The
+runner reads credentials from `API_KEY`, keeps per-case failures controlled so
+later cases continue, and writes redacted `results.jsonl` and `summary.json`
+files. It does not write tool-result content, classifier prompts, model
+reasoning, or credentials. Real-model runs are opt-in and can incur provider
+costs; keep output directories outside the repository.
+
+See `eval/tool_result_inspection/README.md` for the corpus schema and report
+contract.
+
 ## Results
 
 Results are saved in output directories:

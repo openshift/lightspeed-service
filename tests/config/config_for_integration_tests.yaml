@@ -79,6 +79,9 @@ llm_providers:
       - name: model-name
 ols_config:
   max_workers: 1
+  guardrails:
+    tool_result_inspection:
+      enabled: true
   reference_content:
     indexes:
       - product_docs_index_path: "tests/config"
