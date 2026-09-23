@@ -26,6 +26,9 @@ Agent Instruction Granite.
 agent_instruction_generic = """
 Agent Instruction generic.
 """
+agent_instruction_topic_guard = """
+Agent Instruction topic guard.
+"""
 agent_system_instruction = """
 Agent Instruction default.
 """
@@ -185,6 +188,10 @@ def test_generate_prompt_with_tool_call(model):
             agent_instruction_generic,
         ),
         patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_TOPIC_GUARD",
+            agent_instruction_topic_guard,
+        ),
+        patch(
             "ols.src.prompts.prompts.AGENT_SYSTEM_INSTRUCTION",
             agent_system_instruction,
         ),
@@ -205,6 +212,7 @@ def test_generate_prompt_with_tool_call(model):
     agent_instruction = agent_instruction_generic.strip()
     if ModelFamily.GRANITE in model:
         agent_instruction = agent_instruction_granite.strip()
+    agent_instruction = agent_instruction + "\n" + agent_instruction_topic_guard.strip()
     agent_instruction = agent_instruction + "\n" + agent_system_instruction.strip()
 
     assert prompt.messages[0].prompt.template == (
@@ -259,6 +267,10 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
             agent_system_instruction,
         ),
         patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_TOPIC_GUARD",
+            agent_instruction_topic_guard,
+        ),
+        patch(
             "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_INSTRUCTION",
             troubleshooting_agent_instruction,
         ),
@@ -279,9 +291,12 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
     assert set(prompt.input_variables) == {"chat_history", "context", "query"}
 
     # In troubleshooting mode, agent instructions should come from
-    # troubleshooting constants, not the generic/granite ones.
+    # troubleshooting constants, with the shared topic guard applied between
+    # the agent instruction and system instruction (as in the generic path).
     expected_agent = (
         troubleshooting_agent_instruction.strip()
+        + "\n"
+        + agent_instruction_topic_guard.strip()
         + "\n"
         + troubleshooting_agent_system_instruction.strip()
     )
@@ -293,6 +308,22 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
         "Use the previous chat history to interact and help the user.\n"
         "{context}"
     )
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_troubleshooting_mode_includes_topic_guard(model):
+    """Test that troubleshooting mode applies the shared topic guard."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        troubleshooting_system_instruction,
+        tool_call=True,
+        mode=QueryMode.TROUBLESHOOTING,
+    ).generate_prompt(model)
+
+    template = prompt.messages[0].prompt.template
+    assert prompts.AGENT_INSTRUCTION_TOPIC_GUARD.strip() in template
 
 
 @pytest.mark.parametrize("model", model)
@@ -407,7 +438,7 @@ def test_solr_docs_tool_guidance_appended_for_ask_tool_mode():
     assert "Grounded answers (passages from" in template
     assert "search_openshift_documentation" in template
     assert "ALWAYS call" in template
-    assert "Do not rely on memory alone" in template
+    assert "do not rely on memory alone" in template
     assert prompt.format(**llm_input_values).startswith("System: SYS")
 
 
@@ -458,6 +489,10 @@ def test_solr_docs_tool_guidance_with_byok_uses_relaxed_supplement():
     assert "Do not rely on memory alone" not in template
     assert "domain-specific knowledge" in template
     assert "Never contradict or override" in template
+    # Post-result topic guard mirrors the non-BYOK supplement so off-topic
+    # questions are refused even when the tool returns incidental matches.
+    assert "then you may use general knowledge" in template
+    assert "refuse it regardless of what the tool returned" in template
 
 
 def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
@@ -474,5 +509,5 @@ def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
     ).generate_prompt("gpt-4o-mini")
     template = prompt.messages[0].prompt.template
     assert "ALWAYS call" in template
-    assert "Do not rely on memory alone" in template
+    assert "do not rely on memory alone" in template
     assert "domain-specific knowledge" not in template
