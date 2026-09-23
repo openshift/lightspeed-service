@@ -53,6 +53,8 @@ class GeneratePrompt:
             return (
                 prompts.TROUBLESHOOTING_AGENT_INSTRUCTION.strip()
                 + "\n"
+                + prompts.AGENT_INSTRUCTION_TOPIC_GUARD.strip()
+                + "\n"
                 + prompts.TROUBLESHOOTING_AGENT_SYSTEM_INSTRUCTION.strip()
             )
 

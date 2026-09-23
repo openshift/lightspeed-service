@@ -267,6 +267,10 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
             agent_system_instruction,
         ),
         patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_TOPIC_GUARD",
+            agent_instruction_topic_guard,
+        ),
+        patch(
             "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_INSTRUCTION",
             troubleshooting_agent_instruction,
         ),
@@ -287,9 +291,12 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
     assert set(prompt.input_variables) == {"chat_history", "context", "query"}
 
     # In troubleshooting mode, agent instructions should come from
-    # troubleshooting constants, not the generic/granite ones.
+    # troubleshooting constants, with the shared topic guard applied between
+    # the agent instruction and system instruction (as in the generic path).
     expected_agent = (
         troubleshooting_agent_instruction.strip()
+        + "\n"
+        + agent_instruction_topic_guard.strip()
         + "\n"
         + troubleshooting_agent_system_instruction.strip()
     )
@@ -301,6 +308,22 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
         "Use the previous chat history to interact and help the user.\n"
         "{context}"
     )
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_troubleshooting_mode_includes_topic_guard(model):
+    """Test that troubleshooting mode applies the shared topic guard."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        troubleshooting_system_instruction,
+        tool_call=True,
+        mode=QueryMode.TROUBLESHOOTING,
+    ).generate_prompt(model)
+
+    template = prompt.messages[0].prompt.template
+    assert prompts.AGENT_INSTRUCTION_TOPIC_GUARD.strip() in template
 
 
 @pytest.mark.parametrize("model", model)
