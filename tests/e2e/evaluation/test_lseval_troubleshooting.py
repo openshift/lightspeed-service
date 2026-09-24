@@ -1,20 +1,12 @@
-"""Troubleshooting eval tests using OLS troubleshooting mode and cluster scenarios.
+"""Troubleshooting eval tests using OLS troubleshooting mode with MCP tools.
 
 The pytest implementation is commented out for now; only a skip placeholder runs.
 See the commented block at the bottom of this file to re-enable.
 
-When enabled, two suites are provided:
-
-scenario_evals
-    Inject a specific broken cluster state via setup/cleanup scripts, then ask
-    OLS to diagnose it.  Expected answers are known in advance and scored with
-    custom:answer_correctness (and geval/deepeval metrics for multi-turn cases).
-
-mcp_evals
-    Open-ended live-cluster evals that require a pre-broken cluster with MCP
-    tools available (obs-mcp + openshift-mcp-server).  No setup scripts are
-    used; the cluster must be prepared externally.  Responses are scored with
-    geval:generic_troubleshooting_experience.
+Open-ended live-cluster evals that require a pre-broken cluster with MCP
+tools available (obs-mcp + openshift-mcp-server).  No setup scripts are
+used; the cluster must be prepared externally.  Responses are scored with
+geval:generic_troubleshooting_experience.
 """
 
 import pytest
@@ -39,7 +31,6 @@ import pytest
 # TROUBLESHOOTING_EVAL_DIR = EVAL_DIR / "troubleshooting"
 # LSEVAL_BIN = PROJECT_ROOT / ".venv" / "bin" / "lightspeed-eval"
 # SYSTEM_CONFIG = TROUBLESHOOTING_EVAL_DIR / "system.yaml"
-# SCENARIO_EVAL_DATA = TROUBLESHOOTING_EVAL_DIR / "scenario_evals.yaml"
 # MCP_EVAL_DATA = TROUBLESHOOTING_EVAL_DIR / "mcp_evals.yaml"
 #
 #
@@ -161,23 +152,6 @@ import pytest
 #     assert overall["error_rate"] <= MAX_EVAL_ERROR_RATE_PCT, (
 #         f"{overall['ERROR']}/{overall['TOTAL']} evaluations errored "
 #         f"(error_rate={overall['error_rate']:.1f}% > threshold {MAX_EVAL_ERROR_RATE_PCT}%)."
-#     )
-
-
-# @pytest.mark.lseval
-# def test_lseval_troubleshooting_scenarios(request: pytest.FixtureRequest) -> None:
-#     """Run scenario-based troubleshooting evals against the cluster.
-
-#     Each scenario injects a specific broken cluster state via a setup script,
-#     asks OLS to diagnose it, then cleans up.  Expected answers are known in
-#     advance and scored with custom:answer_correctness.
-#     """
-#     out_dir_base = request.config.option.eval_out_dir or str(
-#         EVAL_DIR / "results-lseval-troubleshooting"
-#     )
-#     _run_troubleshooting_lseval(
-#         SCENARIO_EVAL_DATA,
-#         Path(out_dir_base) / "troubleshooting" / "scenarios",
 #     )
 
 

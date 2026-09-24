@@ -37,13 +37,9 @@ api:
 embedding:
   cache_enabled: false
 
-# Metrics metadata — registers every metric used in scenario_evals.yaml
+# Metrics metadata — registers every metric used in eval data files
 metrics_metadata:
   turn_level:
-    "custom:answer_correctness":
-      description: "Correctness vs expected answer using custom LLM evaluation"
-      default: false
-
     "geval:generic_troubleshooting_experience":
       description: "Verify if the agent is performing real evidence-based troubleshooting"
       criteria: |
