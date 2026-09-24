@@ -132,6 +132,24 @@ Two configuration files are available depending on your use case:
   - `geval:actionable_guidance` - Specific remediation steps (threshold: 0.7)
 
 
+## Daily short-dataset CI evaluation
+
+The 4.22 `ols-eval-periodic-daily` periodic runs `tests/scripts/test-lseval-daily.sh`
+(07:15 UTC). It shares the six-provider/model matrix and 10-question dataset
+with presubmit; the full-dataset weekly/RHOAI path is unchanged. Credentials
+and `OLS_IMAGE` match the presubmit job.
+
+Each run publishes `lseval/<provider>/evaluation_*_summary.json`,
+`daily_score_history.csv`, `trend_pass_rate.png`, and `trend_score_mean.png`
+under its Prow `artifacts/ols-eval-periodic-daily/e2e/artifacts/` directory.
+The history contains separate `lseval_daily_<provider>` series and is restored
+from the newest earlier daily job's immutable CSV in the public
+`test-platform-results-public` GCS bucket, then appended and published with the
+current job. The first run starts an empty history. GCS listing/read errors
+fail the daily job instead of silently resetting the history; a missing snapshot
+from a failed run is skipped. History is retained only as long as CI retains
+these GCS artifacts. `BUILD_ID` must be available in CI.
+
 ## Results
 
 Results are saved in output directories:

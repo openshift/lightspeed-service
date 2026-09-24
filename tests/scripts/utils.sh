@@ -55,8 +55,8 @@ function run_suite() {
   if [[ "$1" == lseval_periodic* ]]; then
   # Run LSEval periodic tests (full 797-question dataset)
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-lseval-periodic
-  elif [[ "$1" == lseval_presubmit* ]]; then
-  # Run LSEval presubmit tests (10-question short dataset)
+  elif [[ "$1" == lseval_presubmit* || "$1" == lseval_daily* ]]; then
+  # Run LSEval short-dataset tests (presubmit or daily)
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-lseval-presubmit
   elif [ "$1" = "cluster_updates" ]; then
   # Run cluster-updates evaluation tests (18 conversations, 35 evaluations)
