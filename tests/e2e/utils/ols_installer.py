@@ -14,6 +14,8 @@ from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
+BUNDLE_INSTALL_SUBPROCESS_TIMEOUT = 25 * 60
+BUNDLE_CLEANUP_SUBPROCESS_TIMEOUT = 6 * 60
 
 disconnected = os.getenv("DISCONNECTED", "")
 
@@ -408,6 +410,7 @@ def _run_operator_sdk_bundle(bundle_image: str) -> None:
         capture_output=True,
         text=True,
         check=True,
+        timeout=BUNDLE_INSTALL_SUBPROCESS_TIMEOUT,
     )
 
 
@@ -430,6 +433,7 @@ def _cleanup_failed_bundle() -> bool:
             capture_output=True,
             text=True,
             check=False,
+            timeout=BUNDLE_CLEANUP_SUBPROCESS_TIMEOUT,
         )
         if result.returncode != 0:
             print(
@@ -439,6 +443,12 @@ def _cleanup_failed_bundle() -> bool:
             return False
         print("operator-sdk cleanup succeeded")
         return True
+    except subprocess.TimeoutExpired as e:
+        print(
+            f"operator-sdk cleanup timed out after {BUNDLE_CLEANUP_SUBPROCESS_TIMEOUT}s,"
+            f" stdout: {e.stdout}, stderr: {e.stderr}"
+        )
+        return False
     except OSError as e:
         print(f"operator-sdk cleanup error (non-fatal): {e}")
         return False
@@ -448,7 +458,7 @@ def _run_bundle_with_retry(bundle_image: str) -> None:
     """Install the operator bundle, retrying once on failure after cleanup."""
     try:
         _run_operator_sdk_bundle(bundle_image)
-    except subprocess.CalledProcessError as first_err:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as first_err:
         print(
             f"operator-sdk run bundle failed: {first_err},"
             f" stdout: {first_err.output}, stderr: {first_err.stderr}"
@@ -460,7 +470,7 @@ def _run_bundle_with_retry(bundle_image: str) -> None:
         print("Retrying operator-sdk run bundle...")
         try:
             _run_operator_sdk_bundle(bundle_image)
-        except subprocess.CalledProcessError as retry_err:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as retry_err:
             print(
                 f"operator-sdk run bundle retry failed: {retry_err},"
                 f" stdout: {retry_err.output}, stderr: {retry_err.stderr}"
