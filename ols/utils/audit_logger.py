@@ -147,6 +147,9 @@ class AuditLogger:
         success: bool,
         duration_ms: Optional[int],
         output_content: Optional[str] = None,
+        boundary_applied: bool = False,
+        boundary_source_tool: Optional[str] = None,
+        raw_content_length: Optional[int] = None,
     ) -> None:
         """Set tool result attributes and emit tool.result event on execute_tool span."""
         self._set_span_attrs(
@@ -157,6 +160,12 @@ class AuditLogger:
         attrs: dict[str, Any] = {"success": success}
         if output_content is not None:
             attrs["output"] = output_content
+        if boundary_applied:
+            attrs["boundary_applied"] = True
+            if boundary_source_tool is not None:
+                attrs["boundary_source_tool"] = boundary_source_tool
+            if raw_content_length is not None:
+                attrs["raw_content_length"] = raw_content_length
         self._add_span_event("tool.result", **attrs)
 
     def tool_approval_requested(
