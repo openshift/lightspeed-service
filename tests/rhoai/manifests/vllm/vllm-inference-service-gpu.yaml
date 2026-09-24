@@ -16,10 +16,10 @@ spec:
       runtime: vllm-gpu
       resources:
         limits:
-          nvidia.com/gpu: 1
-          cpu: "4"
-          memory: 20Gi
+          nvidia.com/gpu: ${VLLM_GPU_COUNT}
+          cpu: "${VLLM_INFERENCE_SERVICE_CPU_LIMIT}"
+          memory: ${VLLM_INFERENCE_SERVICE_MEMORY_LIMIT}
         requests:
-          nvidia.com/gpu: 1
-          cpu: "2"
-          memory: 16Gi
+          nvidia.com/gpu: ${VLLM_GPU_COUNT}
+          cpu: "${VLLM_INFERENCE_SERVICE_CPU_REQUEST}"
+          memory: ${VLLM_INFERENCE_SERVICE_MEMORY_REQUEST}

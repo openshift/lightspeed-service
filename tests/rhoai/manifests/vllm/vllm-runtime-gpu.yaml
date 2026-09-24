@@ -13,20 +13,22 @@ spec:
   containers:
     - args:
         - --model
-        - meta-llama/Llama-3.1-8B-Instruct
+        - ${VLLM_MODEL}
         - --enable-auto-tool-choice
         - --tool-call-parser 
-        - llama3_json
+        - ${VLLM_TOOL_CALL_PARSER}
         - --chat-template 
-        - /mnt/chat-template/tool_chat_template_llama3.1_json.jinja
+        - /mnt/chat-template/chat_template.jinja
+        - --tensor-parallel-size
+        - "${VLLM_TENSOR_PARALLEL_SIZE}"
         - --download-dir
         - /tmp/models-cache
         - --port
         - "8080"
         - --max-model-len
-        - "35936"
+        - "${VLLM_MAX_MODEL_LEN}"
         - --gpu-memory-utilization
-        - "0.9"
+        - "${VLLM_GPU_MEMORY_UTILIZATION}"
       image: ${VLLM_IMAGE}
       name: kserve-container
       env:
@@ -61,17 +63,20 @@ spec:
           mountPath: /.cache
       resources:
         limits:
-          nvidia.com/gpu: 1
-          cpu: "6"
-          memory: 20Gi
+          nvidia.com/gpu: ${VLLM_GPU_COUNT}
+          cpu: "${VLLM_RUNTIME_CPU_LIMIT}"
+          memory: ${VLLM_RUNTIME_MEMORY_LIMIT}
         requests:
-          nvidia.com/gpu: 1
-          cpu: "4"
-          memory: 16Gi
+          nvidia.com/gpu: ${VLLM_GPU_COUNT}
+          cpu: "${VLLM_RUNTIME_CPU_REQUEST}"
+          memory: ${VLLM_RUNTIME_MEMORY_REQUEST}
   volumes:
     - name: chat-template
       configMap:
-        name: vllm-chat-template
+        name: ${VLLM_CHAT_TEMPLATE_CONFIGMAP}
+        items:
+          - key: ${VLLM_CHAT_TEMPLATE_KEY}
+            path: chat_template.jinja
     - name: models-cache
       emptyDir: {}
     - name: vllm-cache

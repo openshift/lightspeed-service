@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
+source "$SCRIPT_DIR/model-profile.sh" || exit 1
+load_vllm_model_profile || exit 1
+
 BASE_DIR="$1"
 
 # Wait until the CRDs exist
@@ -75,4 +79,4 @@ envsubst < "$BASE_DIR/manifests/vllm/vllm-runtime-gpu.yaml" | oc apply -f -
 echo "Waiting for ServingRuntime to be ready..."
 sleep 5
 
-oc apply -f "$BASE_DIR/manifests/vllm/vllm-inference-service-gpu.yaml"
+envsubst < "$BASE_DIR/manifests/vllm/vllm-inference-service-gpu.yaml" | oc apply -f -
