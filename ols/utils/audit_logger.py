@@ -154,10 +154,7 @@ class AuditLogger:
             success=success,
             duration_ms=duration_ms,
         )
-        attrs: dict[str, Any] = {"success": success}
-        if output_content is not None:
-            attrs["output"] = output_content
-        self._add_span_event("tool.result", **attrs)
+        self._add_span_event("tool.result", success=success)
 
     def tool_approval_requested(
         self,

@@ -31,6 +31,10 @@ from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.rag_index.solr_support import get_openshift_docs_tool
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
+from ols.src.tools.tool_result_inspection import (
+    ToolResultClassifier,
+    ToolResultInspectionError,
+)
 from ols.utils.audit_logger import AuditContext
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import (
@@ -101,6 +105,14 @@ class DocsSummarizer(QueryHelper):
         ref = config.config.ols_config.reference_content
         self._byok_active = ref is not None and bool(ref.indexes)
         self._tool_calling_enabled = bool(self.mcp_servers) or solr_docs_tool_active
+        tool_result_inspection_enabled = (
+            config.ols_config.guardrails.tool_result_inspection.enabled
+        )
+        logger.info(
+            "Tool-result inspection enabled=%s, tool_calling_enabled=%s",
+            tool_result_inspection_enabled,
+            self._tool_calling_enabled,
+        )
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
         elif self._tool_calling_enabled:
@@ -121,6 +133,28 @@ class DocsSummarizer(QueryHelper):
 
         set_debug(self.verbose)
 
+        tool_result_classifier = None
+        if self._tool_calling_enabled and tool_result_inspection_enabled:
+            classifier_llm = self.llm_loader(
+                self.provider,
+                self.model,
+                {
+                    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128,
+                    GenericLLMParameters.TEMPERATURE: 0.0,
+                },
+            )
+            if not hasattr(classifier_llm, "with_structured_output"):
+                raise ToolResultInspectionError(
+                    "tool-result classifier requires structured output support"
+                )
+            tool_result_classifier = ToolResultClassifier(classifier_llm)
+            logger.info(
+                "Tool-result classifier initialized for provider=%s, model=%s",
+                self.provider,
+                self.model,
+            )
+
+        self._tool_result_classifier = tool_result_classifier
         self._llm_agent = LLMExecutionAgent(
             bare_llm=self.bare_llm,
             model=self.model,
@@ -130,6 +164,7 @@ class DocsSummarizer(QueryHelper):
             streaming=self.streaming,
             token_budget_tracker=self._tracker,
             audit_ctx=self._audit_ctx,
+            tool_result_classifier=tool_result_classifier,
         )
 
     async def _resolve_tools_for_request(
@@ -340,6 +375,12 @@ class DocsSummarizer(QueryHelper):
         Yields:
             StreamedChunk objects representing parts of the response
         """
+        if self._tool_result_classifier is not None:
+            self._tool_result_classifier.set_quota_context(
+                config.quota_limiters,
+                user_id or "",
+            )
+
         rag_chunks = await self._prepare_prompt_context(query, rag_retriever)
 
         skill_content: Optional[str] = None

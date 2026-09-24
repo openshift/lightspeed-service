@@ -26,6 +26,9 @@ from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
 )
+from ols.src.tools.tool_result_inspection import (  # noqa: E402
+    ToolResultInspectionError,
+)
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
 from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools  # noqa: E402
 from ols.utils.token_handler import (  # noqa: E402
@@ -94,6 +97,66 @@ def test_tool_calling_disabled_without_mcp_and_without_solr_docs_tool():
     """Tool calling stays off when neither MCP nor Solr docs tool is active."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     assert summarizer._tool_calling_enabled is False
+
+
+def test_tool_result_inspection_logging(caplog):
+    """Log the effective tool-result inspection and tool-calling state."""
+    caplog.set_level(logging.INFO)
+
+    DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    assert (
+        "Tool-result inspection enabled=True, tool_calling_enabled=False" in caplog.text
+    )
+
+
+def test_tool_result_classifier_logging(caplog):
+    """Log classifier initialization when tool inspection is active."""
+    caplog.set_level(logging.INFO)
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+        return_value={"test_server": {}},
+    ):
+        DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    assert "Tool-result classifier initialized" in caplog.text
+
+
+def test_tool_result_inspection_fails_closed_without_structured_output():
+    """Reject tool-loop initialization when the classifier lacks structured output."""
+
+    def loader(*args, **kwargs):
+        return type("UnsupportedLLM", (), {"provider": "mock", "model": "mock"})()
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+        return_value={"test_server": {}},
+    ):
+        with pytest.raises(ToolResultInspectionError, match="structured output"):
+            DocsSummarizer(llm_loader=loader)
+
+
+def test_tool_result_inspection_disabled_skips_classifier():
+    """Skip classifier construction when inspection is explicitly disabled."""
+
+    def loader(*args, **kwargs):
+        return type("UnsupportedLLM", (), {"provider": "mock", "model": "mock"})()
+
+    with (
+        patch.object(
+            config.ols_config.guardrails.tool_result_inspection,
+            "enabled",
+            False,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value={"test_server": {}},
+        ),
+    ):
+        summarizer = DocsSummarizer(llm_loader=loader)
+
+    assert summarizer._tool_result_classifier is None
 
 
 def test_summarize_empty_history():
@@ -486,6 +549,8 @@ def test_tool_calling_tool_execution(caplog):
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         summarizer.model_config.max_tokens_for_tools = 100
+        summarizer.model_config.context_window_size = 1000
+        summarizer.model_config.parameters.max_tokens_for_response = 100
         summarizer.create_response("How many namespaces are there in my cluster?")
 
         assert "get_namespaces_mock" in caplog.text

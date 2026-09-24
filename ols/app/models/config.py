@@ -1276,6 +1276,18 @@ class QuotaHandlersConfig(BaseModel):
         self.enable_token_history = data.get("enable_token_history", False)
 
 
+class ToolResultInspectionConfig(BaseModel):
+    """Configuration for model-visible tool-result inspection."""
+
+    enabled: bool = True
+
+
+class GuardrailsConfig(BaseModel):
+    """Runtime safety guardrail configuration."""
+
+    tool_result_inspection: ToolResultInspectionConfig = ToolResultInspectionConfig()
+
+
 class OLSConfig(BaseModel):
     """OLS configuration."""
 
@@ -1303,6 +1315,8 @@ class OLSConfig(BaseModel):
     proxy_config: Optional[ProxyConfig] = None
 
     tool_filtering: Optional[ToolFilteringConfig] = None
+
+    guardrails: GuardrailsConfig = GuardrailsConfig()
 
     tools_approval: Optional[ToolsApprovalConfig] = None
 
@@ -1369,6 +1383,7 @@ class OLSConfig(BaseModel):
         self.proxy_config = ProxyConfig(data.get("proxy_config"))
         if data.get("tool_filtering", None) is not None:
             self.tool_filtering = ToolFilteringConfig(**data.get("tool_filtering"))
+        self.guardrails = GuardrailsConfig(**data.get("guardrails", {}))
         if data.get("tools_approval", None) is not None:
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
         if data.get("skills", None) is not None:
