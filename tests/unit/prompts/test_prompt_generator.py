@@ -32,6 +32,9 @@ Agent Instruction topic guard.
 agent_system_instruction = """
 Agent Instruction default.
 """
+tool_data_trust_instruction = """
+Tool data trust instruction.
+"""
 query = "What is Kubernetes?"
 rag_context = ["context 1", "context 2"]
 conversation_history = [
@@ -195,6 +198,10 @@ def test_generate_prompt_with_tool_call(model):
             "ols.src.prompts.prompts.AGENT_SYSTEM_INSTRUCTION",
             agent_system_instruction,
         ),
+        patch(
+            "ols.src.prompts.prompts.TOOL_DATA_TRUST_INSTRUCTION",
+            tool_data_trust_instruction,
+        ),
     ):
         prompt, llm_input_values = GeneratePrompt(
             query, rag_formatted, conversation_history, system_instruction, True
@@ -214,6 +221,7 @@ def test_generate_prompt_with_tool_call(model):
         agent_instruction = agent_instruction_granite.strip()
     agent_instruction = agent_instruction + "\n" + agent_instruction_topic_guard.strip()
     agent_instruction = agent_instruction + "\n" + agent_system_instruction.strip()
+    agent_instruction = agent_instruction + "\n" + tool_data_trust_instruction.strip()
 
     assert prompt.messages[0].prompt.template == (
         "Answer user queries in the context of openshift.\n"
@@ -278,6 +286,10 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
             "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_SYSTEM_INSTRUCTION",
             troubleshooting_agent_system_instruction,
         ),
+        patch(
+            "ols.src.prompts.prompts.TOOL_DATA_TRUST_INSTRUCTION",
+            tool_data_trust_instruction,
+        ),
     ):
         prompt, _llm_input_values = GeneratePrompt(
             query,
@@ -299,6 +311,8 @@ def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
         + agent_instruction_topic_guard.strip()
         + "\n"
         + troubleshooting_agent_system_instruction.strip()
+        + "\n"
+        + tool_data_trust_instruction.strip()
     )
 
     assert prompt.messages[0].prompt.template == (
@@ -511,3 +525,38 @@ def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
     assert "ALWAYS call" in template
     assert "do not rely on memory alone" in template
     assert "domain-specific knowledge" not in template
+
+
+@pytest.mark.parametrize("model", model)
+def test_tool_data_trust_instruction_included_when_tools_active(model):
+    """Test that tool data trust instruction is included when tool_call=True."""
+    prompt, _ = GeneratePrompt(
+        query, [], [], system_instruction, tool_call=True
+    ).generate_prompt(model)
+    template = prompt.messages[0].prompt.template
+    assert prompts.TOOL_DATA_TRUST_INSTRUCTION.strip() in template
+
+
+@pytest.mark.parametrize("model", model)
+def test_tool_data_trust_instruction_excluded_when_tools_inactive(model):
+    """Test that tool data trust instruction is NOT included when tool_call=False."""
+    prompt, _ = GeneratePrompt(
+        query, [], [], system_instruction, tool_call=False
+    ).generate_prompt(model)
+    template = prompt.messages[0].prompt.template
+    assert prompts.TOOL_DATA_TRUST_INSTRUCTION.strip() not in template
+
+
+@pytest.mark.parametrize("model", model)
+def test_tool_data_trust_instruction_in_troubleshooting_mode(model):
+    """Test trust instruction is included in troubleshooting mode with tools."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        system_instruction,
+        tool_call=True,
+        mode=QueryMode.TROUBLESHOOTING,
+    ).generate_prompt(model)
+    template = prompt.messages[0].prompt.template
+    assert prompts.TOOL_DATA_TRUST_INSTRUCTION.strip() in template

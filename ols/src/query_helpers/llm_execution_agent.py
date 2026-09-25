@@ -22,7 +22,11 @@ from ols.app.metrics.metrics import gen_ai_client_operation_duration_seconds
 from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.config import ModelConfig
 from ols.app.models.models import RagChunk, StreamChunkType, StreamedChunk
-from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
+from ols.src.tools.tools import (
+    _wrap_tool_output,
+    enforce_tool_token_budget,
+    execute_tool_calls_stream,
+)
 from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import TokenBudgetTracker, TokenCategory
 
@@ -790,6 +794,49 @@ class LLMExecutionAgent:
             type=StreamChunkType.TOOL_RESULT, data=tool_result_data
         )
 
+    def _apply_tool_output_boundaries(
+        self,
+        all_tool_messages: list[ToolMessage],
+        executed_tool_ids: set[str],
+        tool_id_to_name: dict[str, str],
+    ) -> None:
+        """Wrap executed tool outputs in boundary markers and emit audit telemetry.
+
+        Only messages whose ``tool_call_id`` appears in *executed_tool_ids*
+        are wrapped.  The caller is responsible for populating this set with
+        IDs of tools that actually ran externally (i.e. went through
+        ``_execute_single_tool_call_stream`` and completed execution).
+        Synthetic OLS-authored messages — budget skips, resolution failures,
+        and approval rejections — must **not** appear in this set so they
+        pass through unwrapped.
+
+        Messages are replaced in-place within *all_tool_messages*.
+        """
+        for i, msg in enumerate(all_tool_messages):
+            if msg.tool_call_id not in executed_tool_ids:
+                continue
+            tool_name = tool_id_to_name.get(msg.tool_call_id, "unknown")
+            raw_content = str(msg.content)
+            wrapped = _wrap_tool_output(raw_content, tool_name)
+            all_tool_messages[i] = ToolMessage(
+                content=wrapped,
+                status=msg.status,
+                tool_call_id=msg.tool_call_id,
+                additional_kwargs=msg.additional_kwargs,
+            )
+            if self._audit_ctx:
+                self._audit_ctx.logger.tool_result(
+                    output_length=len(wrapped),
+                    success=msg.status == "success",
+                    duration_ms=msg.additional_kwargs.get("duration_ms"),
+                    output_content=(
+                        wrapped if self._audit_ctx.capture_content else None
+                    ),
+                    boundary_applied=True,
+                    boundary_source_tool=tool_name,
+                    raw_content_length=len(raw_content),
+                )
+
     async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912
         self,
         *,
@@ -916,6 +963,26 @@ class LLMExecutionAgent:
             all_tool_messages = enforce_tool_token_budget(
                 all_tool_messages, remaining, self._tracker.token_handler
             )
+
+        # Build the set of tool IDs that actually executed externally
+        # (not budget-skipped or approval-rejected).  Only these should
+        # receive content-boundary wrapping.  The discriminator is
+        # ``duration_ms`` in additional_kwargs — set exclusively by
+        # ``_execute_single_tool_call_stream`` after real execution.
+        executed_tool_ids: set[str] = {
+            msg.tool_call_id
+            for msg in tool_calls_messages
+            if msg.additional_kwargs.get("duration_ms") is not None
+        }
+
+        # Wrapping is intentionally applied AFTER enforce_tool_token_budget()
+        # so that truncation never breaks the closing </tool_data> tag.
+        # This adds ~10 tokens of overhead per tool result above the
+        # enforced budget — an acceptable trade-off for boundary integrity.
+        self._apply_tool_output_boundaries(
+            all_tool_messages, executed_tool_ids, tool_id_to_name
+        )
+
         messages.extend(all_tool_messages)
 
         for tool_call_message in all_tool_messages:

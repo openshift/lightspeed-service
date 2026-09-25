@@ -891,3 +891,212 @@ async def test_invoke_llm_observes_duration_histogram():
     after = [s for s in labeled._samples() if s.name.endswith("_count")]
     count_after = after[0].value if after else 0.0
     assert count_after - count_before == 1
+
+
+class TestBoundaryProvenanceTracking:
+    """Verify _apply_tool_output_boundaries wraps only actually-executed tools."""
+
+    @pytest.mark.asyncio
+    async def test_budget_skipped_messages_are_not_wrapped(self):
+        """Budget-skipped ToolMessages must pass through without wrapping."""
+        agent = _make_agent()
+        # Exhaust the tool budget so all definitions are budget-skipped.
+        agent._tracker.charge(TokenCategory.TOOL_RESULT, 49_900)
+
+        tool = mock_tools_map[0]
+        tool_call_chunks = [
+            AIMessageChunk(
+                content="",
+                response_metadata={"finish_reason": "tool_calls"},
+                tool_calls=[{"name": tool.name, "args": {}, "id": "call_budget_skip"}],
+            )
+        ]
+
+        with patch(
+            "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+            new=AsyncMock(side_effect=AssertionError("executor should not be called")),
+        ):
+            streamed = [
+                chunk
+                async for chunk in agent._process_tool_calls_for_round(
+                    round_index=1,
+                    tool_call_chunks=tool_call_chunks,
+                    all_chunks=[],
+                    all_tools_dict={tool.name: tool},
+                    duplicate_tool_names=set(),
+                    messages=[],
+                )
+            ]
+
+        result_chunks = [c for c in streamed if c.type == StreamChunkType.TOOL_RESULT]
+        assert len(result_chunks) == 1
+        content = result_chunks[0].data["content"]
+        assert "<tool_data" not in content, "Budget-skipped message must NOT be wrapped"
+        assert "call skipped" in content
+
+    @pytest.mark.asyncio
+    async def test_approval_rejected_messages_are_not_wrapped(self):
+        """Approval-rejected ToolMessages must pass through without wrapping."""
+        agent = _make_agent()
+        tool = mock_tools_map[0]
+
+        async def _fake_execute(*args, **kwargs):
+            # Simulate approval rejection: yields approval_required then rejection.
+            yield ApprovalRequiredEvent(
+                data={
+                    "approval_id": "aid-rej",
+                    "tool_name": tool.name,
+                    "tool_description": "desc",
+                    "tool_args": {},
+                    "tool_annotation": {},
+                }
+            )
+            yield ToolResultEvent(
+                data=ToolMessage(
+                    content=(
+                        f"Tool '{tool.name}' execution was rejected. "
+                        "Do not retry this exact tool call."
+                    ),
+                    status="error",
+                    tool_call_id="call_rejected",
+                    additional_kwargs={"truncated": False},
+                )
+            )
+
+        tool_call_chunks = [
+            AIMessageChunk(
+                content="",
+                response_metadata={"finish_reason": "tool_calls"},
+                tool_calls=[{"name": tool.name, "args": {}, "id": "call_rejected"}],
+            )
+        ]
+
+        with patch(
+            "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+            side_effect=_fake_execute,
+        ):
+            streamed = [
+                chunk
+                async for chunk in agent._process_tool_calls_for_round(
+                    round_index=1,
+                    tool_call_chunks=tool_call_chunks,
+                    all_chunks=[],
+                    all_tools_dict={tool.name: tool},
+                    duplicate_tool_names=set(),
+                    messages=[],
+                )
+            ]
+
+        result_chunks = [c for c in streamed if c.type == StreamChunkType.TOOL_RESULT]
+        assert len(result_chunks) == 1
+        content = result_chunks[0].data["content"]
+        assert (
+            "<tool_data" not in content
+        ), "Approval-rejected message must NOT be wrapped"
+        assert "execution was rejected" in content
+
+    @pytest.mark.asyncio
+    async def test_executed_tool_results_are_wrapped(self):
+        """Actually-executed tool results must be wrapped with boundary markers."""
+        agent = _make_agent()
+        tool = mock_tools_map[0]
+
+        async def _fake_execute(*args, **kwargs):
+            yield ToolResultEvent(
+                data=ToolMessage(
+                    content="real tool output",
+                    status="success",
+                    tool_call_id="call_exec",
+                    additional_kwargs={
+                        "truncated": False,
+                        "duration_ms": 42,
+                    },
+                )
+            )
+
+        tool_call_chunks = [
+            AIMessageChunk(
+                content="",
+                response_metadata={"finish_reason": "tool_calls"},
+                tool_calls=[{"name": tool.name, "args": {}, "id": "call_exec"}],
+            )
+        ]
+
+        with patch(
+            "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+            side_effect=_fake_execute,
+        ):
+            streamed = [
+                chunk
+                async for chunk in agent._process_tool_calls_for_round(
+                    round_index=1,
+                    tool_call_chunks=tool_call_chunks,
+                    all_chunks=[],
+                    all_tools_dict={tool.name: tool},
+                    duplicate_tool_names=set(),
+                    messages=[],
+                )
+            ]
+
+        result_chunks = [c for c in streamed if c.type == StreamChunkType.TOOL_RESULT]
+        assert len(result_chunks) == 1
+        content = result_chunks[0].data["content"]
+        assert content.startswith("<tool_data"), "Executed tool result must be wrapped"
+        assert content.endswith("</tool_data>")
+        assert "real tool output" in content
+
+    @pytest.mark.asyncio
+    async def test_mixed_executed_and_skipped_wraps_only_executed(self):
+        """When both skip and execution results exist, only executed are wrapped."""
+        agent = _make_agent()
+        tool_a = mock_tools_map[0]
+
+        async def _fake_execute(*args, **kwargs):
+            yield ToolResultEvent(
+                data=ToolMessage(
+                    content="executed output",
+                    status="success",
+                    tool_call_id="call_good",
+                    additional_kwargs={
+                        "truncated": False,
+                        "duration_ms": 10,
+                    },
+                )
+            )
+
+        tool_call_chunks = [
+            AIMessageChunk(
+                content="",
+                response_metadata={"finish_reason": "tool_calls"},
+                tool_calls=[
+                    {"name": tool_a.name, "args": {}, "id": "call_good"},
+                    {"name": "missing_tool", "args": {}, "id": "call_skip"},
+                ],
+            )
+        ]
+
+        with patch(
+            "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+            side_effect=_fake_execute,
+        ):
+            streamed = [
+                chunk
+                async for chunk in agent._process_tool_calls_for_round(
+                    round_index=1,
+                    tool_call_chunks=tool_call_chunks,
+                    all_chunks=[],
+                    all_tools_dict={tool_a.name: tool_a},
+                    duplicate_tool_names=set(),
+                    messages=[],
+                )
+            ]
+
+        result_chunks = [c for c in streamed if c.type == StreamChunkType.TOOL_RESULT]
+        assert len(result_chunks) == 2
+        by_id = {c.data["id"]: c for c in result_chunks}
+        # The skipped message (resolution failure) must NOT be wrapped.
+        assert "<tool_data" not in by_id["call_skip"].data["content"]
+        assert "tool is unavailable" in by_id["call_skip"].data["content"]
+        # The executed message must be wrapped.
+        assert by_id["call_good"].data["content"].startswith("<tool_data")
+        assert by_id["call_good"].data["content"].endswith("</tool_data>")

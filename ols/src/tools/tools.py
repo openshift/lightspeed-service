@@ -1,6 +1,7 @@
 """Functions/Tools definition."""
 
 import asyncio
+import html
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -103,6 +104,30 @@ def _is_rate_limited_tool_error(error: Exception) -> bool:
 
 
 _CHARS_PER_TOKEN_ESTIMATE = 4
+
+
+def _wrap_tool_output(content: str, tool_name: str) -> str:
+    """Wrap tool output in content boundary markers.
+
+    Mark tool results as untrusted data so the LLM treats them as
+    reference data rather than instructions to follow.
+
+    Both ``content`` and ``tool_name`` are HTML-escaped so that tool
+    output containing ``</tool_data>`` (or other markup) cannot forge
+    or break the boundary marker.
+
+    Args:
+        content: Tool output text to wrap.
+        tool_name: Name of the tool that produced the output.
+
+    Returns:
+        Content wrapped in ``<tool_data>`` boundary markers.
+    """
+    return (
+        f'<tool_data source="{html.escape(tool_name)}">'
+        f"{html.escape(content)}"
+        f"</tool_data>"
+    )
 
 
 def _convert_tool_output_to_text(output: Any) -> str:
@@ -602,6 +627,10 @@ async def _execute_single_tool_call_stream(
         gen_ai_execute_tool_duration_seconds.labels(
             gen_ai_tool_name=tool_name,
         ).observe(elapsed)
+
+        # Wrapping is applied AFTER truncation in the caller
+        # (_process_tool_calls_for_round) so that the boundary markers
+        # are never broken by enforce_tool_token_budget.
 
         if audit_ctx:
             audit_ctx.logger.tool_result(
