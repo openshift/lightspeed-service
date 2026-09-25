@@ -204,7 +204,9 @@ def _plot_metric(
     print(f"Saved: {output_path}")
 
 
-def _generate_plots(history_csv: Path, output_dir: Path) -> None:
+def _generate_plots(
+    history_csv: Path, output_dir: Path, frequency: str = "Weekly"
+) -> None:
     if not history_csv.is_file():
         print(
             f"No history CSV at {history_csv} — skipping trend plots.",
@@ -229,14 +231,14 @@ def _generate_plots(history_csv: Path, output_dir: Path) -> None:
     _plot_metric(
         df,
         "pass_rate",
-        "Weekly Pass Rate Progression",
+        f"{frequency} Pass Rate Progression",
         "Pass rate (%)",
         output_dir / "trend_pass_rate.png",
     )
     _plot_metric(
         df,
         "score_mean",
-        "Weekly Score Mean Progression",
+        f"{frequency} Score Mean Progression",
         "Score mean",
         output_dir / "trend_score_mean.png",
     )
