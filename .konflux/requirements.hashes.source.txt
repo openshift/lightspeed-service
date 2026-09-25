@@ -19,6 +19,9 @@ ibm-watsonx-ai==1.7.1 \
     --hash=sha256:23d5885266b5f62b25dd96096319e1745df15f8477bd00dc4d5a338574e61efc
 jmespath==1.0.1 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
+langchain-anthropic==1.5.3 \
+    --hash=sha256:48a7e4fc3856c42f9dcb4396ba112afcdd8dee21b70a402bc43283c970de3941 \
+    --hash=sha256:b1b72b7c9e4bf5c044660629ebbcb79cef18c140fdc80174750eb86de13ec8bc
 langchain-aws==1.7.5 \
     --hash=sha256:90f50d10c0e55ebbf0a5151304d121a39975cc3e099aad5526e0ee37ea2eeb14
 langchain-google-vertexai==3.2.4 \

@@ -343,6 +343,13 @@ class GoogleVertexConfig(BaseModel, extra="forbid"):
     location: str  # required attribute
 
 
+class AnthropicConfig(ProviderSpecificConfig, extra="forbid"):
+    """Configuration specific to direct Anthropic API provider."""
+
+    url: AnyHttpUrl = AnyHttpUrl("https://api.anthropic.com")
+    credentials_path: str  # required attribute
+
+
 class FakeConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to fake provider."""
 
@@ -374,6 +381,7 @@ class ProviderConfig(BaseModel):
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
     google_vertex_anthropic_config: Optional[GoogleVertexAnthropicConfig] = None
     google_vertex_config: Optional[GoogleVertexConfig] = None
+    anthropic_config: Optional[AnthropicConfig] = None
     fake_provider_config: Optional[FakeConfig] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
 
@@ -544,6 +552,11 @@ class ProviderConfig(BaseModel):
                     self.google_vertex_config = GoogleVertexConfig(
                         **google_vertex_config
                     )
+                case constants.PROVIDER_ANTHROPIC:
+                    anthropic_config = data.get("anthropic_config")
+                    self.check_provider_config(anthropic_config)
+                    self.read_api_key(anthropic_config)
+                    self.anthropic_config = AnthropicConfig(**anthropic_config)
                 case constants.PROVIDER_FAKE:
                     fake_provider_config = data.get("fake_provider_config")
                     self.fake_provider_config = FakeConfig(**fake_provider_config)

@@ -38,7 +38,7 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 | Attribute | Requirement | Description |
 |---|---|---|
 | `gen_ai.operation.name` | Required | `"chat"` |
-| `gen_ai.request.model` | Required | Model name requested (e.g., `gpt-4o`, `claude-sonnet-4-20250514`) |
+| `gen_ai.request.model` | Required | Model name requested (e.g., `gpt-4o`, `claude-sonnet-4-6`) |
 | `gen_ai.response.model` | Recommended | Actual model from provider response |
 | `gen_ai.provider.name` | Required | Provider name (e.g., `openai`, `anthropic`, `watsonx`) |
 | `gen_ai.usage.input_tokens` | Recommended | Input token count for this turn |
