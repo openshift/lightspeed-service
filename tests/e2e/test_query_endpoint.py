@@ -33,8 +33,6 @@ def test_invalid_question():
         assert response.status_code == requests.codes.ok
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
-
         json_response = response.json()
         assert json_response["conversation_id"] == cid
         assert isinstance(json_response["referenced_documents"], list)
@@ -60,8 +58,6 @@ def test_invalid_question_without_conversation_id():
         assert response.status_code == requests.codes.ok
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
-
         json_response = response.json()
         assert isinstance(json_response["referenced_documents"], list)
         assert json_response["truncated"] is False
@@ -93,7 +89,6 @@ def test_query_call_without_payload():
         assert response.status_code == requests.codes.unprocessable_entity
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
         # the actual response might differ when new Pydantic version will be used
         # so let's do just primitive check
         assert "missing" in response.text
@@ -114,7 +109,6 @@ def test_query_call_with_improper_payload():
         assert response.status_code == requests.codes.unprocessable_entity
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
         # the actual response might differ when new Pydantic version will be used
         # so let's do just primitive check
         assert "missing" in response.text
@@ -214,7 +208,6 @@ def test_valid_question() -> None:
         assert response.status_code == requests.codes.ok
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
         json_response = response.json()
 
         # checking a few major information from response
@@ -244,7 +237,6 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
         assert response.status_code == requests.codes.ok
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
         json_response = response.json()
 
         ref_docs = json_response["referenced_documents"]
@@ -363,7 +355,6 @@ def test_rag_question() -> None:
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
 
-        print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
         ref_docs = json_response["referenced_documents"]
@@ -388,7 +379,6 @@ def test_query_filter() -> None:
         )
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
         # values to be filtered and replaced are defined in:
@@ -430,7 +420,6 @@ def test_conversation_history() -> None:
         assert response.status_code == requests.codes.ok, debug_msg
         response_utils.check_content_type(response, "application/json", debug_msg)
 
-        print(vars(response))
         json_response = response.json()
         response_text = json_response["response"].lower()
         assert "ingress" in response_text, debug_msg
@@ -442,7 +431,6 @@ def test_conversation_history() -> None:
             json={"conversation_id": cid, "query": "tell me more about it?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
-        print(vars(response))
 
         debug_msg = "Second call to LLM with conversation history has failed"
         assert response.status_code == requests.codes.ok
@@ -598,7 +586,6 @@ def test_tool_calling() -> None:
         assert response.status_code == requests.codes.ok
 
         response_utils.check_content_type(response, "application/json")
-        print(vars(response))
         json_response = response.json()
 
         # checking a few major information from response
@@ -628,7 +615,6 @@ def test_rag_question_byok1() -> None:
         )
         assert response.status_code == requests.codes.ok
 
-        print(vars(response))
         assert "4.17" in response.json()["referenced_documents"][0]["doc_url"]
 
 
@@ -643,5 +629,4 @@ def test_rag_question_byok2() -> None:
         )
         assert response.status_code == requests.codes.ok
 
-        print(vars(response))
         assert "4.16" in response.json()["referenced_documents"][0]["doc_url"]
