@@ -51,7 +51,6 @@ def run_oc(
                     "resource exists",
                 ]
             ):
-                print(f"Resource already exists: {e}\nproceeding...")
                 return subprocess.CompletedProcess(e.cmd, 0, stdout="", stderr="")
 
         print(
@@ -294,12 +293,12 @@ def list_path(pod_name: str, path: str) -> list[str]:
         # files are returned as 'file1\nfile2\n'
         return [f for f in result.stdout.split("\n") if f]
     except subprocess.CalledProcessError as e:
-        print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
         if e.returncode == 2 and (
             "No such file or directory" in e.stdout
             or "No such file or directory" in e.stderr
         ):
             return []
+        print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
         raise Exception("Error listing pod path") from e
 
 
