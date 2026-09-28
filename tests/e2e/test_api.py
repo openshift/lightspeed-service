@@ -383,16 +383,13 @@ def test_user_data_collection():
     logs = filter_logs(container_log, last_log_line)
     # Verify data was collected and uploaded
     assert "Collected 1 files" in logs, (
-        "Expected 'Collected 1 files' in logs:\n"
-        f"{logs[-2000:]}"
+        "Expected 'Collected 1 files' in logs:\n" f"{logs[-2000:]}"
     )
     assert "Uploading data chunk" in logs, (
-        "Expected 'Uploading data chunk' in logs:\n"
-        f"{logs[-2000:]}"
+        "Expected 'Uploading data chunk' in logs:\n" f"{logs[-2000:]}"
     )
     assert "Data uploaded with request_id:" in logs, (
-        "Expected 'Data uploaded with request_id:' in logs:\n"
-        f"{logs[-2000:]}"
+        "Expected 'Data uploaded with request_id:' in logs:\n" f"{logs[-2000:]}"
     )
 
     # Verify data was cleaned up after upload
