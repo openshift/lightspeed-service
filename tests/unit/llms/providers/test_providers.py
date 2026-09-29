@@ -80,6 +80,70 @@ def test_invalid_provider_is_not_registered():
             pass
 
 
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+def test_llm_provider_uses_optional_model_temperature(
+    temperature: float | None,
+) -> None:
+    """Use a configured model temperature without inventing a default."""
+
+    class MyProvider(LLMProvider):
+        @property
+        def default_params(self) -> dict:
+            return {"model": "gpt-6-luna"}
+
+        def load(self) -> FakeChatModel:
+            return FakeChatModel()
+
+    model_parameters = {} if temperature is None else {"temperature": temperature}
+    provider_config = ProviderConfig(
+        {
+            "name": "openai",
+            "type": "openai",
+            "models": [{"name": "gpt-6-luna", "parameters": model_parameters}],
+        }
+    )
+    provider = MyProvider(model="gpt-6-luna", provider_config=provider_config)
+
+    if temperature is None:
+        assert "temperature" not in provider.params
+    else:
+        assert provider.params["temperature"] == temperature
+
+
+@pytest.mark.parametrize("developer_temperature", [None, 0.9])
+def test_llm_provider_configured_temperature_precedence(
+    developer_temperature: float | None,
+) -> None:
+    """Apply caller and developer overrides after the model's temperature."""
+
+    class MyProvider(LLMProvider):
+        @property
+        def default_params(self) -> dict:
+            return {"model": "gpt-6-luna"}
+
+        def load(self) -> FakeChatModel:
+            return FakeChatModel()
+
+    provider_config = ProviderConfig(
+        {
+            "name": "openai",
+            "type": "openai",
+            "models": [{"name": "gpt-6-luna", "parameters": {"temperature": 0.7}}],
+        }
+    )
+    if developer_temperature is not None:
+        config.dev_config.llm_params = {"temperature": developer_temperature}
+
+    provider = MyProvider(
+        model="gpt-6-luna",
+        params={"temperature": 0.0},
+        provider_config=provider_config,
+    )
+    assert provider.params["temperature"] == (
+        developer_temperature if developer_temperature is not None else 0.0
+    )
+
+
 def test_llm_provider_params_order__inputs_overrides_defaults():
     """Test LLMProvider overrides default params."""
 

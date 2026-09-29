@@ -110,6 +110,24 @@ def test_basic_interface(provider_config):
         assert watsonx.default_params
 
 
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+def test_load_uses_configured_model_temperature(
+    provider_config: ProviderConfig, temperature: float | None
+) -> None:
+    """Map only configured temperatures to Watsonx generation parameters."""
+    provider_config.models["test_model_name"].parameters.temperature = temperature
+    with patch(
+        "ols.src.llms.providers.watsonx.ChatWatsonx", autospec=True
+    ) as mock_chat:
+        Watsonx(model="test_model_name", provider_config=provider_config).load()
+
+    passed_params = mock_chat.call_args.kwargs["params"]
+    if temperature is None:
+        assert GenParams.TEMPERATURE not in passed_params
+    else:
+        assert passed_params[GenParams.TEMPERATURE] == temperature
+
+
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
     # first two parameters should be removed before model init

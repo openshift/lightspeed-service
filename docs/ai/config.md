@@ -5,6 +5,8 @@ Read this when adding new configuration fields, new config classes, or modifying
 ## Key Facts
 
 - All config classes use Pydantic `BaseModel`
+- `models[].parameters.temperature` is optional, finite, and non-negative. When absent, OLS
+  does not set a sampling temperature. `temperature_supported` is no longer accepted.
 - Config is loaded from YAML via `ProviderConfig(data_dict)` and similar constructors — not from keyword args directly
 - Validation errors must raise `checks.InvalidConfigurationError`, not Pydantic's built-in errors
 - `extra="forbid"` is used on provider-specific configs — unknown fields cause a hard error

@@ -200,10 +200,26 @@ def test_gemini_basic_interface(mock_chat, gemini_provider_config):
     assert "base_url" not in call_kwargs
 
 
-@patch(
-    "ols.src.llms.providers.google_vertex.ChatGoogleGenerativeAI",
-    autospec=True,
-)
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+@patch("ols.src.llms.providers.google_vertex.ChatGoogleGenerativeAI", autospec=True)
+def test_gemini_uses_configured_model_temperature(
+    mock_chat, gemini_provider_config: ProviderConfig, temperature: float | None
+) -> None:
+    """Send only configured temperatures to Gemini on Vertex."""
+    gemini_provider_config.models["gemini-2.5-flash"].parameters.temperature = (
+        temperature
+    )
+    GoogleVertex(
+        model="gemini-2.5-flash", provider_config=gemini_provider_config
+    ).load()
+    kwargs = mock_chat.call_args.kwargs
+    if temperature is None:
+        assert "temperature" not in kwargs
+    else:
+        assert kwargs["temperature"] == temperature
+
+
+@patch("ols.src.llms.providers.google_vertex.ChatGoogleGenerativeAI", autospec=True)
 def test_gemini_params_handling(mock_chat, gemini_provider_config):
     """Test Gemini Vertex strips disallowed parameters before model init."""
     params = {
@@ -288,10 +304,26 @@ def test_gemini_authorized_user_credentials(
     assert call_kwargs["base_url"] == "https://us-central1-aiplatform.googleapis.com"
 
 
-@patch(
-    "ols.src.llms.providers.google_vertex.ChatAnthropicVertex",
-    autospec=True,
-)
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+@patch("ols.src.llms.providers.google_vertex.ChatAnthropicVertex", autospec=True)
+def test_anthropic_uses_configured_model_temperature(
+    mock_chat, anthropic_provider_config: ProviderConfig, temperature: float | None
+) -> None:
+    """Send only configured temperatures to Anthropic on Vertex."""
+    anthropic_provider_config.models["claude-opus-4-6"].parameters.temperature = (
+        temperature
+    )
+    GoogleVertexAnthropic(
+        model="claude-opus-4-6", provider_config=anthropic_provider_config
+    ).load()
+    kwargs = mock_chat.call_args.kwargs
+    if temperature is None:
+        assert "temperature" not in kwargs
+    else:
+        assert kwargs["temperature"] == temperature
+
+
+@patch("ols.src.llms.providers.google_vertex.ChatAnthropicVertex", autospec=True)
 def test_anthropic_basic_interface(mock_chat, anthropic_provider_config):
     """Test Anthropic on Vertex basic interface."""
     vertex = GoogleVertexAnthropic(

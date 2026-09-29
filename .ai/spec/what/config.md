@@ -125,6 +125,7 @@ Each provider entry under `llm_providers` supports:
 | `llm_providers[].models[].parameters.max_tokens_for_response` | int | 4096 | Tokens reserved for response |
 | `llm_providers[].models[].parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window for tool outputs (0.1--0.6) |
 | `llm_providers[].models[].parameters.reasoning_config` | dict | none | Freeform dict of provider-specific reasoning/thinking parameters. See `what/llm-providers.md` rule 13 for valid keys per provider |
+| `llm_providers[].models[].parameters.temperature` | float | none | Optional finite, non-negative temperature; omitted from provider parameters when unset. `temperature_supported` is rejected. |
 | `llm_providers[].models[].parameters.reasoning_effort` | enum | low | [DEPRECATED: OLS-3442] Reasoning effort level (low, medium, high). Replaced by `reasoning_config` |
 | `llm_providers[].models[].parameters.reasoning_summary` | enum | concise | [DEPRECATED: OLS-3442] Reasoning summary style (auto, concise, detailed). Replaced by `reasoning_config` |
 | `llm_providers[].models[].parameters.verbosity` | enum | low | [DEPRECATED: OLS-3442] General verbosity level (low, medium, high). Replaced by `reasoning_config` |

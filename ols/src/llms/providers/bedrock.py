@@ -55,7 +55,6 @@ class Bedrock(LLMProvider):
         return {
             "api_key": self.credentials or "",
             "model": self.model,
-            "temperature": 0.01,
             "max_tokens": 4096,
         }
 
@@ -160,8 +159,10 @@ class Bedrock(LLMProvider):
                     "budget_tokens"
                 ] = tokens
 
-        # Remove sampling parameters when thinking is enabled
-        params.pop("temperature", None)
+        if "temperature" in params:
+            raise LLMConfigurationError(
+                "temperature is incompatible with Anthropic thinking"
+            )
         params.pop("top_p", None)
         params.pop("top_k", None)
 
