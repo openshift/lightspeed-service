@@ -97,6 +97,21 @@ def test_basic_interface(provider_config):
     assert isinstance(client, httpx.AsyncClient)
 
 
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+def test_load_uses_configured_model_temperature(
+    provider_config: ProviderConfig, temperature: float | None
+) -> None:
+    """Pass only explicitly configured temperatures to RHOAI vLLM."""
+    provider_config.models["test_model_name"].parameters.temperature = temperature
+    llm = RHOAIVLLM(model="test_model_name", provider_config=provider_config).load()
+    assert isinstance(llm, ChatOpenAI)
+
+    if temperature is None:
+        assert "temperature" not in llm._default_params
+    else:
+        assert llm._default_params["temperature"] == temperature
+
+
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
     # first three parameters should be removed before model init

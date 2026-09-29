@@ -223,6 +223,21 @@ def test_basic_interface(provider_config):
     assert isinstance(client, httpx.Client)
 
 
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+def test_load_uses_configured_model_temperature(
+    provider_config: ProviderConfig, temperature: float | None
+) -> None:
+    """Send temperature only when configured for the Azure OpenAI model."""
+    provider_config.models["test_model_name"].parameters.temperature = temperature
+    llm = AzureOpenAI(model="test_model_name", provider_config=provider_config).load()
+    assert isinstance(llm, AzureChatOpenAI)
+
+    if temperature is None:
+        assert "temperature" not in llm._default_params
+    else:
+        assert llm._default_params["temperature"] == temperature
+
+
 def test_credentials_in_directory_handling(provider_config_credentials_directory):
     """Test that credentials in directory is handled as expected."""
     azure_openai = AzureOpenAI(

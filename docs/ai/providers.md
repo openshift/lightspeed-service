@@ -60,7 +60,6 @@ class MyProvider(LLMProvider):
         return {
             "api_key": self.credentials,
             "model": self.model,
-            "temperature": 0.01,
             "max_tokens": 512,
         }
 
@@ -96,8 +95,13 @@ In `ols/app/models/config.py`, add the optional field and validation in `Provide
 Parameters are applied in this order (later overrides earlier):
 
 1. `default_params` property
-2. Caller-supplied `params` argument
-3. `config.dev_config.llm_params` (developer override, highest priority)
+2. Configured model `parameters.temperature` (when set)
+3. Caller-supplied `params` argument
+4. `config.dev_config.llm_params` (developer override, highest priority)
+
+`models[].parameters.temperature` is optional and applies to all providers. When unset, the
+provider must not introduce a temperature default.
+`temperature_supported` is removed; existing configurations using it are rejected.
 
 Unknown parameters (not in the provider's `ProviderParameter` set) are silently filtered out before `load()` is called.
 

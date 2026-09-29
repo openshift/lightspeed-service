@@ -2,9 +2,11 @@
 
 import os
 import shlex
+import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 PROJECT_ROOT = Path(__file__).parents[3]
@@ -91,14 +93,18 @@ def render_manifest(
     manifest: Path, profile_name: str | None = None
 ) -> dict[str, object]:
     """Load a profile and render one manifest without inheriting host configuration."""
+    envsubst = shutil.which("envsubst")
+    if envsubst is None:
+        pytest.skip("envsubst is required to render model-profile manifests")
     result = subprocess.run(  # noqa: S603
         [
             "/bin/bash",
             "-c",
-            'source "$1" && load_vllm_model_profile && envsubst < "$2"',
+            'source "$1" && load_vllm_model_profile && "$3" < "$2"',
             "/bin/bash",
             str(PROFILE_SCRIPT),
             str(manifest),
+            envsubst,
         ],
         check=True,
         capture_output=True,

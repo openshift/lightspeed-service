@@ -226,7 +226,6 @@ def test_model_parameters():
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
     assert default_params.reasoning_config is None
-    assert default_params.temperature_supported is True
 
     parameters = ModelParameters(max_tokens_for_response=10, unknown_param="hello")
 
@@ -246,9 +245,6 @@ def test_model_parameters():
         "verbosity": "medium",
     }
 
-    assert ModelParameters(temperature_supported=False).temperature_supported is False
-    assert ModelParameters(temperature_supported=True).temperature_supported is True
-
     # max_tokens_for_response needs to be positive integer
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         ModelParameters(max_tokens_for_response=-1)
@@ -266,6 +262,38 @@ def test_model_parameters():
         ModelParameters(tool_budget_ratio=0.05)
     with pytest.raises(InvalidConfigurationError, match="tool_budget_ratio"):
         ModelParameters(tool_budget_ratio=0.61)
+
+
+def test_model_parameters_temperature_is_optional_and_preserves_zero() -> None:
+    """Preserve an explicit sampling temperature without inventing a default."""
+    assert ModelParameters().temperature is None
+    assert ModelParameters(temperature=0).temperature == 0.0
+    assert ModelParameters(temperature=0.7).temperature == 0.7
+
+
+def test_model_parameters_temperature_rejects_negative_and_nonfinite_values() -> None:
+    """Reject temperatures that cannot be sent as finite sampling values."""
+    for temperature in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValidationError):
+            ModelParameters(temperature=temperature)
+
+
+def test_model_parameters_rejects_removed_temperature_supported() -> None:
+    """Reject obsolete capability flags instead of silently ignoring them."""
+    with pytest.raises(InvalidConfigurationError, match="temperature_supported"):
+        ModelParameters(temperature_supported=False)
+
+
+def test_model_config_preserves_configured_temperature() -> None:
+    """Read temperature from a model's parameters in the provider configuration."""
+    provider = ProviderConfig(
+        {
+            "name": "openai",
+            "type": "openai",
+            "models": [{"name": "gpt-6-luna", "parameters": {"temperature": 0.25}}],
+        }
+    )
+    assert provider.models["gpt-6-luna"].parameters.temperature == 0.25
 
 
 def test_config_accepts_mcp_with_minimum_tool_budget_ratio():

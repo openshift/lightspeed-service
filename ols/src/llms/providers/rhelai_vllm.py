@@ -44,7 +44,6 @@ class RHELAIVLLM(LLMProvider):
             "frequency_penalty": 1.03,
             "organization": None,
             "cache": None,
-            "temperature": 0.01,
             "max_completion_tokens": 4096,
             "verbose": False,
             "http_client": self._construct_httpx_client(False),

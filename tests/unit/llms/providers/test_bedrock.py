@@ -120,14 +120,42 @@ def test_load_openai_model(
     assert call_kwargs["max_tokens"] == 4096
 
 
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
 @patch(
     "ols.src.llms.providers.provider.LLMProvider._construct_httpx_client",
     return_value=MagicMock(),
 )
+@patch("ols.src.llms.providers.bedrock.ChatOpenAI", autospec=True)
+def test_load_openai_model_uses_configured_temperature(
+    mock_chat: MagicMock, _mock_httpx: MagicMock, temperature: float | None
+) -> None:
+    """Pass a model's temperature to Bedrock's OpenAI-compatible API only when set."""
+    parameters: dict = {"reasoning_config": {"effort": "none"}}
+    if temperature is not None:
+        parameters["temperature"] = temperature
+    provider_config = ProviderConfig(
+        {
+            "name": "bedrock",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": "tests/config/secret/apitoken",
+            "models": [{"name": "openai.gpt-6-luna", "parameters": parameters}],
+        }
+    )
+    Bedrock(model="openai.gpt-6-luna", provider_config=provider_config).load()
+
+    kwargs = mock_chat.call_args.kwargs
+    if temperature is None:
+        assert "temperature" not in kwargs
+    else:
+        assert kwargs["temperature"] == temperature
+
+
 @patch(
-    "ols.src.llms.providers.bedrock.ChatOpenAI",
-    autospec=True,
+    "ols.src.llms.providers.provider.LLMProvider._construct_httpx_client",
+    return_value=MagicMock(),
 )
+@patch("ols.src.llms.providers.bedrock.ChatOpenAI", autospec=True)
 def test_load_default_model(
     mock_chat: MagicMock, _mock_httpx: MagicMock, provider_config: ProviderConfig
 ) -> None:
@@ -153,7 +181,7 @@ def test_default_params(provider_config: ProviderConfig) -> None:
     defaults = bedrock.default_params
     assert defaults["api_key"] == "secret_key"
     assert defaults["model"] == "anthropic.claude-opus-4-7"
-    assert "temperature" in defaults
+    assert "temperature" not in defaults
     assert "max_tokens" in defaults
 
 
@@ -300,22 +328,17 @@ def test_anthropic_passes_temperature(
     "ols.src.llms.providers.bedrock.ChatBedrockConverse",
     autospec=True,
 )
-def test_temperature_stripped_when_not_supported(
+def test_temperature_omitted_when_not_configured(
     mock_chat: MagicMock,
 ) -> None:
-    """Test that temperature is omitted when model sets temperature_supported=False."""
+    """Test that an unset model temperature is not sent to Bedrock."""
     pc = ProviderConfig(
         {
             "name": "some_provider",
             "type": "bedrock",
             "url": "https://bedrock-mantle.us-east-1.api.aws",
             "credentials_path": "tests/config/secret/apitoken",
-            "models": [
-                {
-                    "name": "anthropic.claude-sonnet-5",
-                    "parameters": {"temperature_supported": False},
-                }
-            ],
+            "models": [{"name": "anthropic.claude-sonnet-5"}],
         }
     )
     bedrock = Bedrock(
@@ -334,42 +357,38 @@ def test_temperature_stripped_when_not_supported(
     "ols.src.llms.providers.bedrock.ChatBedrockConverse",
     autospec=True,
 )
-def test_temperature_present_when_supported(
+def test_temperature_present_when_configured(
     mock_chat: MagicMock, provider_config: ProviderConfig
 ) -> None:
-    """Test that temperature is present by default (temperature_supported=True)."""
+    """Test that configured model temperature is retained."""
+    provider_config.models["anthropic.claude-opus-4-7"].parameters.temperature = 0.0
     bedrock = Bedrock(
         model="anthropic.claude-opus-4-7",
         params={},
         provider_config=provider_config,
     )
-    assert "temperature" in bedrock.params
+    assert bedrock.params["temperature"] == 0.0
 
     bedrock.load()
     call_kwargs = mock_chat.call_args[1]
-    assert "temperature" in call_kwargs
+    assert call_kwargs["temperature"] == 0.0
 
 
 @patch(
     "ols.src.llms.providers.bedrock.ChatBedrockConverse",
     autospec=True,
 )
-def test_temperature_stripped_even_when_caller_passes_it(
+def test_temperature_caller_override_is_passed(
     mock_chat: MagicMock,
 ) -> None:
-    """Test that caller-supplied temperature is also stripped when not supported."""
+    """Test that explicitly caller-supplied temperature is passed through."""
     pc = ProviderConfig(
         {
             "name": "some_provider",
             "type": "bedrock",
             "url": "https://bedrock-mantle.us-east-1.api.aws",
             "credentials_path": "tests/config/secret/apitoken",
-            "models": [
-                {
-                    "name": "anthropic.claude-sonnet-5",
-                    "parameters": {"temperature_supported": False},
-                }
-            ],
+            "models": [{"name": "anthropic.claude-sonnet-5"}],
         }
     )
     bedrock = Bedrock(
@@ -377,22 +396,22 @@ def test_temperature_stripped_even_when_caller_passes_it(
         params={"temperature": 0.5},
         provider_config=pc,
     )
-    assert "temperature" not in bedrock.params
+    assert bedrock.params["temperature"] == 0.5
 
     bedrock.load()
     call_kwargs = mock_chat.call_args[1]
-    assert "temperature" not in call_kwargs
+    assert call_kwargs["temperature"] == 0.5
 
 
 @patch(
     "ols.src.llms.providers.bedrock.ChatBedrockConverse",
     autospec=True,
 )
-def test_temperature_stripped_when_set_via_dev_config(
+def test_temperature_dev_override_is_passed(
     mock_chat: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test that dev_config temperature override is stripped when model does not support it."""
+    """Test that developer overrides remain explicit and take precedence."""
     monkeypatch.setattr(config.dev_config, "llm_params", {"temperature": 0.7})
     pc = ProviderConfig(
         {
@@ -400,12 +419,7 @@ def test_temperature_stripped_when_set_via_dev_config(
             "type": "bedrock",
             "url": "https://bedrock-mantle.us-east-1.api.aws",
             "credentials_path": "tests/config/secret/apitoken",
-            "models": [
-                {
-                    "name": "anthropic.claude-sonnet-5",
-                    "parameters": {"temperature_supported": False},
-                }
-            ],
+            "models": [{"name": "anthropic.claude-sonnet-5"}],
         }
     )
     bedrock = Bedrock(
@@ -413,11 +427,11 @@ def test_temperature_stripped_when_set_via_dev_config(
         params={},
         provider_config=pc,
     )
-    assert "temperature" not in bedrock.params
+    assert bedrock.params["temperature"] == 0.7
 
     bedrock.load()
     call_kwargs = mock_chat.call_args[1]
-    assert "temperature" not in call_kwargs
+    assert call_kwargs["temperature"] == 0.7
 
 
 def test_region_extraction(provider_config: ProviderConfig) -> None:
@@ -615,6 +629,21 @@ def test_build_sigv4_auth_with_role(
         RoleArn="arn:aws:iam::123456789012:role/TestRole",
         RoleSessionName="ols-bedrock",
     )
+
+
+def test_anthropic_thinking_rejects_configured_temperature(
+    provider_config: ProviderConfig,
+) -> None:
+    """Do not silently discard a temperature explicitly configured for thinking."""
+    model = provider_config.models["anthropic.claude-opus-4-7"]
+    model.parameters.temperature = 0.5
+    model.parameters.reasoning_config = {"thinking_effort": "high"}
+    bedrock = Bedrock(
+        model="anthropic.claude-opus-4-7", provider_config=provider_config
+    )
+
+    with pytest.raises(LLMConfigurationError, match=r"temperature.*thinking"):
+        bedrock.load()
 
 
 def test_anthropic_thinking_with_thinking_effort() -> None:

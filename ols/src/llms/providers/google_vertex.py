@@ -51,7 +51,6 @@ class GoogleVertex(LLMProvider):
             "location": self.location,
             "vertexai": True,
             "max_output_tokens": 512,
-            "temperature": 0.01,
             "credentials": self.credentials,
         }
         if self.provider_config.url is not None:
@@ -105,7 +104,6 @@ class GoogleVertexAnthropic(LLMProvider):
             "project": self.project,
             "location": self.location,
             "max_output_tokens": 512,
-            "temperature": 0.01,
             "credentials": self.credentials,
         }
 

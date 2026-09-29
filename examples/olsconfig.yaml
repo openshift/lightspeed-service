@@ -8,11 +8,12 @@ llm_providers:
     models:
       - name: model-name-1
       - name: model-name-2
-        # Reasoning model settings (GPT-5, o-series). Omit for non-reasoning models.
+        # Temperature is omitted unless configured for the model.
+        # For models that require reasoning effort 'none' to use temperature:
         # parameters:
-        #   reasoning_effort: low      # low | medium | high (default: low)
-        #   reasoning_summary: concise  # auto | concise | detailed (default: concise)
-        #   verbosity: low             # low | medium | high (default: low)
+        #   reasoning_config:
+        #     effort: none
+        #   temperature: 0.7
   - name: my_azure_openai
     type: azure_openai
     url: "https://myendpoint.openai.azure.com/"
@@ -59,10 +60,12 @@ llm_providers:
       # use fully qualified Bedrock model IDs (e.g. anthropic.claude-opus-4-7,
       # openai.gpt-5.4-mini, deepseek.v3.1)
       - name: anthropic.claude-opus-4-7
-      # For models that reject the temperature parameter, set temperature_supported: false:
-      # - name: anthropic.claude-sonnet-5
+      # For models that support temperature, set it per model:
+      # - name: openai.gpt-6-luna
       #   parameters:
-      #     temperature_supported: false
+      #     reasoning_config:
+      #       effort: none
+      #     temperature: 0.7
   # - name: my_bedrock_iam
   #   type: bedrock
   #   url: "https://bedrock-mantle.us-east-1.api.aws"

@@ -33,7 +33,7 @@ Every provider must satisfy all of the following:
 
 ### Reasoning Model Support
 
-11. Reasoning enablement is an explicit per-model configuration decision, not auto-detected from the model name. When a model's `parameters.reasoning_config` is present (a freeform `dict[str, Any]`), the provider must apply provider-specific reasoning/thinking parameters to the LLM invocation and must not set standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`). When `reasoning_config` is absent, the provider must not add reasoning or sampling parameters. If `reasoning_config` is present alongside deprecated fields (`reasoning_effort`, `reasoning_summary`, `verbosity`), `reasoning_config` takes precedence and the deprecated fields are ignored — this ensures deterministic payload shape during migration.
+11. Reasoning enablement is an explicit per-model configuration decision, not auto-detected from the model name. When a model's `parameters.reasoning_config` is present (a freeform `dict[str, Any]`), the provider applies provider-specific reasoning/thinking parameters to the LLM invocation. Temperature is sent only when explicitly configured for that model (or overridden by an internal caller or developer configuration); unset temperature introduces no default, regardless of provider. The backend validates compatibility between reasoning and temperature; Bedrock Anthropic thinking rejects explicit temperature rather than silently discarding it. If `reasoning_config` is present alongside deprecated fields (`reasoning_effort`, `reasoning_summary`, `verbosity`), `reasoning_config` takes precedence and the deprecated fields are ignored — this ensures deterministic payload shape during migration.
 
 12. Each provider interprets the keys within `reasoning_config` according to its own backend API. Invalid keys produce a clear error from the provider API — OLS does not validate model-reasoning compatibility. The operator is responsible for correct configuration.
 
@@ -63,7 +63,7 @@ The following sections describe only what differs from the standard contract abo
 
 ### OpenAI (`openai`)
 
-19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. Uses custom certificate store. When `reasoning_config` is present, maps `verbosity` to `verbose`, passes the remaining keys as the `reasoning` dict, and skips temperature/top_p/frequency_penalty.
+19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. Uses custom certificate store. When `reasoning_config` is present, maps `verbosity` to `verbose` and passes the remaining keys as the `reasoning` dict. It does not add sampling defaults; an explicitly configured temperature is still passed through, and the backend validates its compatibility with reasoning.
 
 ### Azure OpenAI (`azure_openai`)
 
@@ -95,7 +95,7 @@ The following sections describe only what differs from the standard contract abo
 
 30. Uses the OpenAI-compatible API via `ChatOpenAI`. No default URL is defined (falls back to `https://api.openai.com/v1` but the admin must configure the actual endpoint). Uses custom certificate store.
 
-31. Sets standard sampling defaults (`temperature`, `top_p`, `frequency_penalty`) when `reasoning_config` is absent.
+31. Sets sampling defaults (`top_p`, `frequency_penalty`) when `reasoning_config` is absent; temperature has no provider default.
 
 32. When `reasoning_config` is present with `enabled: true`, uses `ChatVLLMReasoning` (a `BaseChatOpenAI` subclass) instead of `ChatOpenAI`. `ChatVLLMReasoning` captures the `reasoning_content` (or `reasoning`) field from vLLM responses that `ChatOpenAI` drops. LangChain's `ChatOpenAI` explicitly does not preserve non-standard response fields from third-party providers; the LangChain team closed this feature request as "not planned." The subclass follows the same pattern used by `ChatDeepSeek` from `langchain-deepseek`. No new Python dependencies are required.
 
@@ -161,6 +161,7 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].models[].credentials_path` -- Model-level credential override.
 - `llm_providers[].models[].parameters.max_tokens_for_response` -- Max tokens reserved for the LLM response (default: 4096).
 - `llm_providers[].models[].parameters.reasoning_config` -- Freeform dict of provider-specific reasoning/thinking parameters. Keys vary by provider and model generation (see rule 13). When absent, no reasoning params are sent to the provider.
+- `llm_providers[].models[].parameters.temperature` -- Optional finite, non-negative temperature sent to the provider only when explicitly set; unset means no OLS temperature default. The removed `temperature_supported` field is rejected.
 - `llm_providers[].models[].parameters.reasoning_effort` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning effort level: `low`, `medium`, or `high` (default: `low`).
 - `llm_providers[].models[].parameters.reasoning_summary` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning summary mode: `auto`, `concise`, or `detailed` (default: `concise`).
 - `llm_providers[].models[].parameters.verbosity` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Verbosity for reasoning models: `low`, `medium`, or `high` (default: `low`).

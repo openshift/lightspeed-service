@@ -43,7 +43,17 @@ class ModelParameters(BaseModel):
     max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     tool_budget_ratio: float = constants.DEFAULT_TOOL_BUDGET_RATIO
     reasoning_config: Optional[dict[str, Any]] = None
-    temperature_supported: bool = True
+    temperature: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_removed_temperature_flag(cls, data: Any) -> Any:
+        """Reject the removed temperature capability flag."""
+        if isinstance(data, dict) and "temperature_supported" in data:
+            raise checks.InvalidConfigurationError(
+                "temperature_supported is no longer supported"
+            )
+        return data
 
     @field_validator("tool_budget_ratio")
     @classmethod
