@@ -5,6 +5,14 @@ from types import SimpleNamespace
 from langchain_core.runnables import Runnable
 
 
+class MockStructuredOutputLLM:
+    """Mock structured-output model used by classifier tests."""
+
+    async def ainvoke(self, *args, **kwargs):
+        """Return a benign structured classifier decision."""
+        return {"injectionDetected": False, "category": "none"}
+
+
 class MockLLMLoader(Runnable):
     """Mock for LLMLoader."""
 
@@ -24,6 +32,10 @@ class MockLLMLoader(Runnable):
         if isinstance(self.llm, type):
             return self.llm().invoke(args[0])
         return self.llm
+
+    def with_structured_output(self, *args, **kwargs):
+        """Return a separate structured-output mock."""
+        return MockStructuredOutputLLM()
 
     @classmethod
     def bind_tools(cls, *args, **kwargs):

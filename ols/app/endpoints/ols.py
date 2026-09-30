@@ -38,6 +38,10 @@ from ols.src.query_helpers.attachment_appender import append_attachments_to_quer
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
+from ols.src.tools.tool_result_inspection import (
+    TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+    ToolResultInspectionError,
+)
 from ols.utils import errors_parsing, suid
 from ols.utils.audit_logger import AuditContext, AuditLogger
 from ols.utils.token_handler import PromptTooLongError
@@ -547,6 +551,14 @@ def generate_response(
         )
         logger.debug("%s Generated response: %s", conversation_id, response)
         return response
+    except ToolResultInspectionError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+                "cause": "",
+            },
+        )
     except PromptTooLongError as summarizer_error:
         logger.error("Prompt is too long: %s", summarizer_error)
         raise HTTPException(

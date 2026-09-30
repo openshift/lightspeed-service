@@ -39,6 +39,10 @@ from ols.app.models.models import (
 )
 from ols.constants import MEDIA_TYPE_TEXT
 from ols.src.auth.auth import get_auth_dependency
+from ols.src.tools.tool_result_inspection import (
+    TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+    ToolResultInspectionError,
+)
 from ols.utils import errors_parsing
 from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import PromptTooLongError
@@ -280,6 +284,19 @@ def generic_llm_error(error: Exception, media_type: str) -> str:
     Returns:
         str: The error message formatted for the media type.
     """
+    if isinstance(error, ToolResultInspectionError):
+        if media_type == MEDIA_TYPE_TEXT:
+            return TOOL_RESULT_SAFETY_FAILURE_MESSAGE
+        return format_stream_data(
+            {
+                "event": "error",
+                "data": {
+                    "response": TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+                    "cause": "",
+                },
+            }
+        )
+
     logger.error(
         "Error while obtaining answer for user question (streaming): error_type=%s",
         type(error).__name__,
