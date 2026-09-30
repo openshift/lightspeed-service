@@ -647,9 +647,9 @@ langchain==1.4.1 \
     # via
     #   langchain-community
     #   ols
-langchain-aws==1.7.8 \
-    --hash=sha256:3e1349231ab1c6952242946427ea63fbe97037eec21fab6a3c87327757fb2ef1 \
-    --hash=sha256:ebaf0cf3378c5934ca4482f2512b06eafe58e5df8bf03de6f47846777842be23
+langchain-aws==1.7.6 \
+    --hash=sha256:b46a64a16e56f268b9b841d7388ac2c057d77803b09b3933aec673a54904a81f \
+    --hash=sha256:d165931487b1aadf839a2bb17570faf69104fc60a40505bc43300a3bd317b3cb
     # via ols
 langchain-community==0.3.31 \
     --hash=sha256:1c727e3ebbacd4d891b07bd440647668001cea3e39cbe732499ad655ec5cb569 \

@@ -24,13 +24,13 @@ hatchling==1.32.4
     #   langchain-google-vertexai
     #   llama-index-embeddings-huggingface
     #   llama-index-vector-stores-faiss
-meson-python==0.21.1
+meson-python==0.22.0
     # via numpy
 meson==1.12.1
     # via meson-python
 pathspec==1.1.1
     # via hatchling
-pdm-backend==2.4.10
+pdm-backend==2.5.0
     # via
     #   langchain-ibm
     #   langchain-mcp-adapters
