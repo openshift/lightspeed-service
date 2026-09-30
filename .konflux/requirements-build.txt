@@ -17,13 +17,17 @@ flit-core==4.1.0
     #   pathspec
     #   pyproject-hooks
     #   pyproject-metadata
+hatch-vcs==0.5.0
+    # via virtualenv
 hatchling==1.32.4
     # via
     #   banks
+    #   hatch-vcs
     #   langchain-aws
     #   langchain-google-vertexai
     #   llama-index-embeddings-huggingface
     #   llama-index-vector-stores-faiss
+    #   virtualenv
 meson-python==0.22.0
     # via numpy
 meson==1.12.1
@@ -50,6 +54,8 @@ setuptools-rust==1.13.0
     # via maturin
 setuptools-scm==10.3.4
     # via
+    #   anyio
+    #   hatch-vcs
     #   pluggy
     #   pytest-runner
     #   setuptools-rust

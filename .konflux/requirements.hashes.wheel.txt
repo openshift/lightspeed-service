@@ -14,8 +14,6 @@ annotated-types==0.7.0 \
     --hash=sha256:e4e1144fe78e2f54ab359a790d088a55e95caacf44770be1f9b277e91602d6a6
 anthropic==0.109.1 \
     --hash=sha256:cf2bb9c435120c79ab32d0132c68463f5a0e1f00c133b1164fcedc75816e71ec
-anyio==4.13.0 \
-    --hash=sha256:2d5b8da6df21a1e87f68df768a75f25cd00792b401d6c16e8235bf64642b8316
 attrs==26.1.0 \
     --hash=sha256:7dbf34c586f6613ef2729b87c361c53883f5c4be5e18e4e4e12bc9f963c13188
 azure-core==1.41.0 \
@@ -270,8 +268,6 @@ pydantic-settings==2.14.2 \
     --hash=sha256:794c2942e9f6c7f0a3482aebd328cf08213f4770fdc560ac5d5084a0fce81e7f
 pygments==2.20.0 \
     --hash=sha256:22eb8865e5accd0fc529e4fdc5cf74db3e6b2b6348b43a089950c8ce671dedb3
-pyjwt==2.13.0 \
-    --hash=sha256:43798d73ce4c0a7221087b220935ade361955eeada0b3b4f8622f9b53916ea1c
 python-dateutil==2.9.0.post0 \
     --hash=sha256:89e5d6f444e51ac0a18370406b265fa1f51c88824476fd08c56db669dd317775
 python-discovery==1.4.2 \
@@ -372,8 +368,6 @@ uuid-utils==0.14.1 \
     --hash=sha256:f30018637c29cee6de7ffd2d514c9a15dcd9d589067eb5abba3766226945f885
 uvicorn==0.49.0 \
     --hash=sha256:0d4a19be044c20a4f074656fac90fcdc7759b0fcb2b70df46d061d94235f9be1
-virtualenv==21.4.3 \
-    --hash=sha256:8fdb991af1ea0bc4144136e071b3bb6db307b3308603a5eec298759612fc95ac
 websocket-client==1.9.0 \
     --hash=sha256:c1370b3fea1c97189614828173ec02a8feaab0004782381f03456e1db4c60f19
 websockets==16.0 \
