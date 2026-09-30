@@ -26,7 +26,7 @@ PROVIDERS = (
     "azure_openai",
     "vertex_gemini",
     "vertex_claude",
-    "bedrock_deepseek",
+    "bedrock_openai",
 )
 COLUMNS = ("date", "suite", "metric", "total", "pass_rate", "error_rate", "score_mean")
 BASE_URL = f"https://storage.googleapis.com/storage/v1/b/{BUCKET}/o"

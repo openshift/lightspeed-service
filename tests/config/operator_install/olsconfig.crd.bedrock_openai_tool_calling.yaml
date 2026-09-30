@@ -17,9 +17,9 @@ spec:
         credentialsSecretRef:
           name: llmcreds
         models:
-          - name: deepseek.v3.2
+          - name: openai.gpt-6-luna
   ols:
-    defaultModel: deepseek.v3.2
+    defaultModel: openai.gpt-6-luna
     defaultProvider: bedrock
     deployment:
       replicas: 1
@@ -32,6 +32,7 @@ spec:
       - name: bar_filter
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
+    introspectionEnabled: true
     userDataCollection:
       feedbackDisabled: true
       transcriptsDisabled: true
