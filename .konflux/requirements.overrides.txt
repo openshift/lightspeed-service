@@ -15,6 +15,9 @@ google-genai==1.75.0
 grpcio==1.80.0
 grpcio-status==1.80.0
 jiter==0.14.0
+# RHOAI provides langchain-core 1.4.6. langchain-aws 1.7.7+ imports
+# langchain_core.utils._gateway, which is absent from that version.
+langchain-aws==1.7.6
 numpy==2.4.4
 orjson==3.11.8
 pandas==2.3.3

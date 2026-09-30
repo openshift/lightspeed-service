@@ -5,8 +5,8 @@ banks==2.5.0 \
     --hash=sha256:fdd4fd54b84dbe31cb51a1173c960697c73d683a52fb0b1d1957a557a8d6fcc8
 bottleneck==1.6.0 \
     --hash=sha256:028d46ee4b025ad9ab4d79924113816f825f62b17b87c9e1d0d8ce144a4a0e31
-google-cloud-vectorsearch==0.11.3 \
-    --hash=sha256:7ab23a9ea142ff350dca808e9e50e7985fd94236bee18984226801924ecb6341
+google-cloud-vectorsearch==0.11.4 \
+    --hash=sha256:fa2d21918cf7d99e4fea7847388312b57cd1ee00fd1be093bbbc8d26115b7f7f
 httpx-aws-auth==4.2.0 \
     --hash=sha256:56a620f05559910160430204116e2598aae306142c49a5a35d170497833cdcba
 ibm-cos-sdk==2.14.3 \
@@ -15,12 +15,12 @@ ibm-cos-sdk-core==2.14.3 \
     --hash=sha256:85dee7790c92e8db69bf39dae4c02cac211e3c1d81bb86e64fa2d1e929674623
 ibm-cos-sdk-s3transfer==2.14.3 \
     --hash=sha256:2251ebfc4a46144401e431f4a5d9f04c262a0d6f95c88a8e71071da056e55f72
-ibm-watsonx-ai==1.7.2 \
-    --hash=sha256:0297ee89f8482be529bcf4440d1e87114fa1c3be0e056ca999551fc142631c10
+ibm-watsonx-ai==1.8.0 \
+    --hash=sha256:e2a11b4146b5942a58ccbdb63bc64c18889969e73f80a31216bf683fa42419e3
 jmespath==1.0.1 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
-langchain-aws==1.7.9 \
-    --hash=sha256:2af21da1af458c6e7d43e58d26978711e15b81a6f9916da38d882d4ca7b58213
+langchain-aws==1.7.6 \
+    --hash=sha256:b46a64a16e56f268b9b841d7388ac2c057d77803b09b3933aec673a54904a81f
 langchain-google-vertexai==3.2.4 \
     --hash=sha256:f0c16b4b639037f60357dbf6d4aa3b0f301f23be6b33b0688c75902235cb9434
 langchain-ibm==1.1.1 \
