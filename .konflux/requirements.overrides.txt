@@ -3,7 +3,8 @@
 # CVE-2026-69243 / CVE-2026-69244: RHOAI only ships 3.14.1; force fixed PyPI version
 aiohttp==3.14.3
 aiosqlite==0.22.1
-anyio==4.13.0
+# CVE-2026-63374: RHOAI only ships vulnerable 4.13.0; force fixed PyPI version
+anyio==4.15.1
 attrs==26.1.0
 # CVE-2026-61536: RHOAI only ships vulnerable 2.4.2; force fixed PyPI version
 banks==2.5.0
@@ -22,6 +23,8 @@ numpy==2.4.4
 orjson==3.11.8
 pandas==2.3.3
 pydantic==2.13.1
+# CVE-2026-102273: RHOAI only ships vulnerable 2.13.0; force fixed PyPI version
+pyjwt==2.14.0
 scipy==1.17.1
 # CVE-2026-68770: RHOAI only ships vulnerable 5.2.0; force fixed PyPI version
 sentence-transformers==5.7.0
@@ -30,5 +33,8 @@ sqlalchemy==2.0.49
 tokenizers==0.22.2
 torch==2.10.0
 transformers==5.12.0
+typing-extensions==4.16.0
 uuid_utils==0.14.1
+# CVE-2026-102930, CVE-2026-102925: RHOAI only ships vulnerable 21.4.3; force fixed PyPI version
+virtualenv==21.14.1
 yarl==1.23.0

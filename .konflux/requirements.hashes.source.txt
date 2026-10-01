@@ -1,6 +1,8 @@
 --index-url https://pypi.org/simple
 aiostream==0.8.1 \
     --hash=sha256:32d180b4ab01ebb2fc59eda7fa59f496895a4d07b32fc57537d1dade2514a8a1
+anyio==4.15.1 \
+    --hash=sha256:9f28306018cbd6d329e64a36d58256edff76dd996fe423bc957326e578b82a94
 banks==2.5.0 \
     --hash=sha256:fdd4fd54b84dbe31cb51a1173c960697c73d683a52fb0b1d1957a557a8d6fcc8
 bottleneck==1.6.0 \
@@ -35,11 +37,17 @@ lomond==0.3.4 \
     --hash=sha256:250202a83ba45e3b265bf5dfef4db54d9c46b981230579dbe3b453dad320ba71
 numexpr==2.14.2 \
     --hash=sha256:e7144e83ea9e581f2273e0304f15836736c4e470e2bd2e378ce617662a1ca278
+pyjwt==2.14.0 \
+    --hash=sha256:77283c83fb56ecf566a886c757a714bc83668e38156de2cce8263302f42e0b86
 python-frontmatter==1.2.0 \
     --hash=sha256:5b26ccd3cb85af77feb11d83b922c7bb5aeccb0c9d3fb236b938c600b6322984
 rank-bm25==0.2.2 \
     --hash=sha256:096ccef76f8188563419aaf384a02f0ea459503fdf77901378d4fd9d87e5e51d
 sentence-transformers==5.7.0 \
     --hash=sha256:fd8c8fc35e6323631dff9f3760969ebf7980dc3cfda0ab1354bc6a774cc0e5d8
+typing-extensions==4.16.0 \
+    --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
 validators==0.35.0 \
     --hash=sha256:992d6c48a4e77c81f1b4daba10d16c3a9bb0dbb79b3a19ea847ff0928e70497a
+virtualenv==21.14.1 \
+    --hash=sha256:719b189804e66678017d9f63bbfc590c44f6b96ab4829513806394f9b375929c
