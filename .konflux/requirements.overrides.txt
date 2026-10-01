@@ -33,6 +33,7 @@ sqlalchemy==2.0.49
 tokenizers==0.22.2
 torch==2.10.0
 transformers==5.12.0
+typing-extensions==4.16.0
 uuid_utils==0.14.1
 # CVE-2026-102930, CVE-2026-102925: RHOAI only ships vulnerable 21.4.3; force fixed PyPI version
 virtualenv==21.14.1

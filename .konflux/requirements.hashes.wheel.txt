@@ -353,8 +353,6 @@ triton==3.6.0 \
     --hash=sha256:be9c508fd750b5c80fc047fae693f17e0a77f45389825ec1479933973f2c3dec
 typer==0.26.7 \
     --hash=sha256:3d2d387ebed3c751d31cdd86767bbfcc1a117b94bb177885ce42804d5a87a522
-typing-extensions==4.15.0 \
-    --hash=sha256:429f20623a355887563afc68041e782f059f26031a5e00e2dd302d37799f672c
 typing-inspect==0.9.0 \
     --hash=sha256:394caea523367c5f02c72dfa0137fdee16e848d3476c6944c011e3cfaadea623
 typing-inspection==0.4.2 \

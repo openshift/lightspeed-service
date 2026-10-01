@@ -45,6 +45,8 @@ rank-bm25==0.2.2 \
     --hash=sha256:096ccef76f8188563419aaf384a02f0ea459503fdf77901378d4fd9d87e5e51d
 sentence-transformers==5.7.0 \
     --hash=sha256:fd8c8fc35e6323631dff9f3760969ebf7980dc3cfda0ab1354bc6a774cc0e5d8
+typing-extensions==4.16.0 \
+    --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
 validators==0.35.0 \
     --hash=sha256:992d6c48a4e77c81f1b4daba10d16c3a9bb0dbb79b3a19ea847ff0928e70497a
 virtualenv==21.14.1 \
