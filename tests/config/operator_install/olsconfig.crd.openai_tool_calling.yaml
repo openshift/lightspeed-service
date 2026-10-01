@@ -15,6 +15,9 @@ spec:
           name: llmcreds
         models:
           - name: gpt-6-luna
+            parameters:
+              reasoningConfig:
+                effort: medium
         name: openai
         type: openai
   ols:
