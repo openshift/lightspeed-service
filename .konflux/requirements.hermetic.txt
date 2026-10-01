@@ -1,4 +1,10 @@
---index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/
-maturin==1.13.1
-uv==0.11.6
-uv-build==0.11.8
+--index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/
+maturin==1.15.0 \
+    --hash=sha256:52eb3e4eb6af2d83e5ff4a856714b4d661eb49b937aa97cb995ab30c86435bb0 \
+    --hash=sha256:8de7fc210b6949ed7ef3e60f31d71945d89c95d0a3695f2449521270dc591cf2
+uv==0.11.29 \
+    --hash=sha256:5ad8d45df914674d20e3b01511960af91fcc24802150c645c91fe09f6b701d1f \
+    --hash=sha256:94eaedf9d99f5bc2c06a57a03be483369a030946781dafe57ccf13d91c5c63d2
+uv-build==0.11.29 \
+    --hash=sha256:8a698dd58ec5b7e9c91165de5f43798575bc466ec334e3f93734a4df876ea7e6 \
+    --hash=sha256:d00fb39395b6814d457420a2d27fb1513976d5c85aaf986f81843b79c6cddacb
