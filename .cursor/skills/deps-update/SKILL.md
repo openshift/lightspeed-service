@@ -61,7 +61,20 @@ make requirements.txt
 This runs `uv export` under the hood and produces a
 `requirements.txt` with hashes for production packages.
 
-## Step 3: Verify — Lint and Type Checks
+## Step 3: Regenerate Konflux Hermetic Requirements
+
+After updating the lock and requirements, regenerate the
+Konflux hermetic build requirements. Follow the procedure
+in [`docs/update-requirements.md`](../../docs/update-requirements.md)
+— it covers environment cleanup (`UV_NO_CONFIG=1`, unsetting
+index variables), the `make konflux-requirements` command,
+and verification of the generated `.konflux/` files.
+
+Do **not** hand-edit the generated `.konflux/requirements.hashes.*`
+or `.konflux/requirements-build.txt` files — always regenerate
+via `make konflux-requirements`.
+
+## Step 4: Verify — Lint and Type Checks
 
 Run the full verification suite:
 
@@ -70,7 +83,7 @@ make format
 make verify
 ```
 
-If verification passes cleanly, proceed to Step 4.
+If verification passes cleanly, proceed to Step 5.
 
 If verification fails:
 
@@ -84,7 +97,7 @@ If verification fails:
 4. Re-run `make format && make verify`
 5. Repeat until clean
 
-## Step 4: Verify — Unit Tests
+## Step 5: Verify — Unit Tests
 
 Run the unit test suite:
 
@@ -92,7 +105,7 @@ Run the unit test suite:
 make test-unit
 ```
 
-If tests pass, proceed to Step 5.
+If tests pass, proceed to Step 6.
 
 If tests fail:
 
@@ -109,7 +122,7 @@ If tests fail:
 4. Re-run `make test-unit`
 5. Repeat until clean
 
-## Step 5: Verify — Integration Tests
+## Step 6: Verify — Integration Tests
 
 Run the integration test suite:
 
@@ -117,9 +130,9 @@ Run the integration test suite:
 make test-integration
 ```
 
-Same triage approach as Step 4 if failures occur.
+Same triage approach as Step 5 if failures occur.
 
-## Step 6: Report, Commit, and PR
+## Step 7: Report, Commit, and PR
 
 Check which files changed beyond the dependency files:
 
@@ -137,19 +150,19 @@ Always present a summary to the user before committing:
 - Any source/test files modified to fix API changes
   (with a brief explanation of each fix)
 
-**If only `pyproject.toml`, `uv.lock`, and `requirements.txt`
-changed** — commit and raise a PR automatically without
-asking:
+**If only `pyproject.toml`, `uv.lock`, `requirements.txt`,
+and `.konflux/` files changed** — commit and raise a PR
+automatically without asking:
 
 ```bash
-git add pyproject.toml uv.lock requirements.txt
+git add pyproject.toml uv.lock requirements.txt .konflux/ .tekton/
 git commit -m "chore: bump dependencies to latest"
 ```
 
 Then follow the `raise-pr` skill to open the PR.
 
 **If source or test files were also modified** (API change
-fixes from Steps 3–5) — wait for user acknowledgment
+fixes from Steps 4–6) — wait for user acknowledgment
 before committing. Then commit all changes and follow the
 `raise-pr` skill.
 
@@ -171,3 +184,7 @@ before committing. Then commit all changes and follow the
   investigate separately.
 - **No manual requirements.txt edits** — always regenerate
   via `make requirements.txt`, never hand-edit.
+- **No manual Konflux file edits** — always regenerate
+  via `make konflux-requirements`, never hand-edit the
+  `.konflux/requirements.hashes.*` or
+  `.konflux/requirements-build.txt` files.
