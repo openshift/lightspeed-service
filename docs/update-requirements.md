@@ -25,7 +25,7 @@ make konflux-requirements
 
 This runs `python3 scripts/konflux_resolve.py --profile cpu`, which:
 
-1. Resolves all dependencies from `pyproject.toml` using `uv pip compile` with manual overrides.
+1. Resolves production dependencies from `pyproject.toml` using `uv pip compile` with manual overrides, matching the image build's `--no-dev` setting.
 2. Loads the RHOAI index and auto-generates version overrides for all RHOAI-available packages.
 3. Re-resolves with both manual and auto-generated overrides to pin RHOAI versions.
 4. Classifies each package by checking the RHOAI index: RHOAI wheel, PyPI sdist, or PyPI wheel (last resort).

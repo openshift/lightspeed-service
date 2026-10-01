@@ -296,7 +296,7 @@ class AbstractLLMProvider(abc.ABC):
         """Load and langchain `LLM` instance and return it."""
 
 
-class LLMProvider(AbstractLLMProvider):
+class LLMProvider(AbstractLLMProvider):  # pylint: disable=abstract-method
     """LLM provider base class."""
 
     def __init__(

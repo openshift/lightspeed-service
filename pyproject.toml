@@ -151,7 +151,7 @@ dependencies = [
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",  # For audit tracing
     "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",  # For OTLP span export
-    "torch>=2.10.0",
+    "torch>=2.11.0",
 ]
 requires-python = ">=3.12,<3.13"
 readme = "README.md"

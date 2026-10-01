@@ -2,7 +2,7 @@
 """Policy-driven dependency resolver for Hermeto/Cachi2 hermetic builds.
 
 Enforces: RHOAI wheel > PyPI sdist > PyPI wheel (last resort).
-Usage: python3 scripts/konflux_resolve.py --profile cpu [--verbose | --quiet]
+Usage: python3 scripts/konflux_resolve.py --profile cpu|cuda [--verbose | --quiet]
 """
 
 from __future__ import annotations
@@ -12,7 +12,9 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
+import sys
 import time
 import tomllib
 import urllib.parse
@@ -21,7 +23,6 @@ from collections import deque
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any
 
-from packaging.markers import Marker
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
@@ -30,25 +31,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("konflux_resolve")
 
-_ALLOWED_HOSTS = frozenset(
-    {
-        "packages.redhat.com",
-        "pypi.org",
-    }
-)
-
-
-def _validate_url(url: str) -> None:
-    """Reject URLs that are not HTTPS or target an unexpected host."""
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https":
-        raise ValueError(f"Only HTTPS URLs are allowed, got {parsed.scheme!r}: {url}")
-    if parsed.hostname not in _ALLOWED_HOSTS:
-        raise ValueError(f"Host {parsed.hostname!r} is not in the allow-list: {url}")
-
-
 # ---------------------------------------------------------------------------
-# Version parsing and constraint matching (PEP 440)
+# Task 2 — Version parsing and constraint matching (PEP 440)
 # ---------------------------------------------------------------------------
 
 
@@ -62,6 +46,7 @@ def version_satisfies(version: str, constraint: str) -> bool:
     constraint = constraint.strip()
     if not constraint:
         return True
+
     try:
         return Version(version) in SpecifierSet(constraint)
     except (InvalidVersion, InvalidSpecifier):
@@ -76,14 +61,14 @@ def merge_constraints(existing: str | None, new: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Package name normalization and pyproject.toml parsing
+# Task 3 — Package name normalization and pyproject.toml parsing
 # ---------------------------------------------------------------------------
 
 _NORMALIZE_RE = re.compile(r"[-_.]+")
 
 
 def normalize_name(name: str) -> str:
-    """PEP 503 normalization."""
+    """PEP 503 normalization: lowercase, replace runs of ``-``, ``.``, ``_`` with ``-``."""
     return _NORMALIZE_RE.sub("-", name).lower()
 
 
@@ -95,6 +80,7 @@ def _parse_dep_string(dep: str) -> tuple[str, str, str]:
         marker = marker.strip()
 
     dep = dep.strip()
+    # Strip extras: name[extras]>=... → name>=...
     dep = re.sub(r"\[.*?\]", "", dep)
 
     match = re.match(r"^([A-Za-z0-9][-A-Za-z0-9_.]*)", dep)
@@ -108,7 +94,10 @@ def _parse_dep_string(dep: str) -> tuple[str, str, str]:
 
 
 def parse_direct_deps(pyproject_path: str) -> list[tuple[str, str]]:
-    """Parse ``[project].dependencies`` from a TOML file."""
+    """Parse ``[project].dependencies`` from a TOML file.
+
+    Returns ``[(normalized_name, version_spec), ...]``.
+    """
     with open(pyproject_path, "rb") as f:
         data = tomllib.load(f)
 
@@ -121,7 +110,7 @@ def parse_direct_deps(pyproject_path: str) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
-# PEP 503 simple index parser
+# Task 4 — PEP 503 simple index parser
 # ---------------------------------------------------------------------------
 
 
@@ -182,12 +171,16 @@ class SimpleIndexParser:
 
     @staticmethod
     def parse_package_page(html: str) -> list[dict[str, Any]]:
-        """Return list of entry dicts from a per-package page."""
+        """Return list of entry dicts from a per-package page.
+
+        Each dict has keys: ``filename``, ``sha256``, ``version``, ``is_wheel``,
+        and for wheels: ``python_tag``, ``abi_tag``, ``platform_tag``.
+        """
         collector = _LinkCollector()
         collector.feed(html)
         entries: list[dict[str, Any]] = []
 
-        for href, link_text in zip(collector.hrefs, collector.link_texts):
+        for href, link_text in zip(collector.hrefs, collector.link_texts, strict=False):
             filename = link_text.strip()
             if not filename:
                 filename = href.rsplit("/", 1)[-1].split("#")[0]
@@ -226,7 +219,7 @@ class SimpleIndexParser:
 
 
 # ---------------------------------------------------------------------------
-# Wheel compatibility checker
+# Task 5 — Wheel compatibility checker
 # ---------------------------------------------------------------------------
 
 
@@ -252,7 +245,11 @@ def is_wheel_compatible(
     target_platforms: Sequence[str],
     abi_tag: str = "",
 ) -> bool:
-    """Check if a wheel's tags match the target environment."""
+    """Check if a wheel's tags match the target environment.
+
+    *target_python* is e.g. ``"3.12"``; *target_platforms* is e.g.
+    ``["linux_x86_64", "linux_aarch64"]``.
+    """
     major, minor = target_python.split(".")
     target_ver = (int(major), int(minor))
     compatible_py = {
@@ -268,11 +265,16 @@ def is_wheel_compatible(
     if not py_ok:
         return False
 
+    # Platform matching: "any" and "none" always match.
     if platform_tag.lower() in ("any", "none"):
         return True
 
+    # A compound platform tag like "manylinux_2_17_x86_64.manylinux2014_x86_64"
+    # can contain multiple sub-tags separated by ".". Check each sub-tag and
+    # each target platform for a suffix match (the arch part).
     sub_tags = platform_tag.split(".")
     for target in target_platforms:
+        # Extract the arch from the target, e.g. "linux_x86_64" → "x86_64"
         arch = target.split("_", 1)[1] if "_" in target else target
         for sub in sub_tags:
             if sub == target or sub.endswith(f"_{arch}"):
@@ -282,18 +284,56 @@ def is_wheel_compatible(
 
 
 # ---------------------------------------------------------------------------
-# RHOAI index loader
+# Task 6 — RHOAI index loader
 # ---------------------------------------------------------------------------
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Reject redirects from the trusted package index."""
+
+    def redirect_request(
+        self,
+        _req: Any,
+        _fp: Any,
+        _code: int,
+        _msg: str,
+        _headers: Any,
+        _newurl: str,
+    ) -> None:
+        """Stop a redirect before it can reach another host."""
+        return None
+
+
 class RhoaiIndex:
-    """RHOAI simple index with lazy per-package fetching."""
+    """RHOAI simple index with lazy per-package fetching.
+
+    The root page is downloaded eagerly (to learn which packages exist),
+    but individual package pages are fetched on-demand and cached.
+    """
 
     def __init__(
-        self, index_url: str, python_version: str, platforms: Sequence[str]
+        self,
+        index_url: str,
+        python_version: str,
+        platforms: Sequence[str],
     ) -> None:
         """Initialize with the RHOAI simple index URL, target Python version, and platforms."""
-        self.index_url = index_url.rstrip("/") + "/"
+        parsed = urllib.parse.urlsplit(index_url.rstrip("/") + "/")
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc != "packages.redhat.com"
+            or not re.fullmatch(
+                r"/api/pypi/public-rhai/rhoai/\d+\.\d+/(?:cpu|cuda)-ubi9/simple/",
+                parsed.path,
+            )
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(f"Untrusted RHOAI index URL: {index_url}")
+        self.index_url = urllib.parse.urlunsplit(
+            ("https", "packages.redhat.com", parsed.path, "", "")
+        )
+        self._opener = urllib.request.build_opener(_NoRedirect())
         self.python_version = python_version
         self.platforms = list(platforms)
         self._parser = SimpleIndexParser()
@@ -301,11 +341,17 @@ class RhoaiIndex:
         self._packages: dict[str, dict[str, dict[str, tuple[str, str]]]] = {}
 
     def _fetch_url(self, url: str) -> str:
-        _validate_url(url)
+        """Fetch *url* with retry (3 attempts, exponential backoff)."""
+        if url != self.index_url:
+            suffix = url.removeprefix(self.index_url)
+            if not url.startswith(self.index_url) or not re.fullmatch(
+                r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/", suffix
+            ):
+                raise ValueError(f"Untrusted RHOAI package URL: {url}")
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310
+                with self._opener.open(url, timeout=30) as resp:
                     return str(resp.read().decode())
             except Exception as exc:
                 last_exc = exc
@@ -321,6 +367,7 @@ class RhoaiIndex:
         logger.info("RHOAI index: %d packages available", len(self._known_packages))
 
     def _ensure_loaded(self, name: str) -> None:
+        """Fetch and cache a package page if not already loaded."""
         norm = normalize_name(name)
         if norm in self._packages or norm not in self._known_packages:
             return
@@ -360,6 +407,7 @@ class RhoaiIndex:
             self._packages[norm] = versions
 
     def _match_arch(self, platform_tag: str, target_platforms: list[str]) -> str | None:
+        """Determine which target arch a platform tag matches."""
         if platform_tag.lower() in ("any", "none"):
             return "any"
         sub_tags = platform_tag.split(".")
@@ -375,7 +423,11 @@ class RhoaiIndex:
         return normalize_name(name) in self._known_packages
 
     def find_best(self, name: str, constraint: str) -> dict[str, Any] | None:
-        """Find latest version satisfying *constraint*."""
+        """Find latest version satisfying *constraint*.
+
+        Returns ``{"version": str, "platforms": {arch: (filename, sha256)}}``
+        or ``None``.
+        """
         norm = normalize_name(name)
         self._ensure_loaded(norm)
         versions = self._packages.get(norm)
@@ -391,24 +443,88 @@ class RhoaiIndex:
 
 
 # ---------------------------------------------------------------------------
-# PEP 508 marker evaluation & PyPI client
+# Task 7 — PEP 508 marker evaluation & PyPI client
 # ---------------------------------------------------------------------------
 
-_MARKER_ENV: dict[str, str] = {
-    "sys_platform": "linux",
-    "os_name": "posix",
-    "platform_system": "Linux",
-    "implementation_name": "cpython",
+_MARKER_ENV_KEYS = {
+    "sys_platform",
+    "os_name",
+    "platform_system",
+    "implementation_name",
+    "python_version",
+    "platform_machine",
+    "extra",
 }
+
+_MARKER_COMPARE_RE = re.compile(
+    r"""^
+    \s*(?P<left>[A-Za-z_][A-Za-z0-9_.]*|'[^']*'|"[^"]*")
+    \s*(?P<op>~=|===|==|!=|>=|<=|>|<|not\s+in|in)
+    \s*(?P<right>[A-Za-z_][A-Za-z0-9_.]*|'[^']*'|"[^"]*")
+    \s*$
+    """,
+    re.VERBOSE,
+)
 
 
 def _eval_marker(marker: str, python_version: str) -> bool:
-    """Evaluate a PEP 508 marker for a Linux CPython target."""
+    """Simplified PEP 508 marker evaluation for a Linux CPython target."""
+    env = {
+        "sys_platform": "linux",
+        "os_name": "posix",
+        "platform_system": "Linux",
+        "implementation_name": "cpython",
+        "python_version": python_version,
+    }
+
     marker = marker.strip()
     if not marker:
         return True
-    env = {**_MARKER_ENV, "python_version": python_version}
-    return Marker(marker).evaluate(env)
+
+    or_parts = re.split(r"\s+or\s+", marker)
+    for or_part in or_parts:
+        and_parts = re.split(r"\s+and\s+", or_part)
+        all_true = True
+        for expr in and_parts:
+            if not _eval_single_marker(expr.strip(), env):
+                all_true = False
+                break
+        if all_true:
+            return True
+    return False
+
+
+_MARKER_CMP_OPS: dict[str, Any] = {
+    "==": lambda lv, rv: lv == rv,
+    "!=": lambda lv, rv: lv != rv,
+    ">=": lambda lv, rv: lv >= rv,
+    "<=": lambda lv, rv: lv <= rv,
+    ">": lambda lv, rv: lv > rv,
+    "<": lambda lv, rv: lv < rv,
+    "in": lambda lv, rv: lv in rv,
+    "not in": lambda lv, rv: lv not in rv,
+}
+
+
+def _eval_single_marker(expr: str, env: dict[str, str]) -> bool:
+    """Evaluate a single marker comparison like ``sys_platform == 'linux'``."""
+    m = _MARKER_COMPARE_RE.match(expr)
+    if m is None:
+        return True
+
+    left_raw = m.group("left").strip("'\"")
+    right_raw = m.group("right").strip("'\"")
+    op = re.sub(r"\s+", " ", m.group("op"))
+
+    if left_raw in env:
+        lval, rval = env[left_raw], right_raw
+    elif right_raw in env:
+        lval, rval = left_raw, env[right_raw]
+    else:
+        return True
+
+    check = _MARKER_CMP_OPS.get(op)
+    return bool(check(lval, rval)) if check else True
 
 
 class PypiClient:
@@ -423,11 +539,24 @@ class PypiClient:
         self._requires_cache: dict[str, list[tuple[str, str]]] = {}
 
     def _fetch_url(self, url: str) -> str:
-        _validate_url(url)
+        """Fetch *url* with retry (3 attempts, exponential backoff)."""
+        parsed = urllib.parse.urlsplit(url)
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc != "pypi.org"
+            or not re.fullmatch(
+                r"/(?:simple/[a-z0-9][a-z0-9-]*/|pypi/[a-z0-9][a-z0-9-]*/[^/]+/json)",
+                parsed.path,
+            )
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(f"Untrusted PyPI URL: {url}")
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310
+                opener = urllib.request.build_opener(_NoRedirect())
+                with opener.open(url, timeout=30) as resp:
                     return str(resp.read().decode())
             except Exception as exc:
                 last_exc = exc
@@ -436,7 +565,11 @@ class PypiClient:
         raise RuntimeError(f"Failed to fetch {url} after 3 attempts") from last_exc
 
     def get_package_info(self, name: str) -> dict[str, dict[str, Any]]:
-        """Fetch and cache the simple index page for *name*."""
+        """Fetch and cache the simple index page for *name*.
+
+        Returns ``{version: {"has_sdist": bool, "sdist_hashes": [...],
+        "wheel_hashes": [...], "wheel_files": [...]}}``.
+        """
         norm = normalize_name(name)
         if norm in self._info_cache:
             return self._info_cache[norm]
@@ -468,7 +601,11 @@ class PypiClient:
         return info
 
     def get_requires_dist(self, name: str, version: str) -> list[tuple[str, str]]:
-        """Fetch ``Requires-Dist`` from PyPI JSON API."""
+        """Fetch ``Requires-Dist`` from PyPI JSON API.
+
+        Returns ``[(dep_name, spec), ...]``, filtering out extras and markers
+        that don't match the target environment.
+        """
         cache_key = f"{normalize_name(name)}=={version}"
         if cache_key in self._requires_cache:
             return self._requires_cache[cache_key]
@@ -497,7 +634,11 @@ class PypiClient:
         return result
 
     def find_best(self, name: str, constraint: str) -> dict[str, Any] | None:
-        """Find latest version on PyPI satisfying *constraint*."""
+        """Find latest version on PyPI satisfying *constraint*.
+
+        Returns ``{"version": str, "has_sdist": bool, "sdist_hashes": [...],
+        "wheel_hashes": [...], "wheel_files": [...]}`` or ``None``.
+        """
         info = self.get_package_info(name)
         candidates = [v for v in info if version_satisfies(v, constraint)]
         if not candidates:
@@ -508,7 +649,7 @@ class PypiClient:
 
 
 # ---------------------------------------------------------------------------
-# Dependency resolver (BFS graph walk)
+# Task 8 — Dependency resolver (BFS graph walk)
 # ---------------------------------------------------------------------------
 
 
@@ -527,10 +668,12 @@ class Resolver:
         self.wheel_only = {normalize_name(p) for p in (wheel_only_packages or set())}
         self.fallback_reasons: dict[str, str] = {}
 
-    def resolve(  # noqa: C901  # pylint: disable=too-many-branches
-        self, direct_deps: list[tuple[str, str]]
-    ) -> dict[str, dict[str, Any]]:
-        """Resolve all transitive dependencies via BFS."""
+    # pylint: disable-next=too-many-branches
+    def resolve(self, direct_deps: list[tuple[str, str]]) -> dict[str, dict[str, Any]]:
+        """Resolve all transitive dependencies via BFS.
+
+        Returns ``{name: {"version": str, "source": "rhoai"|"pypi", ...}}``.
+        """
         resolved: dict[str, dict[str, Any]] = {}
         constraints: dict[str, str] = {}
         queue: deque[tuple[str, str]] = deque()
@@ -613,7 +756,10 @@ class Resolver:
                 trans_deps = self.pypi.get_requires_dist(norm, pinned_version)
             except Exception as exc:
                 logger.warning(
-                    "Could not fetch deps for %s==%s: %s", norm, pinned_version, exc
+                    "Could not fetch deps for %s==%s: %s",
+                    norm,
+                    pinned_version,
+                    exc,
                 )
                 continue
 
@@ -621,7 +767,8 @@ class Resolver:
                 dep_norm = normalize_name(dep_name)
                 if dep_spec:
                     constraints[dep_norm] = merge_constraints(
-                        constraints.get(dep_norm), dep_spec
+                        constraints.get(dep_norm),
+                        dep_spec,
                     )
                 elif dep_norm not in constraints:
                     constraints[dep_norm] = ""
@@ -631,7 +778,7 @@ class Resolver:
 
 
 # ---------------------------------------------------------------------------
-# Classifier
+# Task 9 — Classifier
 # ---------------------------------------------------------------------------
 
 
@@ -639,7 +786,10 @@ def classify_packages(
     resolved: dict[str, dict[str, Any]],
     wheel_only: set[str],
 ) -> dict[str, dict[str, dict[str, Any]]]:
-    """Classify resolved packages into output buckets."""
+    """Classify resolved packages into output buckets.
+
+    Returns ``{"rhoai_wheel": {...}, "pypi_sdist": {...}, "pypi_wheel": {...}}``.
+    """
     wheel_only_norm = {normalize_name(p) for p in wheel_only}
 
     buckets: dict[str, dict[str, dict[str, Any]]] = {
@@ -669,7 +819,7 @@ def classify_packages(
 
 
 # ---------------------------------------------------------------------------
-# Output writer: hashed requirements files
+# Task 10 — Output writer: hashed requirements files
 # ---------------------------------------------------------------------------
 
 
@@ -677,16 +827,12 @@ def write_hashed_requirements(
     packages: dict[str, dict[str, Any]],
     output_path: str,
     index_url: str,
-    *,
-    hash_keys: tuple[str, ...] = (),
-    include_platforms: bool = False,
 ) -> None:
     """Write a pip-compatible hashed requirements file.
 
-    Only hashes from the selected sources are written. Mixing sdist and wheel
-    hashes in ``requirements.hashes.source.txt`` lets installers prefer a
-    matching wheel under ``--require-hashes``, defeating the sdist-only
-    classification for PyPI source packages.
+    *packages* maps ``{name: info}`` where *info* has the fields produced by
+    the resolver (``version``, and either ``platforms`` for RHOAI or
+    ``sdist_hashes`` / ``wheel_hashes`` / ``wheel_files`` for PyPI).
     """
     lines: list[str] = [f"--index-url {index_url}\n"]
 
@@ -696,15 +842,20 @@ def write_hashed_requirements(
 
         hashes: set[str] = set()
 
-        if include_platforms and "platforms" in info:
+        # RHOAI packages store hashes per platform
+        if "platforms" in info:
             for _, sha in info["platforms"].values():
                 if sha:
                     hashes.add(sha)
 
-        for key in hash_keys:
+        # PyPI packages store hashes in flat lists
+        for key in ("sdist_hashes", "wheel_hashes"):
             for sha in info.get(key, []):
                 if sha:
                     hashes.add(sha)
+        # wheel_files entries are filenames, not hashes — but the info dict
+        # may carry per-file hashes via wheel_hashes already.  Nothing extra
+        # to extract here.
 
         sorted_hashes = sorted(hashes)
         if not sorted_hashes:
@@ -720,7 +871,7 @@ def write_hashed_requirements(
 
 
 # ---------------------------------------------------------------------------
-# Tekton YAML patching
+# Task 11 — Tekton YAML patching
 # ---------------------------------------------------------------------------
 
 
@@ -731,23 +882,26 @@ def patch_tekton_packages(yaml_path: str, package_names: list[str]) -> None:
 
     sorted_names = sorted(package_names)
     replacement = f'"packages": "{",".join(sorted_names)}"'
-    new_content, count = re.subn(r'"packages":\s*"[^"]*"', replacement, content)
-    if count == 0:
-        raise RuntimeError(f"No 'packages' pattern found in {yaml_path}")
+    content = re.sub(r'"packages":\s*"[^"]*"', replacement, content)
 
     with open(yaml_path, "w", encoding="utf-8") as f:
-        f.write(new_content)
+        f.write(content)
 
 
 # ---------------------------------------------------------------------------
-# Config loading
+# Task 12 — Config loading
 # ---------------------------------------------------------------------------
 
 KONFLUX_DIR = ".konflux"
 
 
 def load_config(profiles_path: str, profile_name: str) -> dict[str, Any]:
-    """Load and merge ``[common]`` + ``[profiles.<name>]`` from a TOML file."""
+    """Load and merge ``[common]`` + ``[profiles.<name>]`` from a TOML file.
+
+    Returns a dict with keys: ``python_version``, ``platforms``,
+    ``bootstrap_packages``, ``extras``, ``rhoai_index_url``, ``output_suffix``,
+    ``tekton_files``.
+    """
     with open(profiles_path, "rb") as f:
         data = tomllib.load(f)
 
@@ -765,16 +919,17 @@ def load_config(profiles_path: str, profile_name: str) -> dict[str, Any]:
 
 
 def load_wheel_only(path: str) -> set[str]:
-    """Load ``.konflux/pypi_wheel_only.txt`` — one package name per line."""
+    """Load ``.konflux/pypi_wheel_only.txt`` — one package name per line.
+
+    Skips blank lines and ``#`` comments.  Returns normalized names.
+    """
     names: set[str] = set()
-    if not os.path.exists(path):
-        return names
     with open(path, encoding="utf-8") as f:
         for raw_line in f:
-            stripped = raw_line.strip()
-            if not stripped or stripped.startswith("#"):
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
                 continue
-            names.add(normalize_name(stripped))
+            names.add(normalize_name(line))
     return names
 
 
@@ -784,14 +939,42 @@ def load_wheel_only(path: str) -> set[str]:
 
 _UV_COMPILED_RE = re.compile(r"^([a-zA-Z0-9][a-zA-Z0-9._-]*)([=<>!~].*)?$")
 
+UV_IMAGE = "quay.io/syedriko/uv:prefer-index"
 
-def _run_uv_compile(
+
+def _container_runtime() -> str:
+    """Find an installed container runtime for the dependency resolver."""
+    if shutil.which("podman"):
+        return "podman"
+    if shutil.which("docker"):
+        return "docker"
+    raise RuntimeError("Neither podman nor docker is installed")
+
+
+def uv_resolve(
     python_version: str,
-    override_files: list[str],
-) -> dict[str, str]:
-    """Run ``uv pip compile`` and return ``{name: version}``."""
+    rhoai_index_url: str,
+    suffix: str,
+    extras: Sequence[str] = (),
+) -> dict[str, dict[str, Any]]:
+    """Run ``uv pip compile --index-strategy prefer-index`` to resolve deps.
+
+    Returns ``{normalized_name: {"version": str, "index": str}}``
+    where *index* is the URL of the index the package was resolved from.
+    """
+    overrides_name = "requirements.overrides.txt"
+    if suffix:
+        overrides_name = f"requirements.overrides{suffix}.txt"
+    overrides_file = os.path.join(KONFLUX_DIR, overrides_name)
     cmd = [
-        "uv",
+        _container_runtime(),
+        "run",
+        "--rm",
+        "--volume",
+        f"{os.getcwd()}:/io:ro,Z",
+        "--workdir",
+        "/io",
+        UV_IMAGE,
         "pip",
         "compile",
         "pyproject.toml",
@@ -800,150 +983,100 @@ def _run_uv_compile(
         "--python-version",
         python_version,
         "--refresh",
+        "--index",
+        rhoai_index_url,
+        "--default-index",
+        "https://pypi.org/simple/",
+        "--index-strategy",
+        "prefer-index",
+        "--emit-index-annotation",
         "--no-sources",
     ]
-    for f in override_files:
-        if os.path.exists(f):
-            cmd += ["--override", f]
+    if os.path.exists(overrides_file):
+        cmd += ["--override", overrides_file]
+    for extra in extras:
+        cmd += ["--extra", extra]
 
     logger.debug("Running: %s", " ".join(cmd))
     try:
-        result = subprocess.run(  # noqa: S603
-            cmd, capture_output=True, text=True, check=True
-        )
-    except subprocess.CalledProcessError as exc:
-        logger.error("uv pip compile failed:\n%s", exc.stderr)
-        raise
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print("Failed:")
+        print(e.stderr)
+        sys.exit(1)
 
-    resolved: dict[str, str] = {}
+    resolved: dict[str, dict[str, Any]] = {}
+    current_package: str | None = None
+
     for raw_line in result.stdout.splitlines():
         line = raw_line.strip()
-        if not line or line.startswith("#") or line.startswith("-"):
+        if not line or line.startswith("-"):
             continue
+
         m = _UV_COMPILED_RE.match(line)
-        if m:
+        if m and not line.startswith("#"):
             name = normalize_name(m.group(1))
             version_spec = (m.group(2) or "").strip()
-            version = (
-                version_spec[2:]
-                if version_spec.startswith("==")
-                else version_spec.lstrip("=")
-            )
+            if version_spec.startswith("=="):
+                version = version_spec[2:]
+            else:
+                version = version_spec.lstrip("=")
             if version:
-                resolved[name] = version
+                current_package = name
+                resolved[name] = {"version": version, "index": ""}
+        elif "# from " in line and current_package:
+            index_url = line.split("# from ", 1)[1].strip()
+            resolved[current_package]["index"] = index_url
 
     logger.info("uv resolved %d packages", len(resolved))
     return resolved
 
 
-def _load_manual_override_names(path: str) -> set[str]:
-    """Return normalized package names already pinned in a manual overrides file."""
-    names: set[str] = set()
-    if not os.path.exists(path):
-        return names
-    with open(path, encoding="utf-8") as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            pkg = (
-                line.split("==")[0]
-                .split(">=")[0]
-                .split("<=")[0]
-                .split(">")[0]
-                .split("<")[0]
-            )
-            names.add(normalize_name(pkg.strip()))
-    return names
-
-
-def _generate_rhoai_overrides(
-    resolved: dict[str, str],
+def reclassify_with_rhoai(
+    uv_resolved: dict[str, str],
     rhoai: RhoaiIndex,
-    output_path: str,
-    manual_overrides_path: str,
-) -> int:
-    """Auto-generate overrides to pin packages to RHOAI-available versions.
+) -> dict[str, dict[str, Any]]:
+    """Reclassify uv-resolved packages using RHOAI-first policy.
 
-    For each resolved package available on RHOAI, pins to the latest RHOAI
-    version that does not exceed the PyPI-resolved version, avoiding forward
-    jumps that could break inter-package compatibility.
-    Skips packages already pinned in the manual overrides file.
-    Returns the number of overrides written.
+    For each package, if RHOAI has a compatible wheel at the resolved version,
+    classify as ``source=rhoai``; otherwise ``source=pypi``.
     """
-    manual_names = _load_manual_override_names(manual_overrides_path)
-    overrides: list[str] = []
-    for name, version in sorted(resolved.items()):
-        if name in manual_names:
-            continue
-        if not rhoai.has_package(name):
-            continue
-        match = rhoai.find_best(name, f"<={version}")
-        if match:
-            overrides.append(f"{name}=={match['version']}")
+    result: dict[str, dict[str, Any]] = {}
+    rhoai_count = 0
+    pypi_count = 0
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.writelines(
-            ["# Auto-generated: pin packages to RHOAI-available versions\n"]
-            + [f"{line}\n" for line in overrides]
-        )
+    for name, version in sorted(uv_resolved.items()):
+        rhoai_match = rhoai.find_best(name, f"=={version}")
+        if rhoai_match and rhoai_match["version"] == version:
+            result[name] = {
+                "version": version,
+                "source": "rhoai",
+                "platforms": rhoai_match["platforms"],
+            }
+            rhoai_count += 1
+            logger.debug("RHOAI: %s==%s", name, version)
+        else:
+            result[name] = {
+                "version": version,
+                "source": "pypi",
+                "has_sdist": True,
+                "sdist_hashes": [],
+                "wheel_hashes": [],
+                "wheel_files": [],
+            }
+            pypi_count += 1
+            if rhoai.has_package(name):
+                logger.info(
+                    "PyPI: %s==%s (RHOAI has package but not version %s)",
+                    name,
+                    version,
+                    version,
+                )
+            else:
+                logger.debug("PyPI: %s==%s (not in RHOAI)", name, version)
 
-    logger.info("Generated %d RHOAI overrides → %s", len(overrides), output_path)
-    return len(overrides)
-
-
-def uv_resolve(
-    python_version: str,
-    rhoai_index_url: str,
-    suffix: str,
-    platforms: list[str],
-) -> tuple[dict[str, str], RhoaiIndex]:
-    """Two-pass resolution: resolve deps, then pin to RHOAI versions.
-
-    Returns ``({name: version}, rhoai_index)``.
-    """
-    manual_overrides = os.path.join(
-        KONFLUX_DIR,
-        (
-            f"requirements.overrides{suffix}.txt"
-            if suffix
-            else "requirements.overrides.txt"
-        ),
-    )
-    auto_overrides = os.path.join(KONFLUX_DIR, f"_auto_overrides{suffix}.txt")
-
-    # Pass 1: resolve with manual overrides only
-    logger.info("Pass 1: resolving dependencies …")
-    initial = _run_uv_compile(python_version, [manual_overrides])
-
-    # Load RHOAI index and generate auto-overrides
-    logger.info("Loading RHOAI index and generating overrides …")
-    rhoai = RhoaiIndex(rhoai_index_url, python_version, platforms)
-    rhoai.load()
-    count = _generate_rhoai_overrides(initial, rhoai, auto_overrides, manual_overrides)
-
-    if count > 0:
-        # Pass 2: re-resolve with manual + auto overrides
-        logger.info("Pass 2: re-resolving with %d RHOAI overrides …", count)
-        resolved = _run_uv_compile(python_version, [manual_overrides, auto_overrides])
-    else:
-        resolved = initial
-
-    # Clean up temp file
-    if os.path.exists(auto_overrides):
-        os.remove(auto_overrides)
-
-    # Drop CUDA-only transitive deps: uv resolves torch metadata from PyPI
-    # which lists nvidia-*/cuda-* packages, but the RHOAI CPU torch does
-    # not need them. Remove packages not on RHOAI that are CUDA artifacts.
-    cuda_prefixes = ("nvidia-", "cuda-")
-    for pkg in [
-        n for n in resolved if n.startswith(cuda_prefixes) and not rhoai.has_package(n)
-    ]:
-        logger.info("Dropping CUDA-only package: %s", pkg)
-        del resolved[pkg]
-
-    return resolved, rhoai
+    logger.info("Reclassified: %d RHOAI, %d PyPI", rhoai_count, pypi_count)
+    return result
 
 
 def _fetch_hashes_for_pypi_packages(
@@ -973,9 +1106,15 @@ def _fetch_hashes_for_pypi_packages(
 
 
 def _strip_rhoai_duplicates_from_build_deps(
-    build_file: str, rhoai_names: set[str]
+    build_file: str,
+    rhoai_names: set[str],
 ) -> None:
-    """Remove packages from build deps file that already exist as RHOAI wheels."""
+    """Remove packages from build deps file that are already provided elsewhere.
+
+    Strips packages that already exist as RHOAI wheels or bootstrap packages
+    to prevent hermeto from fetching PyPI wheels for them, which would cause
+    EC policy violations (binary=true on PyPI-sourced packages).
+    """
     with open(build_file, encoding="utf-8") as f:
         lines = f.readlines()
 
@@ -995,118 +1134,41 @@ def _strip_rhoai_duplicates_from_build_deps(
         f.writelines(output)
 
 
-def _classify_resolved(
-    resolved_versions: dict[str, str],
+def _generate_hermetic_requirements(
     rhoai: RhoaiIndex,
-) -> dict[str, dict[str, Any]]:
-    """Classify resolved packages as RHOAI or PyPI using the RHOAI index."""
-    classified: dict[str, dict[str, Any]] = {}
-    for name, version in resolved_versions.items():
-        match = rhoai.find_best(name, f"=={version}")
-        if match and match["version"] == version:
-            classified[name] = {
-                "version": version,
-                "source": "rhoai",
-                "platforms": match["platforms"],
-            }
-        else:
-            classified[name] = {
-                "version": version,
-                "source": "pypi",
-                "has_sdist": True,
-                "sdist_hashes": [],
-                "wheel_hashes": [],
-                "wheel_files": [],
-            }
-    return classified
-
-
-def _generate_build_deps(
-    buckets: dict[str, dict[str, dict[str, Any]]],
-    suffix: str,
-    bootstrap_packages: list[str] | None = None,
-) -> str:
-    """Generate build dependencies via pybuild-deps."""
-    sdist_names = list(buckets["pypi_sdist"].keys())
-    build_output = os.path.join(KONFLUX_DIR, f"requirements-build{suffix}.txt")
-    if sdist_names:
-        tmp_sdist_file = os.path.join(KONFLUX_DIR, f"_tmp_sdist_list{suffix}.txt")
-        try:
-            with open(tmp_sdist_file, "w", encoding="utf-8") as f:
-                for name in sorted(sdist_names):
-                    info = buckets["pypi_sdist"][name]
-                    f.write(f"{name}=={info['version']}\n")
-            subprocess.run(  # noqa: S603
-                [  # noqa: S607
-                    "uv",
-                    "run",
-                    "pybuild-deps",
-                    "compile",
-                    f"--output-file={build_output}",
-                    tmp_sdist_file,
-                ],
-                check=True,
-            )
-        finally:
-            if os.path.exists(tmp_sdist_file):
-                os.remove(tmp_sdist_file)
-
-        rhoai_names = set(buckets["rhoai_wheel"].keys())
-        if bootstrap_packages:
-            rhoai_names |= {normalize_name(p) for p in bootstrap_packages}
-        _strip_rhoai_duplicates_from_build_deps(build_output, rhoai_names)
-    else:
-        with open(build_output, "w", encoding="utf-8") as f:
-            f.write("# No sdist packages — no build dependencies needed.\n")
-    return build_output
-
-
-def _add_bootstrap_packages(
-    buckets: dict[str, dict[str, dict[str, Any]]],
-    rhoai: RhoaiIndex,
+    bootstrap_packages: Sequence[str],
+    platforms: Sequence[str],
     rhoai_index_url: str,
-    bootstrap_packages: list[str],
     suffix: str,
 ) -> None:
-    """Add bootstrap packages to requirements.hermetic.txt from RHOAI."""
-    hermetic_path = os.path.join(KONFLUX_DIR, f"requirements.hermetic{suffix}.txt")
-    hermetic_lines = [f"--index-url {rhoai_index_url}\n"]
-    for pkg in bootstrap_packages:
-        norm = normalize_name(pkg)
-        match = rhoai.find_best(norm, "")
-        if match:
-            hermetic_lines.append(f"{norm}=={match['version']}\n")
-            logger.info("Bootstrap: %s==%s (from RHOAI)", norm, match["version"])
-    with open(hermetic_path, "w", encoding="utf-8") as f:
-        f.writelines(hermetic_lines)
+    """Generate pinned, hashed build tools from the RHOAI index."""
+    hermetic_file = os.path.join(KONFLUX_DIR, f"requirements.hermetic{suffix}.txt")
+    packages: dict[str, dict[str, Any]] = {}
+
+    for package in bootstrap_packages:
+        name = normalize_name(package)
+        match = rhoai.find_best(name, ">=0")
+        if match is None:
+            raise RuntimeError(f"No RHOAI wheel for bootstrap package {name}")
+        version = match["version"]
+        available = match["platforms"]
+        missing = [
+            platform
+            for platform in platforms
+            if "any" not in available and f"linux_{platform}" not in available
+        ]
+        if missing:
+            raise RuntimeError(
+                f"No RHOAI wheel for {name}=={version} on {', '.join(missing)}; "
+                f"update {hermetic_file}"
+            )
+        packages[name] = match
+
+    write_hashed_requirements(packages, hermetic_file, rhoai_index_url)
+    logger.info("Wrote %s (%d bootstrap packages)", hermetic_file, len(packages))
 
 
-def _print_summary(
-    profile: str,
-    buckets: dict[str, dict[str, dict[str, Any]]],
-    total: int,
-    suffix: str,
-    build_output: str,
-) -> None:
-    """Print resolution summary."""
-    print(f"\n{'='*60}")
-    print(f"Resolution complete ({profile} profile)")
-    print(f"{'='*60}")
-    print(f"  RHOAI wheels:          {len(buckets['rhoai_wheel']):>4} packages")
-    print(f"  PyPI sdist:            {len(buckets['pypi_sdist']):>4} packages")
-    print(f"  PyPI wheel (last resort): {len(buckets['pypi_wheel']):>4} packages")
-    print(f"  Total:                 {total:>4} packages")
-    print()
-    print(f"  Hashed wheel (RHOAI):  .konflux/requirements.hashes.wheel{suffix}.txt")
-    print(f"  Hashed source (PyPI):  .konflux/requirements.hashes.source{suffix}.txt")
-    print(
-        f"  Hashed wheel (PyPI):   .konflux/requirements.hashes.wheel.pypi{suffix}.txt"
-    )
-    print(f"  Build deps:            {build_output}")
-    print()
-    print("Remember to commit output files and push the changes.")
-
-
+# pylint: disable-next=too-many-branches,too-many-statements
 def main() -> None:
     """Resolve dependencies with RHOAI-first policy and write Hermeto output files."""
     parser = argparse.ArgumentParser(
@@ -1138,52 +1200,129 @@ def main() -> None:
     tekton_files = config.get("tekton_files", [])
     bootstrap_packages = config.get("bootstrap_packages", [])
 
-    resolved_versions, rhoai = uv_resolve(
-        python_version, rhoai_index_url, suffix, platforms
+    # Step 1: Resolve via uv with prefer-index strategy
+    logger.info("Running uv pip compile --index-strategy prefer-index …")
+    uv_resolved = uv_resolve(
+        python_version,
+        rhoai_index_url,
+        suffix,
+        config.get("extras", []),
     )
 
-    logger.info("Classifying packages …")
-    resolved = _classify_resolved(resolved_versions, rhoai)
+    # Step 2: Build resolved dict from uv output + index annotations
+    resolved: dict[str, dict[str, Any]] = {}
+    for name, info in uv_resolved.items():
+        index = info["index"]
+        is_rhoai = "packages.redhat.com" in index if index else False
+        if is_rhoai:
+            resolved[name] = {
+                "version": info["version"],
+                "source": "rhoai",
+                "platforms": {},
+            }
+        else:
+            resolved[name] = {
+                "version": info["version"],
+                "source": "pypi",
+                "has_sdist": True,
+                "sdist_hashes": [],
+                "wheel_hashes": [],
+                "wheel_files": [],
+            }
+
     rhoai_count = sum(1 for v in resolved.values() if v["source"] == "rhoai")
-    logger.info(
-        "Classified: %d RHOAI, %d PyPI", rhoai_count, len(resolved) - rhoai_count
-    )
+    pypi_count = len(resolved) - rhoai_count
+    logger.info("Classified: %d RHOAI, %d PyPI", rhoai_count, pypi_count)
 
-    logger.info("Fetching PyPI hashes …")
+    # Step 3: Fetch hashes — RHOAI from the RHOAI index, PyPI from PyPI
+    logger.info("Fetching hashes …")
+    rhoai = RhoaiIndex(rhoai_index_url, python_version, platforms)
+    rhoai.load()
+    _generate_hermetic_requirements(
+        rhoai,
+        bootstrap_packages,
+        platforms,
+        rhoai_index_url,
+        suffix,
+    )
+    for name, info in resolved.items():
+        if info["source"] == "rhoai":
+            match = rhoai.find_best(name, f"=={info['version']}")
+            if match:
+                info["platforms"] = match["platforms"]
+
     pypi = PypiClient(python_version, platforms)
     _fetch_hashes_for_pypi_packages(resolved, pypi)
 
+    # Step 5: Classify into buckets
     buckets = classify_packages(resolved, wheel_only)
 
-    _add_bootstrap_packages(buckets, rhoai, rhoai_index_url, bootstrap_packages, suffix)
-
-    build_output = _generate_build_deps(buckets, suffix, bootstrap_packages)
-
+    # Step 6: Write hashed requirements files
     write_hashed_requirements(
         buckets["rhoai_wheel"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel{suffix}.txt"),
         rhoai_index_url,
-        include_platforms=True,
     )
     write_hashed_requirements(
         buckets["pypi_sdist"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.source{suffix}.txt"),
         "https://pypi.org/simple",
-        hash_keys=("sdist_hashes",),
     )
     write_hashed_requirements(
         buckets["pypi_wheel"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel.pypi{suffix}.txt"),
         "https://pypi.org/simple",
-        hash_keys=("wheel_hashes",),
     )
 
-    wheel_package_names = sorted(
-        set(
-            list(buckets["rhoai_wheel"].keys())
-            + list(buckets["pypi_wheel"].keys())
-            + [normalize_name(p) for p in bootstrap_packages]
+    # Step 7: Build dependencies via pybuild-deps
+    sdist_names = list(buckets["pypi_sdist"].keys())
+    build_output = os.path.join(KONFLUX_DIR, f"requirements-build{suffix}.txt")
+    if sdist_names:
+        tmp_sdist_file = os.path.join(KONFLUX_DIR, f"_tmp_sdist_list{suffix}.txt")
+        try:
+            with open(tmp_sdist_file, "w", encoding="utf-8") as f:
+                for name in sorted(sdist_names):
+                    info = buckets["pypi_sdist"][name]
+                    f.write(f"{name}=={info['version']}\n")
+            build_deps_executable = shutil.which("pybuild-deps")
+            if build_deps_executable is None:
+                raise RuntimeError("pybuild-deps is not installed")
+            try:
+                subprocess.run(
+                    [
+                        build_deps_executable,
+                        "compile",
+                        f"--output-file={build_output}",
+                        tmp_sdist_file,
+                    ],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                print("Failed:")
+                print(e.stderr)
+                sys.exit(1)
+        finally:
+            if os.path.exists(tmp_sdist_file):
+                os.remove(tmp_sdist_file)
+
+        # Strip build deps that duplicate RHOAI wheel packages or bootstrap
+        # packages to avoid hermeto fetching them as binary from PyPI
+        # (EC policy violation).
+        rhoai_names = set(buckets["rhoai_wheel"].keys())
+        bootstrap_names = {normalize_name(p) for p in bootstrap_packages}
+        _strip_rhoai_duplicates_from_build_deps(
+            build_output,
+            rhoai_names | bootstrap_names,
         )
+    else:
+        with open(build_output, "w", encoding="utf-8") as f:
+            f.write("# No sdist packages — no build dependencies needed.\n")
+
+    # Step 9: Patch Tekton pipelines
+    wheel_package_names = sorted(
+        set(buckets["rhoai_wheel"])
+        | set(buckets["pypi_wheel"])
+        | {normalize_name(p) for p in bootstrap_packages}
     )
     for tekton_file in tekton_files:
         if os.path.exists(tekton_file):
@@ -1192,7 +1331,23 @@ def main() -> None:
         else:
             logger.warning("Tekton file not found: %s", tekton_file)
 
-    _print_summary(args.profile, buckets, len(resolved), suffix, build_output)
+    # Summary
+    total = len(resolved)
+    print(f"\n{'=' * 60}")
+    print(f"Resolution complete ({args.profile} profile)")
+    print(f"{'=' * 60}")
+    print(f"  RHOAI wheels:          {len(buckets['rhoai_wheel']):>4} packages")
+    print(f"  PyPI sdist:            {len(buckets['pypi_sdist']):>4} packages")
+    print(f"  PyPI wheel (last resort): {len(buckets['pypi_wheel']):>4} packages")
+    print(f"  Total:                 {total:>4} packages")
+    print()
+    print(f"  Hashed wheel (RHOAI):  .konflux/requirements.hashes.wheel{suffix}.txt")
+    print(f"  Hashed source (PyPI):  .konflux/requirements.hashes.source{suffix}.txt")
+    pypi_wheel_file = f".konflux/requirements.hashes.wheel.pypi{suffix}.txt"
+    print(f"  Hashed wheel (PyPI):   {pypi_wheel_file}")
+    print(f"  Build deps:            {build_output}")
+    print()
+    print("Remember to commit output files and push the changes.")
 
 
 if __name__ == "__main__":
