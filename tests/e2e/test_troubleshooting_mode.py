@@ -10,6 +10,8 @@ Requires an MCP-enabled OLS deployment with access to alert-query tools
 
 # pyright: reportAttributeAccessIssue=false
 
+import re
+
 import pytest
 
 from tests.e2e.utils.constants import LLM_REST_API_TIMEOUT
@@ -24,12 +26,16 @@ def test_troubleshooting_mode_returns_response_and_calls_tool() -> None:
 
     Exercises:
     - TROUBLESHOOTING_SYSTEM_INSTRUCTION selected (cluster version injected)
+    - OpenShift version appears in the response, confirming system prompt injection
     - At least one MCP tool called during the troubleshooting investigation
     """
     response = pytest.client.post(
         QUERY_ENDPOINT,
         json={
-            "query": "What is the current status of my OpenShift cluster?",
+            "query": (
+                "What OpenShift version is this cluster running"
+                " and what is its current status?"
+            ),
             "mode": "troubleshooting",
         },
         timeout=LLM_REST_API_TIMEOUT,
@@ -41,6 +47,12 @@ def test_troubleshooting_mode_returns_response_and_calls_tool() -> None:
     assert data["response"], "Expected a non-empty response"
     assert data["input_tokens"] > 0
     assert data["output_tokens"] > 0
+
+    assert re.search(r"\b[45]\.\d+", data["response"]), (
+        f"Expected an OpenShift version (4.x or 5.x) in the response — "
+        f"its absence suggests TROUBLESHOOTING_SYSTEM_INSTRUCTION was not injected; "
+        f"response={data['response']!r}"
+    )
 
     tool_names = [tc["name"] for tc in data.get("tool_calls", [])]
     assert tool_names, (
