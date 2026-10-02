@@ -79,12 +79,12 @@ conversations.
 
 **Decision:** The processing pipeline for tool results follows this order:
 
-1. **Inspect** -- LLM classifier screening (SAFE-01, OLS-3928) runs first on
-   the raw tool output.
-2. **Redact** -- Any configured redaction filters are applied.
-3. **Wrap** -- The `<tool_data>` boundary markers are applied as the outermost
+1. **Inspect** -- When enabled, LLM classifier screening (SAFE-01, OLS-3928)
+   runs before the wrapper is applied.
+2. **Wrap** -- The `<tool_data>` boundary markers are applied as the outermost
    layer.
 
+Wrapping remains active when tool-result inspection is disabled.
 The wrapper is always the outermost layer so the LLM sees the trust boundary
 before encountering any tool content.
 
