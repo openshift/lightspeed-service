@@ -669,7 +669,9 @@ class Resolver:
         self.fallback_reasons: dict[str, str] = {}
 
     # pylint: disable-next=too-many-branches
-    def resolve(self, direct_deps: list[tuple[str, str]]) -> dict[str, dict[str, Any]]:
+    def resolve(  # noqa: C901
+        self, direct_deps: list[tuple[str, str]]
+    ) -> dict[str, dict[str, Any]]:
         """Resolve all transitive dependencies via BFS.
 
         Returns ``{name: {"version": str, "source": "rhoai"|"pypi", ...}}``.
@@ -951,7 +953,7 @@ def _container_runtime() -> str:
     raise RuntimeError("Neither podman nor docker is installed")
 
 
-def uv_resolve(
+def uv_resolve(  # noqa: C901
     python_version: str,
     rhoai_index_url: str,
     suffix: str,
@@ -999,7 +1001,9 @@ def uv_resolve(
 
     logger.debug("Running: %s", " ".join(cmd))
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(  # noqa: S603
+            cmd, capture_output=True, text=True, check=True
+        )
     except subprocess.CalledProcessError as e:
         print("Failed:")
         print(e.stderr)
@@ -1169,7 +1173,7 @@ def _generate_hermetic_requirements(
 
 
 # pylint: disable-next=too-many-branches,too-many-statements
-def main() -> None:
+def main() -> None:  # noqa: C901
     """Resolve dependencies with RHOAI-first policy and write Hermeto output files."""
     parser = argparse.ArgumentParser(
         description="Policy-driven dependency resolver for Hermeto/Cachi2 builds."
@@ -1288,7 +1292,7 @@ def main() -> None:
             if build_deps_executable is None:
                 raise RuntimeError("pybuild-deps is not installed")
             try:
-                subprocess.run(
+                subprocess.run(  # noqa: S603
                     [
                         build_deps_executable,
                         "compile",

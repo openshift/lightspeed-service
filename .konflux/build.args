@@ -1,5 +1,5 @@
-BUILDER_BASE_IMAGE=registry.redhat.io/rhai/base-image-cpu-rhel9:3.5.1-1788198407
+BUILDER_BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.2-1790703656
 BUILDER_DNF_COMMAND=dnf
-RUNTIME_BASE_IMAGE=registry.redhat.io/rhai/base-image-cpu-rhel9:3.5.1-1788198407
+RUNTIME_BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.5.2-1790703656
 RUNTIME_DNF_COMMAND=dnf
 HERMETIC_BUILD=true
