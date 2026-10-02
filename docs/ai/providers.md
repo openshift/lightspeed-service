@@ -146,3 +146,5 @@ Two authentication methods are supported:
 2. **IAM credentials** — set `credentials_path` to a directory containing `aws_access_key_id` and `aws_secret_access_key` files. Optional `role_arn` file triggers STS `assume_role()`. For `ChatBedrockConverse`, a pre-configured boto3 client is passed directly; for `ChatOpenAI`, SigV4 signing is injected via `httpx-aws-auth`.
 
 Fully qualified names are required because they match the Bedrock model IDs as reported by the AWS console and API. The region is extracted from the Mantle URL. See `docs/superpowers/bedrock-provider-findings.md` for research details.
+
+Direct Anthropic in `olsconfig.yaml`: use `type: anthropic` with `credentials_path` pointing to the API key file, or use an `anthropic_config` block with `api_key` and an optional `url` override. **Proxy and proxy CA settings from `ols_config.proxy_config` are not applied** — `ChatAnthropic` uses the Anthropic SDK's own transport, which does not receive the httpx client constructed by `_construct_httpx_client`. Certificate trust for the Anthropic API endpoint must be configured via the `SSL_CERT_FILE` environment variable.
