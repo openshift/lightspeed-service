@@ -60,25 +60,29 @@ The service must protect customer data, enforce transport-layer encryption, reda
 32. Approval flow is only active for streaming requests. Non-streaming requests must never enter the approval workflow.
 33. The approval strategy must be one of: `never` (no approval required), `always` (all tool calls require approval), or `tool_annotations` (approval required unless the tool declares `readOnlyHint: true`).
 
+### Tool-output content boundary
+
+34. All tool results (success and error) from MCP servers must be wrapped in content boundary markers (`<tool_data>` tags) before entering the LLM context. The LLM must receive an explicit trust instruction to treat marked content as untrusted reference data. See `what/tools.md` rules 18i--18m and `.ai/spec/decisions/0001-tool-output-boundary.md` for the full specification.
+
 ### MCP credential handling
 
-34. MCP server authorization headers support three resolution modes: (a) a file path, whose contents are read at config load time; (b) the `kubernetes` placeholder, which is replaced at request time with a `Bearer <token>` derived from the authenticated user's Kubernetes token; (c) the `client` placeholder, which is replaced at request time with a header value supplied by the calling client.
-35. The `kubernetes` placeholder must only be permitted when the authentication module is `k8s` or `noop-with-token`. If used with any other authentication module, the MCP server must be excluded at config validation time.
-36. MCP connections must use the aggregated certificate store when a certificate directory is configured, ensuring custom CA certificates apply to MCP server communication.
-37. [PLANNED: OLS-2717] MCP servers (including openshift-mcp-server) must support TLS-encrypted connections.
+35. MCP server authorization headers support three resolution modes: (a) a file path, whose contents are read at config load time; (b) the `kubernetes` placeholder, which is replaced at request time with a `Bearer <token>` derived from the authenticated user's Kubernetes token; (c) the `client` placeholder, which is replaced at request time with a header value supplied by the calling client.
+36. The `kubernetes` placeholder must only be permitted when the authentication module is `k8s` or `noop-with-token`. If used with any other authentication module, the MCP server must be excluded at config validation time.
+37. MCP connections must use the aggregated certificate store when a certificate directory is configured, ensuring custom CA certificates apply to MCP server communication.
+38. [PLANNED: OLS-2717] MCP servers (including openshift-mcp-server) must support TLS-encrypted connections.
 
 ### Disconnected / air-gapped environments
 
-38. The service must not require any outbound internet connectivity beyond the configured LLM provider endpoint (which may be on-premises).
-39. All dependencies (container images, RAG indexes, embedding models) must be distributable via disconnected-compatible mechanisms (mirrored registries, local storage).
+39. The service must not require any outbound internet connectivity beyond the configured LLM provider endpoint (which may be on-premises).
+40. All dependencies (container images, RAG indexes, embedding models) must be distributable via disconnected-compatible mechanisms (mirrored registries, local storage).
 
 ### Network policies
 
-40. The deployment must support network policies that restrict traffic to only the necessary communication paths, protecting against unintended data leaks and lateral movement.
+41. The deployment must support network policies that restrict traffic to only the necessary communication paths, protecting against unintended data leaks and lateral movement.
 
 ### Read-only root filesystem
 
-41. Containers must run with a read-only root filesystem to minimize the attack surface and comply with security hardening requirements.
+42. Containers must run with a read-only root filesystem to minimize the attack surface and comply with security hardening requirements.
 
 ## Configuration Surface
 
