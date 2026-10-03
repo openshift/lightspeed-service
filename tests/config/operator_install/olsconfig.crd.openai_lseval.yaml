@@ -14,11 +14,14 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: gpt-5.4-mini
+          - name: gpt-6-luna
+            parameters:
+              reasoningConfig:
+                effort: medium
         name: openai
         type: openai
   ols:
-    defaultModel: gpt-5.4-mini
+    defaultModel: gpt-6-luna
     defaultProvider: openai
     deployment:
       replicas: 1
