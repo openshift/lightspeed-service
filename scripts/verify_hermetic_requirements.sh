@@ -16,16 +16,9 @@ EXPECTED_MISSING=(
     # Transitive deps resolved differently by uv export vs uv pip compile
     # (extras, conditional markers, RHOAI overrides)
     cloudpickle
-    durationpy
-    grpcio_status
-    h2
-    hpack
-    httpcore2
-    httpx2
     httpx2_jsfetch
-    hyperframe
-    narwhals
-    truststore
+    # uv.lock uses OpenTelemetry 1.45; RHOAI resolves 1.44 without this dependency.
+    opentelemetry_exporter_otlp_common
 )
 
 log() { echo "==> $*"; }

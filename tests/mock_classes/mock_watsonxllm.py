@@ -3,7 +3,7 @@
 from langchain_core.language_models.llms import LLM
 
 
-class ChatWatsonx(LLM):
+class ChatWatsonx(LLM):  # pylint: disable=abstract-method
     """Mocked ChatWatsonx class to avoid accessing real Watsonx API."""
 
     def __init__(self):

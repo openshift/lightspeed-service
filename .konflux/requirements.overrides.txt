@@ -1,40 +1,11 @@
-# override these packages to the version available on RHOAI wheels index:
-# https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple
-# CVE-2026-69243 / CVE-2026-69244: RHOAI only ships 3.14.1; force fixed PyPI version
-aiohttp==3.14.3
-aiosqlite==0.22.1
-# CVE-2026-63374: RHOAI only ships vulnerable 4.13.0; force fixed PyPI version
-anyio==4.15.1
-attrs==26.1.0
-# CVE-2026-61536: RHOAI only ships vulnerable 2.4.2; force fixed PyPI version
-banks==2.5.0
-certifi==2026.5.20
-cryptography==49.0.0
-datasets==5.0.0
-faiss-cpu==1.12.0
-google-genai==1.75.0
-grpcio==1.80.0
-grpcio-status==1.80.0
-jiter==0.14.0
-# RHOAI provides langchain-core 1.4.6. langchain-aws 1.7.7+ imports
-# langchain_core.utils._gateway, which is absent from that version.
-langchain-aws==1.7.6
-numpy==2.4.4
-orjson==3.11.8
-pandas==2.3.3
-pydantic==2.13.1
-# CVE-2026-102273: RHOAI only ships vulnerable 2.13.0; force fixed PyPI version
+setuptools<82
+torch==2.11.0
+
+# CVE-2026-102273: RHOAI 3.5 ships vulnerable 2.13.0
 pyjwt==2.14.0
-scipy==1.17.1
-# CVE-2026-68770: RHOAI only ships vulnerable 5.2.0; force fixed PyPI version
-sentence-transformers==5.7.0
-setuptools==80.10.2
-sqlalchemy==2.0.49
-tokenizers==0.22.2
-torch==2.10.0
-transformers==5.12.0
-typing-extensions==4.16.0
-uuid_utils==0.14.1
-# CVE-2026-102930, CVE-2026-102925: RHOAI only ships vulnerable 21.4.3; force fixed PyPI version
-virtualenv==21.14.1
-yarl==1.23.0
+
+# CVE-2026-61536: RHOAI 3.5 ships 2.4.5 (fix is 2.5.0)
+banks==2.5.0
+
+# CVE-2026-63374: RHOAI 3.5 ships 4.14.2 (fix is 4.15.1)
+anyio==4.15.1

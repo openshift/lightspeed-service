@@ -117,7 +117,14 @@ fi
 
 echo "Installing rpm-lockfile-prototype..."
 $CONTAINER_RUNTIME exec "$CONTAINER_NAME" python3 -m pip install --user \
-    https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/tags/v0.21.0.tar.gz
+    https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/tags/v0.24.0.tar.gz
+
+echo "Copying registry auth into container..."
+AUTH_JSON="/run/user/$(id -u)/containers/auth.json"
+if [[ -f "$AUTH_JSON" ]]; then
+    $CONTAINER_RUNTIME exec "$CONTAINER_NAME" mkdir -p /root/.config/containers
+    $CONTAINER_RUNTIME cp "$AUTH_JSON" "$CONTAINER_NAME:/root/.config/containers/auth.json"
+fi
 
 echo "Creating workdir and copying files..."
 $CONTAINER_RUNTIME exec "$CONTAINER_NAME" mkdir -p "$WORKDIR"

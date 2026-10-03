@@ -35,7 +35,7 @@ class MockRetriever:
         ]
 
 
-class MockVectorStore(VectorStore):
+class MockVectorStore(VectorStore):  # pylint: disable=abstract-method
     """Mock for VectorStore."""
 
     def as_retriever(self, **kwargs):
