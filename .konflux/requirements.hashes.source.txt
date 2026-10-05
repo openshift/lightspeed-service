@@ -7,8 +7,10 @@ banks==2.5.0 \
     --hash=sha256:fdd4fd54b84dbe31cb51a1173c960697c73d683a52fb0b1d1957a557a8d6fcc8
 bottleneck==1.6.0 \
     --hash=sha256:028d46ee4b025ad9ab4d79924113816f825f62b17b87c9e1d0d8ce144a4a0e31
-google-cloud-vectorsearch==0.11.4 \
-    --hash=sha256:fa2d21918cf7d99e4fea7847388312b57cd1ee00fd1be093bbbc8d26115b7f7f
+fsspec==2026.6.0 \
+    --hash=sha256:f5bac145310fe30e16e1471bd6840b2d990d609e872251d7e674241822abf01a
+google-cloud-vectorsearch==0.11.5 \
+    --hash=sha256:f85e120847010dcfd66f54e10689e645e2422e48d5c21a3ac5b8b86348fe55f4
 httpx-aws-auth==4.2.0 \
     --hash=sha256:56a620f05559910160430204116e2598aae306142c49a5a35d170497833cdcba
 ibm-cos-sdk==2.14.3 \
@@ -25,10 +27,12 @@ langchain-aws==1.7.6 \
     --hash=sha256:b46a64a16e56f268b9b841d7388ac2c057d77803b09b3933aec673a54904a81f
 langchain-google-vertexai==3.2.4 \
     --hash=sha256:f0c16b4b639037f60357dbf6d4aa3b0f301f23be6b33b0688c75902235cb9434
-langchain-ibm==1.1.1 \
-    --hash=sha256:9d240503654672ebc323e5e28fede197569e8af30db76ad8403a74d820bbbd8b
+langchain-ibm==1.1.2 \
+    --hash=sha256:ae162e7a8eaaf72a945abc92609638049619691e3f4a7c338b80a360574f0bbc
 langchain-mcp-adapters==0.3.2 \
     --hash=sha256:61cd1a09597adb619a9bafb0642938ffc2a9463d699a753f7af0420ea46c381a
+langgraph-sdk==0.4.4 \
+    --hash=sha256:4e651ffa09de695681579396375377bdde23bedbc8e35b070e615cbd5af7da8b
 llama-index-embeddings-huggingface==0.8.0 \
     --hash=sha256:02f34df13e3b83e9169fcfdf624b6fbe906fce75b7448cdf69800babc281a9a6
 llama-index-vector-stores-faiss==0.7.0 \

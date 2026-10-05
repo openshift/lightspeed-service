@@ -66,8 +66,6 @@ filetype==1.2.0 \
 frozenlist==1.8.0 \
     --hash=sha256:0aa8fc161fbfe3dd6730357dff925e39fe4bde07d1694ed5f26235a8cb225ab4 \
     --hash=sha256:38fc5ff1cc2847d7b36cc48253868269dfbaabed631c3a71e2d5bcb26cc5ff03
-fsspec==2026.4.0 \
-    --hash=sha256:57e9e37e877e67c0bdeaa7024c6c70ec149b2c540896b180e765d5301d1459be
 google-api-core==2.31.0 \
     --hash=sha256:13f657cf23fe3623155cc8102545111d68fd7abbb2c5810c864647fa1b421b8c
 google-auth==2.53.0 \
@@ -156,8 +154,6 @@ langgraph-checkpoint==4.1.1 \
     --hash=sha256:c59ab7dc429c58ccf9450be8fd926555c07db254ced7f71207bdcd1bf23b7f90
 langgraph-prebuilt==1.1.0 \
     --hash=sha256:fcb28c370e02029e5cbbad115b082be4ee99cb85af75e3e461fe81e28182a663
-langgraph-sdk==0.4.2 \
-    --hash=sha256:6d39ae3da3be110ff182d8c58dd7d600c79e7b083ed747188ac44d5f0dbc089e
 langsmith==0.8.15 \
     --hash=sha256:4abfd4e8fffa861a341cce050a85bfaff336a55ed79f451c496bfa9ec1ad8ddc
 llama-index==0.14.22 \
