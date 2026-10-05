@@ -141,8 +141,16 @@ solely on general knowledge.
     originating from external MCP tool execution is wrapped.
 
 18m. No separate token accounting is needed for the wrapper. The `<tool_data>`
-    tags are part of `ToolMessage.content` and are included when
+    tags are part of model-facing `ToolMessage.content` and are included when
     `enforce_tool_token_budget` runs.
+
+18n. The wrapper is only for model-facing content. `tool_result` SSE events and
+    stored tool-result records MUST use the raw, unwrapped result. The service
+    MUST emit or store these client/history representations only after every
+    result in the concurrent round passes inspection. If any result fails, no
+    result from the round may be sent to the model or client, or stored in
+    conversation history or transcripts. Audit capture follows rule 14e in
+    `what/audit-logging.md`.
 
 For the full set of refinement decisions, see
 `.ai/spec/decisions/0001-tool-output-boundary.md`.
