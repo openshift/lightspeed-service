@@ -71,8 +71,9 @@ The service is being rebranded to "Red Hat OpenShift Intelligent Assistant."
 
 11. The service supports the following LLM provider types: OpenAI, Azure
     OpenAI (including Entra ID / service-principal authentication),
-    WatsonX, RHOAI vLLM, RHEL AI vLLM, Google Vertex (Gemini), and
-    Google Vertex (Anthropic/Claude), and AWS Bedrock. The administrator
+    WatsonX, RHOAI vLLM, RHEL AI vLLM, Google Vertex (Gemini),
+    Google Vertex (Anthropic/Claude), Anthropic (direct API), and
+    AWS Bedrock. The administrator
     configures providers and models via `llm_providers` in the
     configuration file.
     [PLANNED: OLS-1660] Llama Stack integration is in progress.
