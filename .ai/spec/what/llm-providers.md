@@ -64,21 +64,21 @@ The following sections describe only what differs from the standard contract abo
 
 ### OpenAI (`openai`)
 
-19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. Uses custom certificate store. When `reasoning_config` is present, maps `verbosity` to `verbose` and passes the remaining keys as the `reasoning` dict. It does not add sampling defaults; an explicitly configured temperature is still passed through, and the backend validates its compatibility with reasoning.
+19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain and the custom certificate store. When `reasoning_config` is present, maps `verbosity` to `verbose` and passes the remaining keys as the `reasoning` dict. The Responses API is the default for all models, independently of reasoning settings or model name. Model options or callers can set `use_responses_api: false` to use Chat Completions for endpoints that do not support Responses. It does not add sampling defaults; an explicitly configured temperature is still passed through, and the backend validates its compatibility with reasoning.
 
 ### Azure OpenAI (`azure_openai`)
 
 20. Must support two authentication modes:
     - **API key**: When `credentials` (or `azure_openai_config.api_key`) is set, use it as the `api_key` parameter.
-    - **Entra ID service principal**: When no API key is present, obtain an Azure AD token using `tenant_id`, `client_id`, and `client_secret` from `azure_openai_config`. The token is scoped to `https://cognitiveservices.azure.com/.default`.
+    - **Entra ID service principal**: When no API key is present, obtain an Azure AD token using `tenant_id`, `client_id`, and `client_secret` from `azure_openai_config`. The token is scoped to `https://ai.azure.com/.default` for the v1 Responses endpoint, or `https://cognitiveservices.azure.com/.default` for Chat Completions.
 
-21. Azure AD tokens must be cached per process. The cached token must be refreshed when it expires, with a 30-second safety margin before the actual expiration time. If token retrieval fails, the provider must log the error and return `None` for the token (degraded operation), not crash.
+21. Azure AD tokens must be cached per process, isolated by tenant, client, client secret and scope. The cached token must be refreshed when it expires, with a 30-second safety margin before the actual expiration time. If token retrieval fails, the provider logs the error and raises `LLMConfigurationError`.
 
 22. If Entra ID auth is selected but any of `tenant_id`, `client_id`, or `client_secret` is missing, the provider must raise a specific error naming the absent field.
 
 23. `api_version` must be configurable, defaulting to `2024-02-15-preview`. `deployment_name` is configured separately from `model` name.
 
-24. Uses `AzureChatOpenAI` from LangChain. Uses custom certificate store.
+24. Defaults to `ChatOpenAI` against Azure's versionless `https://{resource}.openai.azure.com/openai/v1/` Responses endpoint with the deployment name as the request model, regardless of reasoning settings or model name. Omit `api-version` on this v1 endpoint. API-key credentials are passed to the OpenAI client; Entra ID credentials use the `https://ai.azure.com/.default` scope. For deployments that do not support this endpoint, `models[].options.use_responses_api: false` selects `AzureChatOpenAI` with the configured `api_version` and cognitive-services token scope. Unlike `AzureChatOpenAI`, the `ChatOpenAI` adapter can call Azure's v1 Responses endpoint.
 
 ### WatsonX (`watsonx`)
 
@@ -173,7 +173,7 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].models[].parameters.reasoning_summary` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning summary mode: `auto`, `concise`, or `detailed` (default: `concise`).
 - `llm_providers[].models[].parameters.verbosity` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Verbosity for reasoning models: `low`, `medium`, or `high` (default: `low`).
 - `llm_providers[].models[].parameters.tool_budget_ratio` -- Fraction of context window reserved for tool outputs (default: 0.25, range: 0.1--0.6).
-- `llm_providers[].models[].options` -- Arbitrary key-value options dict passed through to the model.
+- `llm_providers[].models[].options.use_responses_api` -- Optional boolean for OpenAI and Azure OpenAI (default `true`). Set to `false` for Chat Completions on deployments without Responses support.
 - `llm_providers[].tlsSecurityProfile` -- TLS security profile with `type`, `minTLSVersion`, and `ciphers`.
 - `llm_providers[].openai_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].azure_openai_config` -- Provider-specific: `url`, `deployment_name`, `credentials_path` (directory containing `apitoken`, `client_id`, `tenant_id`, `client_secret` files).
@@ -218,5 +218,6 @@ The following sections describe only what differs from the standard contract abo
 - ~~[PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider~~ — Implemented in OLS-1895. IAM credentials (access key + secret key) and STS assume-role supported. E2E coverage tracked by [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327).
 - Reasoning token support: per-model `reasoning_config` for all providers, vLLM `ChatVLLMReasoning` subclass, and provider-specific reasoning configuration. The OpenAI/Azure model-name detection migration is implemented; vLLM reasoning support remains planned. Replaces `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
 - ~~[PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively.~~ — Implemented in OLS-3755. Direct Anthropic provider using `ChatAnthropic` from `langchain-anthropic` with API key authentication.
+- OLS-4366: Default OpenAI and Azure OpenAI to the Responses API; allow callers to opt out to Chat Completions for unsupported deployments.
 - [PLANNED: OLS-1320] Support short-lived (rotating) tokens for all providers, replacing static API keys with tokens that are refreshed periodically.
 - [PLANNED: OLS-1999] Support IBM WatsonX short-lived token authentication, enabling token-based auth that refreshes automatically rather than using a static API key.

@@ -275,6 +275,7 @@ def test_uses_chat_vllm_reasoning_when_reasoning_config_present():
     )
     llm = rhoai_vllm.load()
     assert isinstance(llm, ChatVLLMReasoning)
+    assert llm.use_responses_api is False
     assert "reasoning" in rhoai_vllm.params
 
 
@@ -299,4 +300,6 @@ def test_uses_chat_open_ai_when_no_reasoning_config():
     llm = rhoai_vllm.load()
     assert isinstance(llm, ChatOpenAI)
     assert not isinstance(llm, ChatVLLMReasoning)
+    assert llm.use_responses_api is False
+    assert "messages" in llm._get_request_payload("hello")
     assert "reasoning" not in rhoai_vllm.params

@@ -78,6 +78,7 @@ def populate_vllm_reasoning(
     the Responses API (which is not supported by vLLM). Maps effort setting
     to reasoning_effort and ensures use_responses_api is False.
     """
+    default_parameters["use_responses_api"] = False
     reasoning_config = params.reasoning_config or {}
 
     if not reasoning_config:
@@ -93,6 +94,3 @@ def populate_vllm_reasoning(
     # Preserve other parameters (summary, verbosity, etc.)
     if reasoning_parameters:
         default_parameters["reasoning"] = reasoning_parameters
-
-    # Explicitly disable Responses API for vLLM (Chat Completions only)
-    default_parameters["use_responses_api"] = False

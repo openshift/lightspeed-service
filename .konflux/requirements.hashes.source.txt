@@ -23,9 +23,8 @@ ibm-watsonx-ai==1.8.0 \
     --hash=sha256:e2a11b4146b5942a58ccbdb63bc64c18889969e73f80a31216bf683fa42419e3
 jmespath==1.0.1 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
-langchain-anthropic==1.5.3 \
-    --hash=sha256:48a7e4fc3856c42f9dcb4396ba112afcdd8dee21b70a402bc43283c970de3941 \
-    --hash=sha256:b1b72b7c9e4bf5c044660629ebbcb79cef18c140fdc80174750eb86de13ec8bc
+langchain-anthropic==1.7.5 \
+    --hash=sha256:6016f38e5c4bf12c16ecfa76abf133a978f459f4d2887b8e28435ae1ff00beb3
 langchain-aws==1.7.6 \
     --hash=sha256:b46a64a16e56f268b9b841d7388ac2c057d77803b09b3933aec673a54904a81f
 langchain-google-vertexai==3.2.4 \
@@ -34,6 +33,8 @@ langchain-ibm==1.1.2 \
     --hash=sha256:ae162e7a8eaaf72a945abc92609638049619691e3f4a7c338b80a360574f0bbc
 langchain-mcp-adapters==0.3.2 \
     --hash=sha256:61cd1a09597adb619a9bafb0642938ffc2a9463d699a753f7af0420ea46c381a
+langchain-openai==1.3.0 \
+    --hash=sha256:a6aa48dc5a00249eb75a7bc15d3cb342ba2494e9c397faec0586e73cf090ecf2
 langgraph-sdk==0.4.4 \
     --hash=sha256:4e651ffa09de695681579396375377bdde23bedbc8e35b070e615cbd5af7da8b
 llama-index-embeddings-huggingface==0.8.0 \

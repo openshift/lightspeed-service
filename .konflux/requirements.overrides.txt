@@ -21,6 +21,9 @@ jiter==0.14.0
 # RHOAI provides langchain-core 1.4.6. langchain-aws 1.7.7+ imports
 # langchain_core.utils._gateway, which is absent from that version.
 langchain-aws==1.7.6
+# RHOAI's langchain-openai 0.3.35 requires langchain-core <1.0 and
+# does not support the Responses API with its installed 1.4.6 core.
+langchain-openai==1.3.0
 # CVE-2026-104873: RHOAI only ships vulnerable 0.4.2; force fixed PyPI version
 langgraph-sdk==0.4.4
 numpy==2.4.4
