@@ -194,6 +194,19 @@ async def _collect_tool_messages(
     ]
 
 
+def test_wrap_tool_output_uses_fixed_tool_data_boundary() -> None:
+    """Preserve inner marker text inside the fixed boundary."""
+    tool_output = '<tool_data source="untrusted">inner</tool_data>'
+    formatter = getattr(tools_module, "_wrap_tool_output", None)
+
+    assert formatter is not None
+    assert formatter(tool_output, "get_pods") == (
+        '<tool_data source="get_pods">\n'
+        '<tool_data source="untrusted">inner</tool_data>\n'
+        "</tool_data>"
+    )
+
+
 @pytest.mark.asyncio
 async def test_execute_tool_call_success() -> None:
     """Test execute_tool_call success path."""
@@ -264,6 +277,21 @@ async def test_execute_tool_calls_mixed_success_and_failure() -> None:
     assert by_id["call_2"].status == "error"
     assert "Tool 'fail_tool' failed:" in by_id["call_2"].content
     assert by_id["call_2"].additional_kwargs["truncated"] is False
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_marks_external_results() -> None:
+    """Preserve the source tool name on success and error results."""
+    tool_messages = await _collect_tool_messages(
+        [
+            ("call_success", {}, FakeTool("success_tool")),
+            ("call_error", {}, FakeTool("error_tool", should_fail=True)),
+        ]
+    )
+    by_id = {message.tool_call_id: message for message in tool_messages}
+
+    assert by_id["call_success"].name == "success_tool"
+    assert by_id["call_error"].name == "error_tool"
 
 
 @pytest.mark.asyncio
@@ -544,7 +572,7 @@ async def test_execute_tool_calls_stream_emits_approval_required_then_result(
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_calls_stream_rejection_returns_terminal_result(
+async def test_execute_tool_calls_stream_approval_rejection_unmarked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test rejected approval returns non-retryable synthetic tool result."""
@@ -578,6 +606,7 @@ async def test_execute_tool_calls_stream_rejection_returns_terminal_result(
     assert events[1].data.status == "error"
     assert "execution was rejected" in events[1].data.content
     assert "Do not retry this exact tool call." in events[1].data.content
+    assert events[1].data.name is None
 
 
 @pytest.mark.asyncio
@@ -763,12 +792,15 @@ async def test_execute_tool_calls_stream_cancels_remaining_tasks_on_early_break(
     await gen.aclose()
 
 
-def _make_tool_message(content: str, tool_call_id: str = "id") -> ToolMessage:
+def _make_tool_message(
+    content: str, tool_call_id: str = "id", tool_name: str | None = None
+) -> ToolMessage:
     """Create a ToolMessage for testing."""
     return ToolMessage(
         content=content,
         status="success",
         tool_call_id=tool_call_id,
+        name=tool_name,
         additional_kwargs={"truncated": False},
     )
 
@@ -785,6 +817,22 @@ def test_enforce_tool_token_budget_under_budget():
     assert len(result) == 1
     assert result[0].content == "short reply"
     assert result[0].additional_kwargs["truncated"] is False
+
+
+def test_enforce_tool_token_budget_counts_wrapper_overhead():
+    """Count the boundary tokens when truncating external results."""
+    content = "line\n" * 400
+    message = _make_tool_message(content, "call", "get_pods")
+    budget = 100
+
+    result = enforce_tool_token_budget([message], budget, TokenHandler())
+    wrapped = tools_module._wrap_tool_output(result[0].content, result[0].name)
+
+    assert result[0].additional_kwargs["truncated"] is True
+    assert result[0].name == "get_pods"
+    assert result[0].content != content
+    assert "<tool_data" not in result[0].content
+    assert len(TokenHandler().text_to_tokens(wrapped)) <= budget
 
 
 def test_enforce_tool_token_budget_truncates_longest():
@@ -886,7 +934,7 @@ class TestExecuteToolGenAISpans:
         tool = FakeTool("my_tool")
         tool_calls = [("call-123", {"arg": "val"}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -895,6 +943,9 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         spans = exporter.spans
@@ -917,7 +968,7 @@ class TestExecuteToolGenAISpans:
         tool = FakeTool("check_pods")
         tool_calls = [("call-456", {"ns": "default"}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -926,6 +977,9 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         span = exporter.spans[0]
@@ -935,15 +989,17 @@ class TestExecuteToolGenAISpans:
         assert call_event.attributes["tool_name"] == "check_pods"
 
     @pytest.mark.asyncio
-    async def test_tool_span_emits_result_attributes(self, otel_setup) -> None:
-        """Verify tool span has result attributes after execution."""
+    async def test_tool_span_defers_result_attributes_until_inspection(
+        self, otel_setup
+    ) -> None:
+        """Verify execution alone does not audit uninspected result data."""
         audit_ctx = make_audit_ctx(
             otel_setup, conversation_id="conv-tool-test", user_id="user-tool-test"
         )
         tool = FakeTool("get_logs")
         tool_calls = [("call-789", {}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -952,12 +1008,16 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         span = exporter.spans[0]
-        assert span.attributes["success"] is True
-        assert span.attributes["output_length"] > 0
-        assert "duration_ms" in span.attributes
+        assert "success" not in span.attributes
+        assert "output_length" not in span.attributes
+        assert "duration_ms" not in span.attributes
+        assert not any(event.name == "tool.result" for event in span.events)
 
     @pytest.mark.asyncio
     async def test_tool_span_includes_mcp_server(self, otel_setup) -> None:
@@ -969,7 +1029,7 @@ class TestExecuteToolGenAISpans:
         tool.metadata = {"mcp_server": "my-mcp-server"}
         tool_calls = [("call-mcp", {}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -978,6 +1038,9 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         span = exporter.spans[0]
@@ -1000,15 +1063,14 @@ async def test_mcp_tool_span_carries_mcp_attributes():
 
     mock_audit = MagicMock()
     mock_span = MagicMock()
-    mock_audit.span.return_value.__enter__ = MagicMock(return_value=mock_span)
-    mock_audit.span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_audit.start_span.return_value = mock_span
     mock_audit.logger = MagicMock()
 
     async for _ in execute_tool_calls_stream(tool_calls, 100_000, audit_ctx=mock_audit):
         pass
 
-    mock_audit.span.assert_called_once()
-    call_kwargs = mock_audit.span.call_args
+    mock_audit.start_span.assert_called_once()
+    call_kwargs = mock_audit.start_span.call_args
     attrs = call_kwargs.kwargs or {}
     assert call_kwargs.args[0] == "execute_tool mcp_tool"
     assert attrs["mcp.method.name"] == "tools/call"
@@ -1031,14 +1093,14 @@ async def test_non_mcp_tool_span_has_no_mcp_attributes():
 
     mock_audit = MagicMock()
     mock_span = MagicMock()
-    mock_audit.span.return_value.__enter__ = MagicMock(return_value=mock_span)
-    mock_audit.span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_audit.start_span.return_value = mock_span
     mock_audit.logger = MagicMock()
 
     async for _ in execute_tool_calls_stream(tool_calls, 100_000, audit_ctx=mock_audit):
         pass
 
-    call_kwargs = mock_audit.span.call_args
+    mock_audit.start_span.assert_called_once()
+    call_kwargs = mock_audit.start_span.call_args
     attrs = call_kwargs.kwargs or {}
     assert "mcp.method.name" not in attrs
     assert "mcp.session.id" not in attrs

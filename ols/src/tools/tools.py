@@ -12,6 +12,7 @@ from uuid import uuid4
 from aiostream import stream
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
+from opentelemetry.trace import Span, use_span
 
 from ols import config
 from ols.app.metrics.metrics import gen_ai_execute_tool_duration_seconds
@@ -71,6 +72,7 @@ class ToolResultEvent:
 
     data: ToolMessage
     event: Literal[StreamChunkType.TOOL_RESULT] = StreamChunkType.TOOL_RESULT
+    audit_span: Span | None = None
 
 
 ToolExecutionEvent = ApprovalRequiredEvent | ToolResultEvent
@@ -282,26 +284,35 @@ async def execute_tool_call(
     return status, tool_output, was_truncated, structured_content, referenced_documents
 
 
+def _wrap_tool_output(text: str, tool_name: str) -> str:
+    """Mark external tool output as untrusted reference data."""
+    return f'<tool_data source="{tool_name}">\n{text}\n</tool_data>'
+
+
 def _tool_result_event(
     *,
     content: str,
     status: str,
     tool_call_id: str,
     truncated: bool,
+    tool_name: str | None = None,
     structured_content: dict | None = None,
     referenced_documents: list | None = None,
     duration_ms: int | None = None,
+    audit_span: Span | None = None,
 ) -> ToolExecutionEvent:
     """Build a tool_result event payload.
 
     Args:
-        content: Tool output text passed to both LLM and client stream.
+        content: Raw tool output text before model-facing wrapping.
         status: Tool execution status value (success/error).
         tool_call_id: Correlation ID of the originating tool call.
         truncated: Whether tool output was truncated due to token limit.
+        tool_name: Name of the external tool that produced this result.
         structured_content: Optional structured data from tool artifact (MCP Apps).
         referenced_documents: Optional list of RagChunk objects for the API response.
         duration_ms: Wall-clock execution time in milliseconds.
+        audit_span: Tool span retained until result inspection completes.
 
     Returns:
         Tool result event containing a ToolMessage payload.
@@ -318,8 +329,10 @@ def _tool_result_event(
             content=content,
             status=status,
             tool_call_id=tool_call_id,
+            name=tool_name,
             additional_kwargs=additional_kwargs,
-        )
+        ),
+        audit_span=audit_span,
     )
 
 
@@ -384,6 +397,7 @@ async def _evaluate_and_emit_approval_event(
     tool_args: dict[str, object],
     streaming: bool,
     audit_ctx: AuditContext | None = None,
+    audit_span: Span | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Evaluate approval policy and emit approval events as needed.
 
@@ -393,6 +407,7 @@ async def _evaluate_and_emit_approval_event(
         tool_args: Tool arguments included in approval-required payloads.
         streaming: Whether this call originated from the streaming endpoint.
         audit_ctx: Audit context for structured event logging.
+        audit_span: Tool span that owns approval audit events.
 
     Yields:
         Approval-required event immediately when approval is needed, followed
@@ -426,10 +441,16 @@ async def _evaluate_and_emit_approval_event(
         register_pending_approval(approval_id=approval_id, user_id=user_id)
 
         if audit_ctx:
-            audit_ctx.logger.tool_approval_requested(
-                tool_name=tool_name,
-                approval_id=approval_id,
+            span_context = (
+                use_span(audit_span, end_on_exit=False)
+                if audit_span is not None
+                else nullcontext()
             )
+            with span_context:
+                audit_ctx.logger.tool_approval_requested(
+                    tool_name=tool_name,
+                    approval_id=approval_id,
+                )
 
         yield _approval_required_event(
             approval_id=approval_id,
@@ -444,11 +465,17 @@ async def _evaluate_and_emit_approval_event(
         )
 
         if audit_ctx:
-            audit_ctx.logger.tool_approval_decision(
-                approval_id=approval_id,
-                decision=outcome,
-                tool_name=tool_name,
+            span_context = (
+                use_span(audit_span, end_on_exit=False)
+                if audit_span is not None
+                else nullcontext()
             )
+            with span_context:
+                audit_ctx.logger.tool_approval_decision(
+                    approval_id=approval_id,
+                    decision=outcome,
+                    tool_name=tool_name,
+                )
     else:
         outcome = "rejected"
 
@@ -564,17 +591,22 @@ async def _execute_single_tool_call_stream(
             span_attrs["mcp.protocol.version"] = protocol_version
 
     tool_span = (
-        audit_ctx.span(f"execute_tool {tool_name}", **span_attrs, mcp_server=mcp_server)
+        audit_ctx.start_span(
+            f"execute_tool {tool_name}", **span_attrs, mcp_server=mcp_server
+        )
         if audit_ctx
-        else nullcontext()
+        else None
     )
-    with tool_span:
-        if audit_ctx:
-            audit_ctx.logger.tool_call(
-                tool_name=tool_name,
-                mcp_server=mcp_server or None,
-                arguments=list(tool_args.keys()),
-            )
+    result_span_transferred = False
+    try:
+        if audit_ctx and tool_span:
+            tool_call_span_context = use_span(tool_span, end_on_exit=False)
+            with tool_call_span_context:  # pylint: disable=not-context-manager
+                audit_ctx.logger.tool_call(
+                    tool_name=tool_name,
+                    mcp_server=mcp_server or None,
+                    arguments=list(tool_args.keys()),
+                )
 
         try:
             async for approval_event in _evaluate_and_emit_approval_event(
@@ -583,34 +615,32 @@ async def _execute_single_tool_call_stream(
                 tool_args=tool_args,
                 streaming=streaming,
                 audit_ctx=audit_ctx,
+                audit_span=tool_span,
             ):
                 yield approval_event
         except _ApprovalNotGrantedError:
             return
 
         t0 = time.monotonic()
-        status, tool_output, was_truncated, structured_content, ref_docs = (
-            await _execute_with_retries(
-                tool=tool,
-                tool_args=tool_args,
-                tools_token_budget=tools_token_budget,
-                offload_manager=offload_manager,
-            )
+        span_context = (
+            use_span(tool_span, end_on_exit=False) if tool_span else nullcontext()
         )
+        with span_context:
+            status, tool_output, was_truncated, structured_content, ref_docs = (
+                await _execute_with_retries(
+                    tool=tool,
+                    tool_args=tool_args,
+                    tools_token_budget=tools_token_budget,
+                    offload_manager=offload_manager,
+                )
+            )
         elapsed = time.monotonic() - t0
         duration_ms = int(elapsed * 1000)
         gen_ai_execute_tool_duration_seconds.labels(
             gen_ai_tool_name=tool_name,
         ).observe(elapsed)
 
-        if audit_ctx:
-            audit_ctx.logger.tool_result(
-                output_length=len(tool_output),
-                success=status == "success",
-                duration_ms=duration_ms,
-            )
-
-        yield _tool_result_event(
+        event = _tool_result_event(
             content=tool_output,
             status=status,
             tool_call_id=tool_id,
@@ -618,7 +648,18 @@ async def _execute_single_tool_call_stream(
             structured_content=structured_content,
             referenced_documents=ref_docs,
             duration_ms=duration_ms,
+            tool_name=tool_name,
+            audit_span=tool_span,
         )
+        result_span_transferred = tool_span is not None
+        yield event
+    finally:
+        if (
+            tool_span is not None
+            and not result_span_transferred
+            and tool_span.is_recording()
+        ):
+            tool_span.end()
 
 
 async def execute_tool_calls_stream(
@@ -644,9 +685,51 @@ async def execute_tool_calls_stream(
         )
     )
     # Yield events (approval_required / tool_result) as they arrive from any tool.
-    async with merged.stream() as streamer:
-        async for event in streamer:
-            yield event
+    unclaimed_audit_spans: set[Span] = set()
+    try:
+        async with merged.stream() as streamer:
+            async for event in streamer:
+                if isinstance(event, ToolResultEvent) and event.audit_span is not None:
+                    unclaimed_audit_spans.add(event.audit_span)
+                yield event
+                if isinstance(event, ToolResultEvent) and event.audit_span is not None:
+                    unclaimed_audit_spans.discard(event.audit_span)
+    finally:
+        for audit_span in unclaimed_audit_spans:
+            if audit_span.is_recording():
+                audit_span.end()
+
+
+def _tool_message_budget_content(message: ToolMessage) -> str:
+    content = str(message.content)
+    if message.name is None:
+        return content
+    return _wrap_tool_output(content, message.name)
+
+
+def _truncate_wrapped_tool_content(
+    content: str,
+    tool_name: str,
+    token_limit: int,
+    token_handler: TokenHandler,
+) -> tuple[str, int]:
+    content_tokens = token_handler.text_to_tokens(content)
+    wrapper_tokens = TokenHandler._get_token_count(
+        token_handler.text_to_tokens(_wrap_tool_output("", tool_name))
+    )
+    content_limit = max(0, token_limit - wrapper_tokens - _TRUNCATION_WARNING_TOKENS)
+
+    while True:
+        raw = token_handler.tokens_to_text(content_tokens[:content_limit])
+        cut = raw.rfind("\n")
+        body = raw[:cut].rstrip("\r") if cut > 0 else raw
+        truncated_text = body.strip() + _TRUNCATION_WARNING
+        wrapped_count = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(_wrap_tool_output(truncated_text, tool_name))
+        )
+        if wrapped_count <= token_limit or content_limit == 0:
+            return truncated_text, wrapped_count
+        content_limit = max(0, content_limit - (wrapped_count - token_limit))
 
 
 def enforce_tool_token_budget(
@@ -677,7 +760,8 @@ def enforce_tool_token_budget(
     # compensates for the approximation; if we're clearly under budget,
     # skip the expensive tokenization entirely.
     estimated_tokens = sum(
-        len(str(msg.content)) // _CHARS_PER_TOKEN_ESTIMATE for msg in tool_messages
+        len(_tool_message_budget_content(msg)) // _CHARS_PER_TOKEN_ESTIMATE
+        for msg in tool_messages
     )
     if estimated_tokens <= int(remaining_budget * 0.9):
         return tool_messages
@@ -685,7 +769,8 @@ def enforce_tool_token_budget(
     # Tier 2: precise tokenization. The char estimate was ambiguous,
     # so tokenize each message to get exact counts.
     token_lists = [
-        token_handler.text_to_tokens(str(msg.content)) for msg in tool_messages
+        token_handler.text_to_tokens(_tool_message_budget_content(msg))
+        for msg in tool_messages
     ]
     token_counts = [TokenHandler._get_token_count(t) for t in token_lists]
     total = sum(token_counts)
@@ -731,21 +816,26 @@ def enforce_tool_token_budget(
     for idx, limit in zip(targets, limits):
         if token_counts[idx] <= limit:
             continue
-        raw = token_handler.tokens_to_text(
-            token_lists[idx][: max(0, limit - _TRUNCATION_WARNING_TOKENS)]
-        )
-        cut = raw.rfind("\n")
-        body = raw[:cut].rstrip("\r") if cut > 0 else raw
-        truncated_text = body.strip() + _TRUNCATION_WARNING
-
-        token_counts[idx] = TokenHandler._get_token_count(
-            token_handler.text_to_tokens(truncated_text)
-        )
         msg = tool_messages[idx]
+        if msg.name is None:
+            raw = token_handler.tokens_to_text(
+                token_lists[idx][: max(0, limit - _TRUNCATION_WARNING_TOKENS)]
+            )
+            cut = raw.rfind("\n")
+            body = raw[:cut].rstrip("\r") if cut > 0 else raw
+            truncated_text = body.strip() + _TRUNCATION_WARNING
+            token_counts[idx] = TokenHandler._get_token_count(
+                token_handler.text_to_tokens(truncated_text)
+            )
+        else:
+            truncated_text, token_counts[idx] = _truncate_wrapped_tool_content(
+                str(msg.content), msg.name, limit, token_handler
+            )
         tool_messages[idx] = ToolMessage(
             content=truncated_text,
             status=msg.status,
             tool_call_id=msg.tool_call_id,
+            name=msg.name,
             additional_kwargs={
                 **msg.additional_kwargs,
                 "truncated": True,

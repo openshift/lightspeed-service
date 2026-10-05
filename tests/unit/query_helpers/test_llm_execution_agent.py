@@ -154,6 +154,136 @@ async def test_inspect_tool_messages_propagates_rejection() -> None:
         )
 
 
+@pytest.mark.asyncio
+async def test_inspect_tool_messages_audits_passing_sibling_after_rejection(
+    otel_setup,
+) -> None:
+    """Audit each passing result without capturing a rejected sibling."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(
+        side_effect=[ToolResultRejectedError("rejected"), None]
+    )
+    audit_ctx = make_audit_ctx(otel_setup)
+    agent = _make_agent(tool_result_classifier=classifier, audit_ctx=audit_ctx)
+    audit_spans = {
+        "call-rejected": audit_ctx.start_span("execute_tool unsafe_tool"),
+        "call-accepted": audit_ctx.start_span("execute_tool safe_tool"),
+    }
+    tool_messages = [
+        ToolMessage(
+            content="unsafe-result",
+            status="success",
+            tool_call_id="call-rejected",
+            additional_kwargs={"duration_ms": 12},
+        ),
+        ToolMessage(
+            content="safe-result",
+            status="success",
+            tool_call_id="call-accepted",
+            additional_kwargs={"duration_ms": 34},
+        ),
+    ]
+
+    with pytest.raises(ToolResultRejectedError):
+        await agent._inspect_tool_messages(
+            tool_messages,
+            {"call-rejected": "unsafe_tool", "call-accepted": "safe_tool"},
+            audit_spans,
+        )
+
+    assert classifier.inspect.await_count == 2
+    for span in audit_spans.values():
+        span.end()
+    exporter, _ = otel_setup
+    spans = {span.name: span for span in exporter.spans}
+    assert not any(
+        event.name == "tool.result"
+        for event in spans["execute_tool unsafe_tool"].events
+    )
+    accepted_event = next(
+        event
+        for event in spans["execute_tool safe_tool"].events
+        if event.name == "tool.result"
+    )
+    assert accepted_event.attributes["output"] == "safe-result"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_round_audits_only_individually_inspected_results(otel_setup):
+    """Record passing output even when a sibling result is rejected."""
+    audit_ctx = make_audit_ctx(otel_setup)
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(
+        side_effect=[ToolResultRejectedError("rejected"), None]
+    )
+    agent = _make_agent(tool_result_classifier=classifier, audit_ctx=audit_ctx)
+    messages: list = []
+
+    async def _fake_execute(*args, **kwargs):
+        for call_id, tool_name, content in (
+            ("call-rejected", "unsafe_tool", "unsafe-result"),
+            ("call-accepted", "safe_tool", "safe-result"),
+        ):
+            span = audit_ctx.start_span(
+                f"execute_tool {tool_name}", **{"gen_ai.tool.name": tool_name}
+            )
+            yield ToolResultEvent(
+                data=ToolMessage(
+                    content=content,
+                    status="success",
+                    tool_call_id=call_id,
+                    name=tool_name,
+                    additional_kwargs={"duration_ms": 20},
+                ),
+                audit_span=span,
+            )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[
+                {"name": "unsafe_tool", "args": {}, "id": "call-rejected"},
+                {"name": "safe_tool", "args": {}, "id": "call-accepted"},
+            ],
+        )
+    ]
+
+    with audit_ctx.span("chat mock"):
+        with patch(
+            "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+            side_effect=_fake_execute,
+        ):
+            with pytest.raises(ToolResultRejectedError):
+                [
+                    chunk
+                    async for chunk in agent._process_tool_calls_for_round(
+                        round_index=1,
+                        tool_call_chunks=tool_call_chunks,
+                        all_chunks=[],
+                        all_tools_dict={
+                            "unsafe_tool": SampleTool("unsafe_tool"),
+                            "safe_tool": SampleTool("safe_tool"),
+                        },
+                        duplicate_tool_names=set(),
+                        messages=messages,
+                    )
+                ]
+
+    assert classifier.inspect.await_count == 2
+    assert not any(isinstance(message, ToolMessage) for message in messages)
+    exporter, _ = otel_setup
+    spans = {span.name: span for span in exporter.spans}
+    rejected_span = spans["execute_tool unsafe_tool"]
+    accepted_span = spans["execute_tool safe_tool"]
+    assert not any(event.name == "tool.result" for event in rejected_span.events)
+    accepted_event = next(
+        event for event in accepted_span.events if event.name == "tool.result"
+    )
+    assert accepted_event.attributes["output"] == "safe-result"
+    assert "unsafe-result" not in str(rejected_span.events)
+
+
 def test_resolve_tool_call_definitions_targeted_paths():
     """Test targeted paths in _resolve_tool_call_definitions."""
     agent = _make_agent()
@@ -562,6 +692,158 @@ async def test_process_tool_calls_for_round_streams_approval_and_result():
     assert streamed[2].data["type"] == "tool_result"
     assert agent._tracker.usage(TokenCategory.TOOL_RESULT) > 0
     assert len(messages) == 2
+
+
+@pytest.mark.asyncio
+async def test_process_tool_calls_inspects_raw_then_wraps_external_result():
+    """Inspect raw content before adding markers to model-facing results."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock()
+    agent = _make_agent(tool_result_classifier=classifier)
+    messages: list = []
+
+    async def _fake_execute(*args, **kwargs):
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content="pod-a",
+                status="success",
+                tool_call_id="call_1",
+                name="get_namespaces_mock",
+                additional_kwargs={"truncated": False},
+            )
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_1"}],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        streamed = [
+            chunk
+            async for chunk in agent._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                duplicate_tool_names=set(),
+                messages=messages,
+            )
+        ]
+
+    wrapped = '<tool_data source="get_namespaces_mock">\npod-a\n</tool_data>'
+    assert classifier.inspect.await_args.args[:3] == (
+        "get_namespaces_mock",
+        "result",
+        "pod-a",
+    )
+    assert messages[-1].content == wrapped
+    assert streamed[-1].data["content"] == "pod-a"
+
+
+@pytest.mark.asyncio
+async def test_process_tool_calls_wraps_external_error_result():
+    """Wrap tool-generated errors after inspection passes."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock()
+    agent = _make_agent(tool_result_classifier=classifier)
+    messages: list = []
+
+    async def _fake_execute(*args, **kwargs):
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content="Tool failed: timeout",
+                status="error",
+                tool_call_id="call_1",
+                name="get_namespaces_mock",
+                additional_kwargs={"truncated": False},
+            )
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_1"}],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        streamed = [
+            chunk
+            async for chunk in agent._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                duplicate_tool_names=set(),
+                messages=messages,
+            )
+        ]
+
+    wrapped = (
+        '<tool_data source="get_namespaces_mock">\n'
+        "Tool failed: timeout\n</tool_data>"
+    )
+    assert classifier.inspect.await_args.args[:3] == (
+        "get_namespaces_mock",
+        "error",
+        "Tool failed: timeout",
+    )
+    assert messages[-1].content == wrapped
+    assert streamed[-1].data["content"] == "Tool failed: timeout"
+
+
+@pytest.mark.asyncio
+async def test_process_tool_calls_does_not_wrap_internal_skip_messages():
+    """Keep locally generated skips outside the external-data boundary."""
+    agent = _make_agent()
+    messages: list = []
+    tool = mock_tools_map[0]
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[
+                {"name": "missing_tool", "args": {}, "id": "skip_missing"},
+                {"name": tool.name, "args": {}, "id": "skip_budget"},
+            ],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.llm_execution_agent.MIN_TOOL_EXECUTION_TOKENS",
+        100_000,
+    ):
+        streamed = [
+            chunk
+            async for chunk in agent._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={tool.name: tool},
+                duplicate_tool_names=set(),
+                messages=messages,
+            )
+        ]
+
+    result_messages = messages[1:]
+    result_chunks = [
+        chunk for chunk in streamed if chunk.type == StreamChunkType.TOOL_RESULT
+    ]
+    assert len(result_messages) == len(result_chunks) == 2
+    assert all(message.name is None for message in result_messages)
+    assert all("<tool_data" not in message.content for message in result_messages)
+    assert all("<tool_data" not in chunk.data["content"] for chunk in result_chunks)
 
 
 @pytest.mark.asyncio
