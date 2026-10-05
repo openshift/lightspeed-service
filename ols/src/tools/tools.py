@@ -712,11 +712,15 @@ def _truncate_wrapped_tool_content(
     tool_name: str,
     token_limit: int,
     token_handler: TokenHandler,
-) -> tuple[str, int]:
+) -> tuple[str, int, bool]:
     content_tokens = token_handler.text_to_tokens(content)
+    empty_wrapper = _wrap_tool_output("", tool_name)
     wrapper_tokens = TokenHandler._get_token_count(
-        token_handler.text_to_tokens(_wrap_tool_output("", tool_name))
+        token_handler.text_to_tokens(empty_wrapper)
     )
+    if wrapper_tokens > token_limit:
+        return "", 0, False
+
     content_limit = max(0, token_limit - wrapper_tokens - _TRUNCATION_WARNING_TOKENS)
 
     while True:
@@ -727,9 +731,64 @@ def _truncate_wrapped_tool_content(
         wrapped_count = TokenHandler._get_token_count(
             token_handler.text_to_tokens(_wrap_tool_output(truncated_text, tool_name))
         )
-        if wrapped_count <= token_limit or content_limit == 0:
-            return truncated_text, wrapped_count
+        if wrapped_count <= token_limit:
+            return truncated_text, wrapped_count, True
+        if content_limit == 0:
+            return "", wrapper_tokens, True
         content_limit = max(0, content_limit - (wrapped_count - token_limit))
+
+
+def _truncate_unwrapped_tool_content(
+    content_tokens: list[int], token_limit: int, token_handler: TokenHandler
+) -> tuple[str, int]:
+    """Truncate generated content to its exact token limit."""
+    content_limit = max(0, token_limit - _TRUNCATION_WARNING_TOKENS)
+    while True:
+        raw = token_handler.tokens_to_text(content_tokens[:content_limit])
+        cut = raw.rfind("\n")
+        body = raw[:cut].rstrip("\r") if cut > 0 else raw
+        truncated_text = body.strip() + _TRUNCATION_WARNING
+        token_count = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(truncated_text)
+        )
+        if token_count <= token_limit:
+            return truncated_text, token_count
+        if content_limit == 0:
+            return "", 0
+        content_limit = max(0, content_limit - (token_count - token_limit))
+
+
+def _truncate_tool_message(
+    message: ToolMessage,
+    token_list: list[int],
+    token_limit: int,
+    token_handler: TokenHandler,
+) -> tuple[ToolMessage, int]:
+    """Truncate one result while keeping its model-facing representation in budget."""
+    result_name = message.name
+    if message.name is None:
+        truncated_text, token_count = _truncate_unwrapped_tool_content(
+            token_list, token_limit, token_handler
+        )
+    else:
+        truncated_text, token_count, can_keep_wrapper = _truncate_wrapped_tool_content(
+            str(message.content), message.name, token_limit, token_handler
+        )
+        if not can_keep_wrapper:
+            result_name = None
+
+    truncated_message = ToolMessage(
+        content=truncated_text,
+        status=message.status,
+        tool_call_id=message.tool_call_id,
+        name=result_name,
+        additional_kwargs={
+            **message.additional_kwargs,
+            "truncated": True,
+            "token_count": token_count,
+        },
+    )
+    return truncated_message, token_count
 
 
 def enforce_tool_token_budget(
@@ -802,7 +861,14 @@ def enforce_tool_token_budget(
     else:
         ratio = remaining_budget / total
         targets = list(range(len(token_counts)))
-        limits = [max(1, int(token_counts[i] * ratio)) for i in targets]
+        limits = [int(token_counts[i] * ratio) for i in targets]
+        unassigned_tokens = remaining_budget - sum(limits)
+        for idx in targets:
+            if unassigned_tokens == 0:
+                break
+            if limits[idx] < token_counts[idx]:
+                limits[idx] += 1
+                unassigned_tokens -= 1
         logger.debug(
             "Scaling all %d messages by %.2f (budget %d, total %d)",
             len(targets),
@@ -811,36 +877,12 @@ def enforce_tool_token_budget(
             total,
         )
 
-    # Truncate targeted messages using pre-computed token lists (no
-    # re-tokenization). Cut at the last newline to avoid mid-line splits.
+    # Truncate using pre-computed tokens to avoid re-tokenization.
     for idx, limit in zip(targets, limits):
         if token_counts[idx] <= limit:
             continue
-        msg = tool_messages[idx]
-        if msg.name is None:
-            raw = token_handler.tokens_to_text(
-                token_lists[idx][: max(0, limit - _TRUNCATION_WARNING_TOKENS)]
-            )
-            cut = raw.rfind("\n")
-            body = raw[:cut].rstrip("\r") if cut > 0 else raw
-            truncated_text = body.strip() + _TRUNCATION_WARNING
-            token_counts[idx] = TokenHandler._get_token_count(
-                token_handler.text_to_tokens(truncated_text)
-            )
-        else:
-            truncated_text, token_counts[idx] = _truncate_wrapped_tool_content(
-                str(msg.content), msg.name, limit, token_handler
-            )
-        tool_messages[idx] = ToolMessage(
-            content=truncated_text,
-            status=msg.status,
-            tool_call_id=msg.tool_call_id,
-            name=msg.name,
-            additional_kwargs={
-                **msg.additional_kwargs,
-                "truncated": True,
-                "token_count": token_counts[idx],
-            },
+        tool_messages[idx], token_counts[idx] = _truncate_tool_message(
+            tool_messages[idx], token_lists[idx], limit, token_handler
         )
 
     return tool_messages

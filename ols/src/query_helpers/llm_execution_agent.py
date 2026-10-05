@@ -754,9 +754,12 @@ class LLMExecutionAgent:
         Returns:
             A tuple of (token_count_for_tool_content, streamed_tool_result_chunk).
         """
-        content_token_count = tool_call_message.additional_kwargs.get(
-            "token_count"
-        ) or self._tracker.count_tokens(str(tool_call_message.content))
+        content_token_count = tool_call_message.additional_kwargs.get("token_count")
+        if content_token_count is None:
+            model_content = str(tool_call_message.content)
+            if tool_call_message.name is not None:
+                model_content = _wrap_tool_output(model_content, tool_call_message.name)
+            content_token_count = self._tracker.count_tokens(model_content)
 
         was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
         base_status = tool_call_message.status
@@ -885,7 +888,6 @@ class LLMExecutionAgent:
             )
             result_type = "error" if message.status == "error" else "result"
             parent_span = get_current_span()
-            inspection_span = None
             span_context = (
                 self._audit_ctx.span(
                     "tool_result.inspection",
@@ -903,8 +905,9 @@ class LLMExecutionAgent:
                 if self._audit_ctx
                 else nullcontext()
             )
-            try:
-                with span_context as inspection_span:
+            inspection_error: ToolResultInspectionError | None = None
+            with span_context as inspection_span:
+                try:
                     await self._tool_result_classifier.inspect(
                         tool_name,
                         result_type,
@@ -913,23 +916,29 @@ class LLMExecutionAgent:
                         token_handler=self._tracker.token_handler,
                         overlap_tokens=overlap_tokens,
                     )
+                except ToolResultRejectedError as error:
+                    inspection_error = error
+                    if self._audit_ctx:
+                        inspection_span.set_attribute("inspection.outcome", "malicious")
+                        inspection_span.set_attribute(
+                            "inspection.category", error.category
+                        )
+                        inspection_span.set_status(StatusCode.ERROR, "malicious")
+                        parent_span.set_status(StatusCode.ERROR, "malicious")
+                except ToolResultInspectionError as error:
+                    inspection_error = error
+                    if self._audit_ctx:
+                        inspection_span.set_attribute(
+                            "inspection.outcome", "classifier_error"
+                        )
+                        inspection_span.set_status(StatusCode.ERROR, "classifier_error")
+                        parent_span.set_status(StatusCode.ERROR, "classifier_error")
+                else:
                     if self._audit_ctx:
                         inspection_span.set_attribute("inspection.outcome", "benign")
-            except ToolResultRejectedError as error:
-                if self._audit_ctx and inspection_span is not None:
-                    inspection_span.set_attribute("inspection.outcome", "malicious")
-                    inspection_span.set_attribute("inspection.category", error.category)
-                    inspection_span.set_status(StatusCode.ERROR, "malicious")
-                    parent_span.set_status(StatusCode.ERROR, "malicious")
-                return error
-            except ToolResultInspectionError as error:
-                if self._audit_ctx and inspection_span is not None:
-                    inspection_span.set_attribute(
-                        "inspection.outcome", "classifier_error"
-                    )
-                    inspection_span.set_status(StatusCode.ERROR, "classifier_error")
-                    parent_span.set_status(StatusCode.ERROR, "classifier_error")
-                return error
+
+            if inspection_error is not None:
+                return inspection_error
 
         self._audit_tool_result(message, audit_span, content)
         return None

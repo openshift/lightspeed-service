@@ -154,6 +154,47 @@ async def test_inspect_tool_messages_propagates_rejection() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("inspection_error", "expected_outcome", "expected_category"),
+    [
+        (
+            ToolResultRejectedError("rejected", "instruction_override"),
+            "malicious",
+            "instruction_override",
+        ),
+        (ToolResultInspectionError("classifier unavailable"), "classifier_error", None),
+    ],
+)
+@pytest.mark.asyncio
+async def test_inspection_failure_metadata_is_exported(
+    otel_setup, inspection_error, expected_outcome, expected_category
+) -> None:
+    """Export inspection failure attributes before the inspection span ends."""
+    audit_ctx = make_audit_ctx(otel_setup)
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(side_effect=inspection_error)
+    agent = _make_agent(tool_result_classifier=classifier, audit_ctx=audit_ctx)
+
+    with audit_ctx.span("chat"):
+        audit_span = audit_ctx.start_span("execute_tool get_pods")
+        with pytest.raises(type(inspection_error)):
+            await agent._inspect_tool_messages(
+                [ToolMessage(content="unsafe", tool_call_id="call-1")],
+                {"call-1": "get_pods"},
+                {"call-1": audit_span},
+            )
+        audit_span.end()
+
+    exporter, _ = otel_setup
+    inspection_span = next(
+        span for span in exporter.spans if span.name == "tool_result.inspection"
+    )
+    assert inspection_span.attributes["inspection.outcome"] == expected_outcome
+    assert inspection_span.status.status_code.name == "ERROR"
+    if expected_category is not None:
+        assert inspection_span.attributes["inspection.category"] == expected_category
+
+
 @pytest.mark.asyncio
 async def test_inspect_tool_messages_audits_passing_sibling_after_rejection(
     otel_setup,
@@ -936,6 +977,31 @@ async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(c
         for rec in caplog.records
     )
     assert streamed[-1].type == StreamChunkType.TOOL_RESULT
+
+
+def test_tool_result_chunk_counts_wrapper_but_streams_raw_content():
+    """Charge model-facing boundary tokens without wrapping the client event."""
+    agent = _make_agent()
+    raw_content = "pod-a"
+    tool_name = "get_pods"
+    message = ToolMessage(
+        content=raw_content,
+        status="success",
+        tool_call_id="call-1",
+        name=tool_name,
+    )
+    wrapped_content = f'<tool_data source="{tool_name}">\n{raw_content}\n</tool_data>'
+    expected_tokens = agent._tracker.count_tokens(wrapped_content)
+
+    token_count, chunk = agent._tool_result_chunk_for_message(
+        tool_call_message=message,
+        tool_name=tool_name,
+        tool=SampleTool(tool_name),
+        round_index=1,
+    )
+
+    assert token_count == expected_tokens
+    assert chunk.data["content"] == raw_content
 
 
 def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):

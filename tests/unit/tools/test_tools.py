@@ -835,6 +835,37 @@ def test_enforce_tool_token_budget_counts_wrapper_overhead():
     assert len(TokenHandler().text_to_tokens(wrapped)) <= budget
 
 
+def test_enforce_tool_token_budget_keeps_empty_wrapper_when_only_boundary_fits():
+    """Keep the boundary when its warning text cannot fit the result budget."""
+    token_handler = TokenHandler()
+    tool_name = "get_pods"
+    wrapper = tools_module._wrap_tool_output("", tool_name)
+    budget = TokenHandler._get_token_count(token_handler.text_to_tokens(wrapper))
+    message = _make_tool_message("row\n" * 100, "call", tool_name)
+
+    result = enforce_tool_token_budget([message], budget, token_handler)
+
+    assert result[0].content == ""
+    assert result[0].name == tool_name
+    assert result[0].additional_kwargs["token_count"] == budget
+
+
+def test_enforce_tool_token_budget_handles_minimum_wrappers_exceeding_budget():
+    """Drop unfit external payloads rather than exceed a tiny round budget."""
+    messages = [
+        _make_tool_message("row\n" * 100, f"call-{index}", f"tool-{index}")
+        for index in range(5)
+    ]
+    budget = 10
+
+    result = enforce_tool_token_budget(messages, budget, TokenHandler())
+
+    counted_tokens = sum(message.additional_kwargs["token_count"] for message in result)
+    assert counted_tokens <= budget
+    assert all(message.additional_kwargs["truncated"] for message in result)
+    assert all(message.name is None and message.content == "" for message in result)
+
+
 def test_enforce_tool_token_budget_truncates_longest():
     """Test that only the longest message is truncated when it dominates."""
     long_content = "line\n" * 2000
@@ -861,10 +892,12 @@ def test_enforce_tool_token_budget_proportional_truncation():
         _make_tool_message(content_a, "c_a"),
         _make_tool_message(content_b, "c_b"),
     ]
-    result = enforce_tool_token_budget(msgs, 20, TokenHandler())
+    budget = 70
+    result = enforce_tool_token_budget(msgs, budget, TokenHandler())
 
     assert result[0].additional_kwargs["truncated"] is True
     assert result[1].additional_kwargs["truncated"] is True
+    assert sum(message.additional_kwargs["token_count"] for message in result) <= budget
     assert "[OUTPUT TRUNCATED" in result[0].content
     assert "[OUTPUT TRUNCATED" in result[1].content
 
