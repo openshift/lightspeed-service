@@ -14,7 +14,7 @@ from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
 from langchain_openai import ChatOpenAI
-from opentelemetry.trace import SpanKind, StatusCode, get_current_span
+from opentelemetry.trace import Span, SpanKind, StatusCode, get_current_span, use_span
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
@@ -28,7 +28,13 @@ from ols.src.tools.tool_result_inspection import (
     ToolResultRejectedError,
     chunk_text,
 )
-from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
+from ols.src.tools.tools import (
+    TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE,
+    ToolResultBudgetExceededError,
+    _wrap_tool_output,
+    enforce_tool_token_budget,
+    execute_tool_calls_stream,
+)
 from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import TokenBudgetTracker, TokenCategory
 
@@ -403,6 +409,15 @@ class LLMExecutionAgent:
                     )
             except ToolResultInspectionError:
                 raise
+            except ToolResultBudgetExceededError:
+                log_tool_loop_iteration(
+                    self._tracker, i, max_rounds, "tool_result_budget_exceeded"
+                )
+                yield StreamedChunk(
+                    type=StreamChunkType.TEXT,
+                    text=TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE,
+                )
+                return
             except Exception:
                 log_tool_loop_iteration(
                     self._tracker, i, max_rounds, "tool_execution_failed"
@@ -741,6 +756,7 @@ class LLMExecutionAgent:
         self,
         *,
         tool_call_message: ToolMessage,
+        raw_tool_call_message: ToolMessage | None = None,
         tool_name: str,
         tool: Optional[StructuredTool],
         round_index: int,
@@ -750,12 +766,16 @@ class LLMExecutionAgent:
         Returns:
             A tuple of (token_count_for_tool_content, streamed_tool_result_chunk).
         """
-        content_token_count = tool_call_message.additional_kwargs.get(
-            "token_count"
-        ) or self._tracker.count_tokens(str(tool_call_message.content))
+        content_token_count = tool_call_message.additional_kwargs.get("token_count")
+        if content_token_count is None:
+            model_content = str(tool_call_message.content)
+            if tool_call_message.name is not None:
+                model_content = _wrap_tool_output(model_content, tool_call_message.name)
+            content_token_count = self._tracker.count_tokens(model_content)
 
-        was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
-        base_status = tool_call_message.status
+        event_message = raw_tool_call_message or tool_call_message
+        was_truncated = event_message.additional_kwargs.get("truncated", False)
+        base_status = event_message.status
         tool_status = "truncated" if was_truncated else base_status
         has_meta = bool(
             isinstance(tool.metadata, dict) and tool.metadata.get("_meta")
@@ -782,16 +802,14 @@ class LLMExecutionAgent:
             "id": tool_call_message.tool_call_id,
             "name": tool_name,
             "status": tool_status,
-            "content": tool_call_message.content,
+            "content": event_message.content,
             "type": StreamChunkType.TOOL_RESULT.value,
             "round": round_index,
         }
-        structured_content = tool_call_message.additional_kwargs.get(
-            "structured_content"
-        )
+        structured_content = event_message.additional_kwargs.get("structured_content")
         if structured_content:
             tool_result_data["structured_content"] = structured_content
-        ref_docs = tool_call_message.additional_kwargs.get("referenced_documents")
+        ref_docs = event_message.additional_kwargs.get("referenced_documents")
         if ref_docs:
             tool_result_data["referenced_documents"] = ref_docs
         self._enrich_with_tool_metadata(tool_result_data, tool)
@@ -804,28 +822,83 @@ class LLMExecutionAgent:
         self,
         tool_messages: list[ToolMessage],
         tool_id_to_name: dict[str, str],
+        tool_id_to_audit_span: dict[str, Span] | None = None,
+        raw_tool_messages_by_id: dict[str, ToolMessage] | None = None,
     ) -> None:
-        """Inspect all model-visible tool messages before delivery."""
-        if self._tool_result_classifier is None:
-            return
-
-        classifier_budget = (
-            self.model_config.context_window_size
-            - self.model_config.parameters.max_tokens_for_response
-            - 512
-        )
-        if classifier_budget <= 0:
-            raise ToolResultInspectionError("insufficient classifier context budget")
-        max_tokens = classifier_budget
-        overlap_tokens = min(256, max_tokens - 1)
-        for message in tool_messages:
-            content = (
-                message.content
-                if isinstance(message.content, str)
-                else json.dumps(message.content, ensure_ascii=False)
+        """Inspect and audit each result before deciding whether to deliver the round."""
+        max_tokens = 0
+        overlap_tokens = 0
+        if self._tool_result_classifier is not None:
+            classifier_budget = (
+                self.model_config.context_window_size
+                - self.model_config.parameters.max_tokens_for_response
+                - 512
             )
-            tool_name = tool_id_to_name.get(message.tool_call_id, "unknown")
-            result_type = "error" if message.status == "error" else "result"
+            if classifier_budget <= 0:
+                raise ToolResultInspectionError(
+                    "insufficient classifier context budget"
+                )
+            max_tokens = classifier_budget
+            overlap_tokens = min(256, max_tokens - 1)
+
+        first_error: ToolResultInspectionError | None = None
+        for message in tool_messages:
+            audit_span = (tool_id_to_audit_span or {}).get(message.tool_call_id)
+            result_error = await self._inspect_single_tool_message(
+                message=message,
+                audit_message=(raw_tool_messages_by_id or {}).get(
+                    message.tool_call_id, message
+                ),
+                tool_name=tool_id_to_name.get(message.tool_call_id, "unknown"),
+                max_tokens=max_tokens,
+                overlap_tokens=overlap_tokens,
+                audit_span=audit_span,
+            )
+            if result_error is not None:
+                if self._audit_ctx:
+                    error_type = (
+                        "malicious"
+                        if isinstance(result_error, ToolResultRejectedError)
+                        else "classifier_error"
+                    )
+                    get_current_span().set_status(StatusCode.ERROR, error_type)
+                if first_error is None:
+                    first_error = result_error
+
+        if first_error is not None:
+            raise first_error
+
+    async def _inspect_single_tool_message(
+        self,
+        *,
+        message: ToolMessage,
+        audit_message: ToolMessage,
+        tool_name: str,
+        max_tokens: int,
+        overlap_tokens: int,
+        audit_span: Span | None,
+    ) -> ToolResultInspectionError | None:
+        """Inspect one result and audit it only after a passing decision."""
+        content = (
+            message.content
+            if isinstance(message.content, str)
+            else json.dumps(message.content, ensure_ascii=False)
+        )
+        audit_content = (
+            audit_message.content
+            if isinstance(audit_message.content, str)
+            else json.dumps(audit_message.content, ensure_ascii=False)
+        )
+        if self._tool_result_classifier is None:
+            self._audit_tool_result(audit_message, audit_span, audit_content)
+            return None
+
+        result_span_context = (
+            use_span(audit_span, end_on_exit=False)
+            if audit_span is not None
+            else nullcontext()
+        )
+        with result_span_context:
             chunk_count = len(
                 chunk_text(
                     content,
@@ -834,6 +907,7 @@ class LLMExecutionAgent:
                     token_handler=self._tracker.token_handler,
                 )
             )
+            result_type = "error" if message.status == "error" else "result"
             parent_span = get_current_span()
             span_context = (
                 self._audit_ctx.span(
@@ -852,6 +926,7 @@ class LLMExecutionAgent:
                 if self._audit_ctx
                 else nullcontext()
             )
+            inspection_error: ToolResultInspectionError | None = None
             with span_context as inspection_span:
                 try:
                     await self._tool_result_classifier.inspect(
@@ -862,9 +937,8 @@ class LLMExecutionAgent:
                         token_handler=self._tracker.token_handler,
                         overlap_tokens=overlap_tokens,
                     )
-                    if self._audit_ctx:
-                        inspection_span.set_attribute("inspection.outcome", "benign")
                 except ToolResultRejectedError as error:
+                    inspection_error = error
                     if self._audit_ctx:
                         inspection_span.set_attribute("inspection.outcome", "malicious")
                         inspection_span.set_attribute(
@@ -872,17 +946,43 @@ class LLMExecutionAgent:
                         )
                         inspection_span.set_status(StatusCode.ERROR, "malicious")
                         parent_span.set_status(StatusCode.ERROR, "malicious")
-                    raise
-                except ToolResultInspectionError:
+                except ToolResultInspectionError as error:
+                    inspection_error = error
                     if self._audit_ctx:
                         inspection_span.set_attribute(
                             "inspection.outcome", "classifier_error"
                         )
                         inspection_span.set_status(StatusCode.ERROR, "classifier_error")
                         parent_span.set_status(StatusCode.ERROR, "classifier_error")
-                    raise
+                else:
+                    if self._audit_ctx:
+                        inspection_span.set_attribute("inspection.outcome", "benign")
 
-    async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912
+            if inspection_error is not None:
+                return inspection_error
+
+        self._audit_tool_result(audit_message, audit_span, audit_content)
+        return None
+
+    def _audit_tool_result(
+        self,
+        message: ToolMessage,
+        audit_span: Span | None,
+        content: str,
+    ) -> None:
+        """Record a result only after its inspection succeeds."""
+        if self._audit_ctx is None or audit_span is None:
+            return
+        span_context = use_span(audit_span, end_on_exit=False)
+        with span_context:  # pylint: disable=not-context-manager
+            self._audit_ctx.logger.tool_result(
+                output_length=len(content),
+                success=message.status == "success",
+                duration_ms=message.additional_kwargs.get("duration_ms"),
+                output_content=content,
+            )
+
+    async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912,R0915
         self,
         *,
         round_index: int,
@@ -957,65 +1057,100 @@ class LLMExecutionAgent:
             yield StreamedChunk(type=StreamChunkType.TOOL_CALL, data=enriched)
 
         tool_calls_messages: list[ToolMessage] = []
+        tool_id_to_audit_span: dict[str, Span] = {}
         remaining = self._tracker.tools_round_budget
-        if tool_call_definitions:
-            if remaining < MIN_TOOL_EXECUTION_TOKENS:
-                logger.warning(
-                    "Skipping %d tool call(s) in round %s due to low remaining tool budget "
-                    "(remaining=%d, minimum_required=%d)",
-                    len(tool_call_definitions),
-                    round_index,
-                    remaining,
-                    MIN_TOOL_EXECUTION_TOKENS,
-                )
-                for tool_id, _tool_args, tool in tool_call_definitions:
-                    tool_calls_messages.append(
-                        ToolMessage(
-                            content=(
-                                f"Tool '{tool.name}' call skipped: remaining tool token budget "
-                                f"({remaining}) is below minimum required "
-                                f"({MIN_TOOL_EXECUTION_TOKENS}). "
-                                "Do not retry this exact tool call."
-                            ),
-                            status="error",
-                            tool_call_id=tool_id,
-                        )
+        try:
+            if tool_call_definitions:
+                if remaining < MIN_TOOL_EXECUTION_TOKENS:
+                    logger.warning(
+                        "Skipping %d tool call(s) in round %s due to low remaining tool budget "
+                        "(remaining=%d, minimum_required=%d)",
+                        len(tool_call_definitions),
+                        round_index,
+                        remaining,
+                        MIN_TOOL_EXECUTION_TOKENS,
                     )
-            else:
-                async for execution_event in execute_tool_calls_stream(
-                    tool_call_definitions,
-                    remaining,
-                    streaming=self.streaming,
-                    offload_manager=offload_manager,
-                    audit_ctx=self._audit_ctx,
-                ):
-                    match execution_event.event:
-                        case StreamChunkType.APPROVAL_REQUIRED:
-                            yield StreamedChunk(
-                                type=StreamChunkType.APPROVAL_REQUIRED,
-                                data=execution_event.data,
+                    for tool_id, _tool_args, tool in tool_call_definitions:
+                        tool_calls_messages.append(
+                            ToolMessage(
+                                content=(
+                                    f"Tool '{tool.name}' call skipped: remaining tool token budget "
+                                    f"({remaining}) is below minimum required "
+                                    f"({MIN_TOOL_EXECUTION_TOKENS}). "
+                                    "Do not retry this exact tool call."
+                                ),
+                                status="error",
+                                tool_call_id=tool_id,
                             )
-                        case StreamChunkType.TOOL_RESULT:
-                            tool_calls_messages.append(execution_event.data)
-                        case _:
-                            logger.warning(
-                                "Ignoring unexpected tool execution event: %s",
-                                execution_event,
-                            )
+                        )
+                else:
+                    async for execution_event in execute_tool_calls_stream(
+                        tool_call_definitions,
+                        remaining,
+                        streaming=self.streaming,
+                        offload_manager=offload_manager,
+                        audit_ctx=self._audit_ctx,
+                    ):
+                        match execution_event.event:
+                            case StreamChunkType.APPROVAL_REQUIRED:
+                                yield StreamedChunk(
+                                    type=StreamChunkType.APPROVAL_REQUIRED,
+                                    data=execution_event.data,
+                                )
+                            case StreamChunkType.TOOL_RESULT:
+                                tool_calls_messages.append(execution_event.data)
+                                if execution_event.audit_span is not None:
+                                    tool_id_to_audit_span[
+                                        execution_event.data.tool_call_id
+                                    ] = execution_event.audit_span
+                            case _:
+                                logger.warning(
+                                    "Ignoring unexpected tool execution event: %s",
+                                    execution_event,
+                                )
 
-        all_tool_messages = skipped_tool_messages + tool_calls_messages
-        if remaining > 0:
-            all_tool_messages = enforce_tool_token_budget(
-                all_tool_messages, remaining, self._tracker.token_handler
+            raw_tool_messages_by_id = {
+                message.tool_call_id: message
+                for message in skipped_tool_messages + tool_calls_messages
+            }
+            all_tool_messages = skipped_tool_messages + tool_calls_messages
+            if remaining > 0:
+                all_tool_messages = enforce_tool_token_budget(
+                    all_tool_messages, remaining, self._tracker.token_handler
+                )
+            await self._inspect_tool_messages(
+                all_tool_messages,
+                tool_id_to_name,
+                tool_id_to_audit_span,
+                raw_tool_messages_by_id,
             )
-        await self._inspect_tool_messages(all_tool_messages, tool_id_to_name)
-        messages.extend(all_tool_messages)
+        finally:
+            for audit_span in tool_id_to_audit_span.values():
+                if audit_span.is_recording():
+                    audit_span.end()
+
+        model_tool_messages = [
+            (
+                message.model_copy(
+                    update={
+                        "content": _wrap_tool_output(str(message.content), message.name)
+                    }
+                )
+                if message.name is not None
+                else message
+            )
+            for message in all_tool_messages
+        ]
+        messages.extend(model_tool_messages)
 
         for tool_call_message in all_tool_messages:
             tool_name = tool_id_to_name.get(tool_call_message.tool_call_id, "unknown")
             content_token_count, tool_result_chunk = (
                 self._tool_result_chunk_for_message(
                     tool_call_message=tool_call_message,
+                    raw_tool_call_message=raw_tool_messages_by_id.get(
+                        tool_call_message.tool_call_id
+                    ),
                     tool_name=tool_name,
                     tool=all_tools_dict.get(tool_name),
                     round_index=round_index,

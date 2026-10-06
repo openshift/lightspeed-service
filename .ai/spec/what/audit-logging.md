@@ -79,15 +79,19 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 ### Tool Result Events
 
-14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean). When `capture_content` is `true`, the event additionally carries an `output` attribute with the tool's text output. When `capture_content` is `false`, the `tool.result` event is still emitted with `success` but the `output` attribute is omitted.
+14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean) and the raw, unwrapped tool output in an `output` attribute when the result passes inspection and audit logging is enabled.
 
-14c. [PLANNED: OLS-3928] Tool-result inspection MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`. An inspected `tool.result` event can retain controlled metadata. The event MUST omit `output` regardless of `capture_content`.
+14c. [PLANNED: OLS-3928] Tool-result inspection MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`. Emit the `tool.result` event only after that individual result passes inspection. The event MUST include the raw, unwrapped output.
 
-14d. The service MUST NOT emit a `tool.result` event for a rejected result.
+14d. The service MUST NOT emit a `tool.result` event or output attribute for a result rejected by inspection. Safe inspection-failure metadata MAY be recorded without rejected content.
+
+14e. Audit capture is per result, even when tool calls execute concurrently. If one result passes inspection and a sibling result fails, the service MUST record the passing result with its raw, unwrapped output and MUST NOT record the rejected result. This audit record does not make the passing result eligible for model reinjection, a `tool_result` SSE event, or conversation/transcript storage; the all-or-nothing concurrent-round rule still applies to those destinations.
+
+14f. The audit event MUST include the complete output from tool execution. Capture it before aggregate round-budget truncation. Preserve it separately from the model-facing copy.
 
 ### Content Capture Policy
 
-14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) contain LLM/tool output that may include PII or sensitive data. Recording these attributes MUST be opt-in, controlled by an `audit.capture_content` configuration flag (default: `false`). When `capture_content` is `false`, events are still emitted but content attributes are omitted. This aligns with the OTel GenAI semantic convention requirement level of Opt-In for content attributes.
+14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) may contain PII or sensitive data. When audit logging is enabled, these content attributes MUST be captured at full fidelity. User-controlled content-capture settings are deferred; no `audit.capture_content` configuration is exposed.
 
 ### Single-Emission Rule
 
@@ -113,7 +117,6 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 ols_config:
   audit:
     enabled: true             # default: true (audit on even if section is absent)
-    capture_content: false    # default: false; opt-in to record LLM output in span events
     otel:
       endpoint: ""            # optional OTLP gRPC endpoint; no-op exporter when empty/absent
 ```

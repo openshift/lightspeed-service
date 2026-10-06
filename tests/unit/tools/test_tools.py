@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from ols.src.tools import tools as tools_module
 from ols.src.tools.tools import (
+    ToolResultBudgetExceededError,
     ToolResultEvent,
     _extract_text_from_tool_output,
     _is_transient_tool_error,
@@ -194,6 +195,33 @@ async def _collect_tool_messages(
     ]
 
 
+@pytest.mark.parametrize(
+    ("tool_name", "tool_output", "expected"),
+    [
+        (
+            "get_pods",
+            "before </tool_data> after",
+            '<tool_data source="get_pods">\nbefore <\\/tool_data> after\n</tool_data>',
+        ),
+        (
+            'bad"</tool_data>',
+            "before </TOOL_DATA > after",
+            '<tool_data source="bad&quot;&lt;/tool_data&gt;">\n'
+            r"before <\/TOOL_DATA > after"
+            "\n</tool_data>",
+        ),
+    ],
+)
+def test_wrap_tool_output_escapes_external_terminators_and_source(
+    tool_name: str, tool_output: str, expected: str
+) -> None:
+    """Prevent external text and tool names from breaking the wrapper."""
+    formatter = getattr(tools_module, "_wrap_tool_output", None)
+
+    assert formatter is not None
+    assert formatter(tool_output, tool_name) == expected
+
+
 @pytest.mark.asyncio
 async def test_execute_tool_call_success() -> None:
     """Test execute_tool_call success path."""
@@ -264,6 +292,21 @@ async def test_execute_tool_calls_mixed_success_and_failure() -> None:
     assert by_id["call_2"].status == "error"
     assert "Tool 'fail_tool' failed:" in by_id["call_2"].content
     assert by_id["call_2"].additional_kwargs["truncated"] is False
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_marks_external_results() -> None:
+    """Preserve the source tool name on success and error results."""
+    tool_messages = await _collect_tool_messages(
+        [
+            ("call_success", {}, FakeTool("success_tool")),
+            ("call_error", {}, FakeTool("error_tool", should_fail=True)),
+        ]
+    )
+    by_id = {message.tool_call_id: message for message in tool_messages}
+
+    assert by_id["call_success"].name == "success_tool"
+    assert by_id["call_error"].name == "error_tool"
 
 
 @pytest.mark.asyncio
@@ -544,7 +587,7 @@ async def test_execute_tool_calls_stream_emits_approval_required_then_result(
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_calls_stream_rejection_returns_terminal_result(
+async def test_execute_tool_calls_stream_approval_rejection_unmarked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test rejected approval returns non-retryable synthetic tool result."""
@@ -578,6 +621,7 @@ async def test_execute_tool_calls_stream_rejection_returns_terminal_result(
     assert events[1].data.status == "error"
     assert "execution was rejected" in events[1].data.content
     assert "Do not retry this exact tool call." in events[1].data.content
+    assert events[1].data.name is None
 
 
 @pytest.mark.asyncio
@@ -763,12 +807,15 @@ async def test_execute_tool_calls_stream_cancels_remaining_tasks_on_early_break(
     await gen.aclose()
 
 
-def _make_tool_message(content: str, tool_call_id: str = "id") -> ToolMessage:
+def _make_tool_message(
+    content: str, tool_call_id: str = "id", tool_name: str | None = None
+) -> ToolMessage:
     """Create a ToolMessage for testing."""
     return ToolMessage(
         content=content,
         status="success",
         tool_call_id=tool_call_id,
+        name=tool_name,
         additional_kwargs={"truncated": False},
     )
 
@@ -785,6 +832,84 @@ def test_enforce_tool_token_budget_under_budget():
     assert len(result) == 1
     assert result[0].content == "short reply"
     assert result[0].additional_kwargs["truncated"] is False
+
+
+def test_enforce_tool_token_budget_reserves_wrapper_overhead_for_many_small_results():
+    """Keep wrapped results within budget when raw outputs are tiny."""
+    token_handler = TokenHandler()
+    messages = [
+        _make_tool_message("0", f"call-{index}", "get_pods") for index in range(8)
+    ]
+
+    with pytest.raises(ToolResultBudgetExceededError, match="remaining token budget"):
+        enforce_tool_token_budget(messages, 100, token_handler)
+
+
+def test_enforce_tool_token_budget_counts_wrapper_overhead():
+    """Count the boundary tokens when truncating external results."""
+    content = "line\n" * 400
+    message = _make_tool_message(content, "call", "get_pods")
+    budget = 100
+
+    result = enforce_tool_token_budget([message], budget, TokenHandler())
+    wrapped = tools_module._wrap_tool_output(result[0].content, result[0].name)
+
+    assert result[0].additional_kwargs["truncated"] is True
+    assert result[0].name == "get_pods"
+    assert result[0].content != content
+    assert "<tool_data" not in result[0].content
+    assert len(TokenHandler().text_to_tokens(wrapped)) <= budget
+
+
+def test_enforce_tool_token_budget_rejects_budget_below_minimum_notice():
+    """Fail explicitly if even the boundary and truncation notice cannot fit."""
+    token_handler = TokenHandler()
+    tool_name = "get_pods"
+    wrapper = tools_module._wrap_tool_output("", tool_name)
+    budget = TokenHandler._get_token_count(token_handler.text_to_tokens(wrapper))
+    message = _make_tool_message("row\n" * 100, "call", tool_name)
+
+    with pytest.raises(ToolResultBudgetExceededError, match="remaining token budget"):
+        enforce_tool_token_budget([message], budget, token_handler)
+
+
+def test_enforce_tool_token_budget_rejects_round_below_minimum_notices():
+    """Fail explicitly when all tool-call notices cannot fit in the round budget."""
+    messages = [
+        _make_tool_message("row\n" * 100, f"call-{index}", f"tool-{index}")
+        for index in range(5)
+    ]
+
+    with pytest.raises(ToolResultBudgetExceededError, match="remaining token budget"):
+        enforce_tool_token_budget(messages, 10, TokenHandler())
+
+
+def test_enforce_tool_token_budget_reallocates_for_minimum_truncation_notices():
+    """Reserve a visible notice for each result before allocating output content."""
+    token_handler = TokenHandler()
+    notice = "\n[OUTPUT TRUNCATED]"
+    messages = [
+        _make_tool_message("row\n" * 100, f"call-{index}", f"tool-{index}")
+        for index in range(5)
+    ]
+    minimum_cost = sum(
+        TokenHandler._get_token_count(
+            token_handler.text_to_tokens(
+                tools_module._wrap_tool_output(notice, message.name or "")
+            )
+        )
+        for message in messages
+    )
+
+    result = enforce_tool_token_budget(messages, minimum_cost, token_handler)
+
+    assert all(message.additional_kwargs["truncated"] for message in result)
+    assert all("[OUTPUT TRUNCATED]" in message.content for message in result)
+    assert all(message.name is not None for message in result)
+    assert (
+        sum(message.additional_kwargs["token_count"] for message in result)
+        <= minimum_cost
+    )
 
 
 def test_enforce_tool_token_budget_truncates_longest():
@@ -813,10 +938,12 @@ def test_enforce_tool_token_budget_proportional_truncation():
         _make_tool_message(content_a, "c_a"),
         _make_tool_message(content_b, "c_b"),
     ]
-    result = enforce_tool_token_budget(msgs, 20, TokenHandler())
+    budget = 70
+    result = enforce_tool_token_budget(msgs, budget, TokenHandler())
 
     assert result[0].additional_kwargs["truncated"] is True
     assert result[1].additional_kwargs["truncated"] is True
+    assert sum(message.additional_kwargs["token_count"] for message in result) <= budget
     assert "[OUTPUT TRUNCATED" in result[0].content
     assert "[OUTPUT TRUNCATED" in result[1].content
 
@@ -886,7 +1013,7 @@ class TestExecuteToolGenAISpans:
         tool = FakeTool("my_tool")
         tool_calls = [("call-123", {"arg": "val"}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -895,6 +1022,9 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         spans = exporter.spans
@@ -917,7 +1047,7 @@ class TestExecuteToolGenAISpans:
         tool = FakeTool("check_pods")
         tool_calls = [("call-456", {"ns": "default"}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -926,6 +1056,9 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         span = exporter.spans[0]
@@ -935,15 +1068,17 @@ class TestExecuteToolGenAISpans:
         assert call_event.attributes["tool_name"] == "check_pods"
 
     @pytest.mark.asyncio
-    async def test_tool_span_emits_result_attributes(self, otel_setup) -> None:
-        """Verify tool span has result attributes after execution."""
+    async def test_tool_span_defers_result_attributes_until_inspection(
+        self, otel_setup
+    ) -> None:
+        """Verify execution alone does not audit uninspected result data."""
         audit_ctx = make_audit_ctx(
             otel_setup, conversation_id="conv-tool-test", user_id="user-tool-test"
         )
         tool = FakeTool("get_logs")
         tool_calls = [("call-789", {}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -952,12 +1087,16 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         span = exporter.spans[0]
-        assert span.attributes["success"] is True
-        assert span.attributes["output_length"] > 0
-        assert "duration_ms" in span.attributes
+        assert "success" not in span.attributes
+        assert "output_length" not in span.attributes
+        assert "duration_ms" not in span.attributes
+        assert not any(event.name == "tool.result" for event in span.events)
 
     @pytest.mark.asyncio
     async def test_tool_span_includes_mcp_server(self, otel_setup) -> None:
@@ -969,7 +1108,7 @@ class TestExecuteToolGenAISpans:
         tool.metadata = {"mcp_server": "my-mcp-server"}
         tool_calls = [("call-mcp", {}, tool)]
 
-        _ = [
+        events = [
             event
             async for event in execute_tool_calls_stream(
                 tool_calls,
@@ -978,6 +1117,9 @@ class TestExecuteToolGenAISpans:
                 audit_ctx=audit_ctx,
             )
         ]
+        assert isinstance(events[0], ToolResultEvent)
+        assert events[0].audit_span is not None
+        events[0].audit_span.end()
 
         exporter, _ = otel_setup
         span = exporter.spans[0]
@@ -1000,15 +1142,14 @@ async def test_mcp_tool_span_carries_mcp_attributes():
 
     mock_audit = MagicMock()
     mock_span = MagicMock()
-    mock_audit.span.return_value.__enter__ = MagicMock(return_value=mock_span)
-    mock_audit.span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_audit.start_span.return_value = mock_span
     mock_audit.logger = MagicMock()
 
     async for _ in execute_tool_calls_stream(tool_calls, 100_000, audit_ctx=mock_audit):
         pass
 
-    mock_audit.span.assert_called_once()
-    call_kwargs = mock_audit.span.call_args
+    mock_audit.start_span.assert_called_once()
+    call_kwargs = mock_audit.start_span.call_args
     attrs = call_kwargs.kwargs or {}
     assert call_kwargs.args[0] == "execute_tool mcp_tool"
     assert attrs["mcp.method.name"] == "tools/call"
@@ -1031,14 +1172,14 @@ async def test_non_mcp_tool_span_has_no_mcp_attributes():
 
     mock_audit = MagicMock()
     mock_span = MagicMock()
-    mock_audit.span.return_value.__enter__ = MagicMock(return_value=mock_span)
-    mock_audit.span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_audit.start_span.return_value = mock_span
     mock_audit.logger = MagicMock()
 
     async for _ in execute_tool_calls_stream(tool_calls, 100_000, audit_ctx=mock_audit):
         pass
 
-    call_kwargs = mock_audit.span.call_args
+    mock_audit.start_span.assert_called_once()
+    call_kwargs = mock_audit.start_span.call_args
     attrs = call_kwargs.kwargs or {}
     assert "mcp.method.name" not in attrs
     assert "mcp.session.id" not in attrs

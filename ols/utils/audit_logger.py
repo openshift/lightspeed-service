@@ -154,7 +154,11 @@ class AuditLogger:
             success=success,
             duration_ms=duration_ms,
         )
-        self._add_span_event("tool.result", success=success)
+        self._add_span_event(
+            "tool.result",
+            success=success,
+            output=output_content,
+        )
 
     def tool_approval_requested(
         self,
@@ -227,6 +231,17 @@ class AuditContext:
     capture_content: bool = True
     tracer: trace.Tracer = field(default_factory=lambda: trace.get_tracer("ols.audit"))
 
+    def start_span(
+        self,
+        name: str,
+        kind: SpanKind = SpanKind.INTERNAL,
+        **attrs: Any,
+    ) -> trace.Span:
+        """Start an OTel span with conversation_id and user_id auto-injected."""
+        attrs.setdefault("gen_ai.conversation.id", self.conversation_id)
+        attrs.setdefault("user_id", self.user_id)
+        return self.tracer.start_span(name, kind=kind, attributes=attrs)
+
     @contextmanager
     def span(
         self,
@@ -234,8 +249,10 @@ class AuditContext:
         kind: SpanKind = SpanKind.INTERNAL,
         **attrs: Any,
     ) -> Generator[trace.Span, None, None]:
-        """Start an OTEL span with conversation_id and user_id auto-injected."""
+        """Start an OTel span with conversation_id and user_id auto-injected."""
         attrs.setdefault("gen_ai.conversation.id", self.conversation_id)
         attrs.setdefault("user_id", self.user_id)
-        with self.tracer.start_as_current_span(name, kind=kind, attributes=attrs) as s:
-            yield s
+        with self.tracer.start_as_current_span(
+            name, kind=kind, attributes=attrs
+        ) as span:
+            yield span

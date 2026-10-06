@@ -1,7 +1,9 @@
 """Functions/Tools definition."""
 
 import asyncio
+import html
 import logging
+import re
 import time
 from collections.abc import AsyncGenerator
 from contextlib import nullcontext
@@ -12,6 +14,7 @@ from uuid import uuid4
 from aiostream import stream
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
+from opentelemetry.trace import Span, use_span
 
 from ols import config
 from ols.app.metrics.metrics import gen_ai_execute_tool_duration_seconds
@@ -40,9 +43,21 @@ _TRUNCATION_WARNING = (
     "\n[OUTPUT TRUNCATED - The tool returned more data than can be "
     "processed. Please ask a more specific question to get complete results.]"
 )
+_MINIMAL_TRUNCATION_WARNING = "\n[OUTPUT TRUNCATED]"
 _TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
     TokenHandler().text_to_tokens(_TRUNCATION_WARNING)
 )
+_MINIMAL_TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
+    TokenHandler().text_to_tokens(_MINIMAL_TRUNCATION_WARNING)
+)
+TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE = (
+    "Tool results exceeded the remaining token budget. "
+    "Please ask a more specific question."
+)
+
+
+class ToolResultBudgetExceededError(Exception):
+    """Indicate that the round cannot fit a result or its truncation notice."""
 
 
 class ApprovalRequiredPayload(TypedDict):
@@ -71,6 +86,7 @@ class ToolResultEvent:
 
     data: ToolMessage
     event: Literal[StreamChunkType.TOOL_RESULT] = StreamChunkType.TOOL_RESULT
+    audit_span: Span | None = None
 
 
 ToolExecutionEvent = ApprovalRequiredEvent | ToolResultEvent
@@ -282,26 +298,42 @@ async def execute_tool_call(
     return status, tool_output, was_truncated, structured_content, referenced_documents
 
 
+def _wrap_tool_output(text: str, tool_name: str) -> str:
+    """Mark external tool output as untrusted reference data."""
+    escaped_text = re.sub(
+        r"</tool_data",
+        lambda match: f"<\\/{match.group(0)[2:]}",
+        text,
+        flags=re.IGNORECASE,
+    )
+    escaped_name = html.escape(tool_name, quote=True)
+    return f'<tool_data source="{escaped_name}">\n{escaped_text}\n</tool_data>'
+
+
 def _tool_result_event(
     *,
     content: str,
     status: str,
     tool_call_id: str,
     truncated: bool,
+    tool_name: str | None = None,
     structured_content: dict | None = None,
     referenced_documents: list | None = None,
     duration_ms: int | None = None,
+    audit_span: Span | None = None,
 ) -> ToolExecutionEvent:
     """Build a tool_result event payload.
 
     Args:
-        content: Tool output text passed to both LLM and client stream.
+        content: Raw tool output text before model-facing wrapping.
         status: Tool execution status value (success/error).
         tool_call_id: Correlation ID of the originating tool call.
         truncated: Whether tool output was truncated due to token limit.
+        tool_name: Name of the external tool that produced this result.
         structured_content: Optional structured data from tool artifact (MCP Apps).
         referenced_documents: Optional list of RagChunk objects for the API response.
         duration_ms: Wall-clock execution time in milliseconds.
+        audit_span: Tool span retained until result inspection completes.
 
     Returns:
         Tool result event containing a ToolMessage payload.
@@ -318,8 +350,10 @@ def _tool_result_event(
             content=content,
             status=status,
             tool_call_id=tool_call_id,
+            name=tool_name,
             additional_kwargs=additional_kwargs,
-        )
+        ),
+        audit_span=audit_span,
     )
 
 
@@ -384,6 +418,7 @@ async def _evaluate_and_emit_approval_event(
     tool_args: dict[str, object],
     streaming: bool,
     audit_ctx: AuditContext | None = None,
+    audit_span: Span | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Evaluate approval policy and emit approval events as needed.
 
@@ -393,6 +428,7 @@ async def _evaluate_and_emit_approval_event(
         tool_args: Tool arguments included in approval-required payloads.
         streaming: Whether this call originated from the streaming endpoint.
         audit_ctx: Audit context for structured event logging.
+        audit_span: Tool span that owns approval audit events.
 
     Yields:
         Approval-required event immediately when approval is needed, followed
@@ -426,10 +462,16 @@ async def _evaluate_and_emit_approval_event(
         register_pending_approval(approval_id=approval_id, user_id=user_id)
 
         if audit_ctx:
-            audit_ctx.logger.tool_approval_requested(
-                tool_name=tool_name,
-                approval_id=approval_id,
+            span_context = (
+                use_span(audit_span, end_on_exit=False)
+                if audit_span is not None
+                else nullcontext()
             )
+            with span_context:
+                audit_ctx.logger.tool_approval_requested(
+                    tool_name=tool_name,
+                    approval_id=approval_id,
+                )
 
         yield _approval_required_event(
             approval_id=approval_id,
@@ -444,11 +486,17 @@ async def _evaluate_and_emit_approval_event(
         )
 
         if audit_ctx:
-            audit_ctx.logger.tool_approval_decision(
-                approval_id=approval_id,
-                decision=outcome,
-                tool_name=tool_name,
+            span_context = (
+                use_span(audit_span, end_on_exit=False)
+                if audit_span is not None
+                else nullcontext()
             )
+            with span_context:
+                audit_ctx.logger.tool_approval_decision(
+                    approval_id=approval_id,
+                    decision=outcome,
+                    tool_name=tool_name,
+                )
     else:
         outcome = "rejected"
 
@@ -564,17 +612,22 @@ async def _execute_single_tool_call_stream(
             span_attrs["mcp.protocol.version"] = protocol_version
 
     tool_span = (
-        audit_ctx.span(f"execute_tool {tool_name}", **span_attrs, mcp_server=mcp_server)
+        audit_ctx.start_span(
+            f"execute_tool {tool_name}", **span_attrs, mcp_server=mcp_server
+        )
         if audit_ctx
-        else nullcontext()
+        else None
     )
-    with tool_span:
-        if audit_ctx:
-            audit_ctx.logger.tool_call(
-                tool_name=tool_name,
-                mcp_server=mcp_server or None,
-                arguments=list(tool_args.keys()),
-            )
+    result_span_transferred = False
+    try:
+        if audit_ctx and tool_span:
+            tool_call_span_context = use_span(tool_span, end_on_exit=False)
+            with tool_call_span_context:  # pylint: disable=not-context-manager
+                audit_ctx.logger.tool_call(
+                    tool_name=tool_name,
+                    mcp_server=mcp_server or None,
+                    arguments=list(tool_args.keys()),
+                )
 
         try:
             async for approval_event in _evaluate_and_emit_approval_event(
@@ -583,34 +636,32 @@ async def _execute_single_tool_call_stream(
                 tool_args=tool_args,
                 streaming=streaming,
                 audit_ctx=audit_ctx,
+                audit_span=tool_span,
             ):
                 yield approval_event
         except _ApprovalNotGrantedError:
             return
 
         t0 = time.monotonic()
-        status, tool_output, was_truncated, structured_content, ref_docs = (
-            await _execute_with_retries(
-                tool=tool,
-                tool_args=tool_args,
-                tools_token_budget=tools_token_budget,
-                offload_manager=offload_manager,
-            )
+        span_context = (
+            use_span(tool_span, end_on_exit=False) if tool_span else nullcontext()
         )
+        with span_context:
+            status, tool_output, was_truncated, structured_content, ref_docs = (
+                await _execute_with_retries(
+                    tool=tool,
+                    tool_args=tool_args,
+                    tools_token_budget=tools_token_budget,
+                    offload_manager=offload_manager,
+                )
+            )
         elapsed = time.monotonic() - t0
         duration_ms = int(elapsed * 1000)
         gen_ai_execute_tool_duration_seconds.labels(
             gen_ai_tool_name=tool_name,
         ).observe(elapsed)
 
-        if audit_ctx:
-            audit_ctx.logger.tool_result(
-                output_length=len(tool_output),
-                success=status == "success",
-                duration_ms=duration_ms,
-            )
-
-        yield _tool_result_event(
+        event = _tool_result_event(
             content=tool_output,
             status=status,
             tool_call_id=tool_id,
@@ -618,7 +669,18 @@ async def _execute_single_tool_call_stream(
             structured_content=structured_content,
             referenced_documents=ref_docs,
             duration_ms=duration_ms,
+            tool_name=tool_name,
+            audit_span=tool_span,
         )
+        result_span_transferred = tool_span is not None
+        yield event
+    finally:
+        if (
+            tool_span is not None
+            and not result_span_transferred
+            and tool_span.is_recording()
+        ):
+            tool_span.end()
 
 
 async def execute_tool_calls_stream(
@@ -644,9 +706,167 @@ async def execute_tool_calls_stream(
         )
     )
     # Yield events (approval_required / tool_result) as they arrive from any tool.
-    async with merged.stream() as streamer:
-        async for event in streamer:
-            yield event
+    unclaimed_audit_spans: set[Span] = set()
+    try:
+        async with merged.stream() as streamer:
+            async for event in streamer:
+                if isinstance(event, ToolResultEvent) and event.audit_span is not None:
+                    unclaimed_audit_spans.add(event.audit_span)
+                yield event
+                if isinstance(event, ToolResultEvent) and event.audit_span is not None:
+                    unclaimed_audit_spans.discard(event.audit_span)
+    finally:
+        for audit_span in unclaimed_audit_spans:
+            if audit_span.is_recording():
+                audit_span.end()
+
+
+def _tool_message_budget_content(message: ToolMessage) -> str:
+    content = str(message.content)
+    if message.name is None:
+        return content
+    return _wrap_tool_output(content, message.name)
+
+
+def _truncate_wrapped_tool_content(
+    content: str,
+    tool_name: str,
+    token_limit: int,
+    token_handler: TokenHandler,
+) -> tuple[str, int, bool]:
+    content_tokens = token_handler.text_to_tokens(content)
+    warning = _TRUNCATION_WARNING
+    warning_tokens = TokenHandler._get_token_count(
+        token_handler.text_to_tokens(_wrap_tool_output(warning, tool_name))
+    )
+    if warning_tokens > token_limit:
+        warning = _MINIMAL_TRUNCATION_WARNING
+        warning_tokens = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(_wrap_tool_output(warning, tool_name))
+        )
+    if warning_tokens > token_limit:
+        return "", 0, False
+
+    content_limit = max(0, token_limit - warning_tokens)
+
+    while True:
+        raw = token_handler.tokens_to_text(content_tokens[:content_limit])
+        cut = raw.rfind("\n")
+        body = raw[:cut].rstrip("\r") if cut > 0 else raw
+        truncated_text = body.strip() + warning
+        wrapped_count = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(_wrap_tool_output(truncated_text, tool_name))
+        )
+        if wrapped_count <= token_limit:
+            return truncated_text, wrapped_count, True
+        if content_limit == 0:
+            return warning, warning_tokens, True
+        content_limit = max(0, content_limit - (wrapped_count - token_limit))
+
+
+def _truncate_unwrapped_tool_content(
+    content_tokens: list[int], token_limit: int, token_handler: TokenHandler
+) -> tuple[str, int]:
+    """Truncate generated content to its exact token limit."""
+    warning = _TRUNCATION_WARNING
+    warning_tokens = _TRUNCATION_WARNING_TOKENS
+    if warning_tokens > token_limit:
+        warning = _MINIMAL_TRUNCATION_WARNING
+        warning_tokens = _MINIMAL_TRUNCATION_WARNING_TOKENS
+    if warning_tokens > token_limit:
+        return "", 0
+
+    content_limit = max(0, token_limit - warning_tokens)
+    while True:
+        raw = token_handler.tokens_to_text(content_tokens[:content_limit])
+        cut = raw.rfind("\n")
+        body = raw[:cut].rstrip("\r") if cut > 0 else raw
+        truncated_text = body.strip() + warning
+        token_count = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(truncated_text)
+        )
+        if token_count <= token_limit:
+            return truncated_text, token_count
+        if content_limit == 0:
+            return warning, warning_tokens
+        content_limit = max(0, content_limit - (token_count - token_limit))
+
+
+def _truncate_tool_message(
+    message: ToolMessage,
+    token_list: list[int],
+    token_limit: int,
+    token_handler: TokenHandler,
+) -> tuple[ToolMessage, int]:
+    """Truncate one result while keeping its model-facing representation in budget."""
+    result_name = message.name
+    if message.name is None:
+        truncated_text, token_count = _truncate_unwrapped_tool_content(
+            token_list, token_limit, token_handler
+        )
+    else:
+        truncated_text, token_count, can_keep_wrapper = _truncate_wrapped_tool_content(
+            str(message.content), message.name, token_limit, token_handler
+        )
+        if not can_keep_wrapper:
+            raise ToolResultBudgetExceededError(TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE)
+
+    truncated_message = ToolMessage(
+        content=truncated_text,
+        status=message.status,
+        tool_call_id=message.tool_call_id,
+        name=result_name,
+        additional_kwargs={
+            **message.additional_kwargs,
+            "truncated": True,
+            "token_count": token_count,
+        },
+    )
+    return truncated_message, token_count
+
+
+def _minimum_tool_message_token_count(
+    message: ToolMessage, token_count: int, token_handler: TokenHandler
+) -> int:
+    """Return the smallest representation that explains a truncated result."""
+    if message.name is None:
+        minimum_content = _MINIMAL_TRUNCATION_WARNING
+    else:
+        minimum_content = _wrap_tool_output(_MINIMAL_TRUNCATION_WARNING, message.name)
+    minimum_count = TokenHandler._get_token_count(
+        token_handler.text_to_tokens(minimum_content)
+    )
+    return min(token_count, minimum_count)
+
+
+def _allocate_limits_with_minimums(
+    token_counts: list[int], minimum_counts: list[int], remaining_budget: int
+) -> list[int]:
+    """Allocate a round budget while reserving a visible notice per truncated result."""
+    minimum_total = sum(minimum_counts)
+    if minimum_total > remaining_budget:
+        raise ToolResultBudgetExceededError(TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE)
+
+    capacities = [
+        count - minimum for count, minimum in zip(token_counts, minimum_counts)
+    ]
+    remaining = remaining_budget - minimum_total
+    total_capacity = sum(capacities)
+    if total_capacity == 0 or remaining == 0:
+        return minimum_counts
+
+    allocations = [
+        minimum + (remaining * capacity // total_capacity)
+        for minimum, capacity in zip(minimum_counts, capacities)
+    ]
+    unassigned = remaining_budget - sum(allocations)
+    for index, capacity in enumerate(capacities):
+        if unassigned == 0:
+            break
+        if allocations[index] < token_counts[index] and capacity > 0:
+            allocations[index] += 1
+            unassigned -= 1
+    return allocations
 
 
 def enforce_tool_token_budget(
@@ -659,8 +879,12 @@ def enforce_tool_token_budget(
     Uses a three-tier strategy to avoid unnecessary tokenization:
     1. Cheap character-based estimate — skip tokenization if clearly under budget.
     2. Precise tokenization — only if the estimate suggests overflow.
-    3. Truncation — if the longest message dominates (>= 2x excess), only it
-       is shrunk; otherwise all messages are scaled proportionally.
+    3. Truncation — preserve a visible notice for every truncated result and
+       reallocate the round budget when a result's share is too small.
+
+    Raises:
+        ToolResultBudgetExceededError: If the round cannot fit a truncation notice
+            for every result that must be truncated.
 
     Args:
         tool_messages: Tool result messages to enforce budget on.
@@ -673,11 +897,20 @@ def enforce_tool_token_budget(
     if not tool_messages:
         return tool_messages
 
-    # Tier 1: cheap char-based estimate (~4 chars/token). The 0.9 factor
-    # compensates for the approximation; if we're clearly under budget,
-    # skip the expensive tokenization entirely.
+    # Tier 1: cheap char-based estimate (~4 chars/token), with exact wrapper
+    # overhead reserved for each named result. The 0.9 factor compensates for
+    # the character approximation; if we're clearly under budget, skip the
+    # expensive tokenization entirely.
     estimated_tokens = sum(
-        len(str(msg.content)) // _CHARS_PER_TOKEN_ESTIMATE for msg in tool_messages
+        (
+            TokenHandler._get_token_count(
+                token_handler.text_to_tokens(_wrap_tool_output("", msg.name))
+            )
+            if msg.name is not None
+            else 0
+        )
+        + len(str(msg.content)) // _CHARS_PER_TOKEN_ESTIMATE
+        for msg in tool_messages
     )
     if estimated_tokens <= int(remaining_budget * 0.9):
         return tool_messages
@@ -685,7 +918,8 @@ def enforce_tool_token_budget(
     # Tier 2: precise tokenization. The char estimate was ambiguous,
     # so tokenize each message to get exact counts.
     token_lists = [
-        token_handler.text_to_tokens(str(msg.content)) for msg in tool_messages
+        token_handler.text_to_tokens(_tool_message_budget_content(msg))
+        for msg in tool_messages
     ]
     token_counts = [TokenHandler._get_token_count(t) for t in token_lists]
     total = sum(token_counts)
@@ -700,57 +934,41 @@ def enforce_tool_token_budget(
 
     excess = total - remaining_budget
     longest_idx = max(range(len(token_counts)), key=lambda i: token_counts[i])
+    minimum_counts = [
+        _minimum_tool_message_token_count(message, count, token_handler)
+        for message, count in zip(tool_messages, token_counts)
+    ]
 
-    # Tier 3: if the longest message alone can absorb the excess while
-    # retaining at least half its content, shrink only that one.
-    # Otherwise scale all messages proportionally to fit the budget.
+    # If the longest result can absorb the excess, keep the other results intact
+    # unless doing so would leave no room for the truncation notice.
     if token_counts[longest_idx] // 2 >= excess:
-        targets = [longest_idx]
-        limits = [token_counts[longest_idx] - excess]
-        logger.debug(
-            "Truncating longest message [%d] from %d to %d tokens (excess %d)",
-            longest_idx,
-            token_counts[longest_idx],
-            limits[0],
-            excess,
-        )
+        longest_limit = token_counts[longest_idx] - excess
+        if longest_limit >= minimum_counts[longest_idx]:
+            targets = [longest_idx]
+            limits = [longest_limit]
+        else:
+            targets = list(range(len(token_counts)))
+            limits = _allocate_limits_with_minimums(
+                token_counts, minimum_counts, remaining_budget
+            )
     else:
-        ratio = remaining_budget / total
         targets = list(range(len(token_counts)))
-        limits = [max(1, int(token_counts[i] * ratio)) for i in targets]
+        limits = _allocate_limits_with_minimums(
+            token_counts, minimum_counts, remaining_budget
+        )
         logger.debug(
-            "Scaling all %d messages by %.2f (budget %d, total %d)",
+            "Scaling all %d messages to fit budget %d (total %d)",
             len(targets),
-            ratio,
             remaining_budget,
             total,
         )
 
-    # Truncate targeted messages using pre-computed token lists (no
-    # re-tokenization). Cut at the last newline to avoid mid-line splits.
+    # Truncate using pre-computed tokens to avoid re-tokenization.
     for idx, limit in zip(targets, limits):
         if token_counts[idx] <= limit:
             continue
-        raw = token_handler.tokens_to_text(
-            token_lists[idx][: max(0, limit - _TRUNCATION_WARNING_TOKENS)]
-        )
-        cut = raw.rfind("\n")
-        body = raw[:cut].rstrip("\r") if cut > 0 else raw
-        truncated_text = body.strip() + _TRUNCATION_WARNING
-
-        token_counts[idx] = TokenHandler._get_token_count(
-            token_handler.text_to_tokens(truncated_text)
-        )
-        msg = tool_messages[idx]
-        tool_messages[idx] = ToolMessage(
-            content=truncated_text,
-            status=msg.status,
-            tool_call_id=msg.tool_call_id,
-            additional_kwargs={
-                **msg.additional_kwargs,
-                "truncated": True,
-                "token_count": token_counts[idx],
-            },
+        tool_messages[idx], token_counts[idx] = _truncate_tool_message(
+            tool_messages[idx], token_lists[idx], limit, token_handler
         )
 
     return tool_messages

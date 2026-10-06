@@ -1,7 +1,7 @@
 # 0001 -- Tool Output Content Boundary (SAFE-02)
 
 - **Jira:** [OLS-3929](https://issues.redhat.com/browse/OLS-3929)
-- **Status:** Accepted
+- **Status:** Accepted. Classic and DeepAgents implementations apply the boundary.
 - **Date:** 2026-09-23
 
 ## Context
@@ -35,13 +35,16 @@ These are content boundary markers (delimiters), NOT parseable XML. The LLM does
 not parse them as structured data; they serve as visual and semantic separators
 that the trust instruction references.
 
-### 3. Source attribute escaping
+### 3. Escaping external marker text and source names
 
-**Decision:** No escaping is applied to the source attribute value.
+**Decision:** Escape closing-marker text in external output before placing it
+inside the wrapper. Match `</tool_data` without regard to case and insert a
+backslash before `/`, producing `<\/tool_data`. Escape the tool name as an
+HTML attribute value before placing it in `source`; this escapes quotes and
+angle brackets.
 
-**Rationale:** The `<tool_data>` tags are markers, not XML elements consumed by
-a parser. The LLM processes the entire prompt as natural language text and does
-not perform XML parsing. Escaping would add complexity without security benefit.
+The delimiters are not XML parsed by the model. Escaping still prevents external
+text from imitating the closing delimiter or breaking the source attribute.
 
 ### 4. Source attribute semantics
 
@@ -77,39 +80,37 @@ conversations.
 
 ### 7. Processing order
 
-**Decision:** The processing pipeline for tool results follows this order:
+**Decision:** Preserve the raw tool result, then apply aggregate budget
+truncation to a model-facing copy. The pipeline follows this order:
 
-1. **Inspect** -- When enabled, LLM classifier screening (SAFE-01, OLS-3928)
-   runs before the wrapper is applied.
-2. **Wrap** -- The `<tool_data>` boundary markers are applied as the outermost
-   layer.
+1. **Budget** -- Enforce the remaining round budget on unwrapped model-facing
+   copies. Reserve room for the wrapper and any required truncation notice.
+2. **Inspect** -- When enabled, inspect the budget-limited, unwrapped copies.
+   Audit each passing result with its complete raw tool output.
+3. **Wrap** -- Escape external closing-marker text and source names, then add the
+   `<tool_data>` boundary around each model-facing result.
 
-Wrapping remains active when tool-result inspection is disabled.
-The wrapper is always the outermost layer so the LLM sees the trust boundary
-before encountering any tool content.
+Wrapping remains active when inspection is disabled. The wrapper is the
+outermost layer in each model-facing result.
 
 ### 8. Token budget
 
-**Decision:** No separate token accounting is needed for the wrapper.
+**Decision:** `enforce_tool_token_budget` MUST include the escaped wrapper and
+source attribute in its model-facing token budget. It MUST reserve wrapper
+overhead before it accepts a character-estimate shortcut. When truncation is
+required, it MUST reserve a truncation notice for each result that it truncates.
+If the remaining budget cannot fit those notices, the request returns the
+controlled tool-result budget message instead of sending empty results.
 
-**Rationale:** The `<tool_data>` tags and source attribute are part of the
-`ToolMessage.content` string. When `enforce_tool_token_budget` runs, the wrapper
-tokens are already included in the content being measured. The overhead per tool
-result is approximately 10 tokens, which is negligible relative to the tool
-budget.
+**Rationale:** Wrapper overhead can exceed a small round budget, even when each
+raw result is short. The budget must count the content that the model receives.
 
 ### 9. Relationship to LLM classifier (SAFE-01)
 
-**Decision:** To be discussed in standup -- whether wrapping alone suffices as a
-mitigation or both the content boundary (SAFE-02) and the LLM classifier
-(SAFE-01, OLS-3928) should run in parallel.
-
-**Current state:** Both mechanisms are independently implementable. The content
-boundary (this decision) is a lightweight, always-on defense. The LLM classifier
-is a heavier-weight detection mechanism with its own token and latency costs.
-The two are complementary: the boundary prevents the LLM from treating tool
-output as instructions, while the classifier detects and blocks overtly
-malicious content before it reaches the LLM context.
+**Decision:** SAFE-02 wrapping always applies. When SAFE-01 inspection is
+enabled, the service inspects unwrapped, budget-limited results before it wraps
+them. The two mechanisms have separate jobs: inspection rejects unsafe results,
+and wrapping marks accepted external output as untrusted reference data.
 
 ## Implementation
 
@@ -117,7 +118,7 @@ The implementation lives in three files:
 
 | File | Change |
 |------|--------|
-| `ols/src/tools/tools.py` | `_wrap_tool_output()` helper; applied in `_execute_single_tool_call_stream()` after audit logging |
+| `ols/src/tools/tools.py` | `_wrap_tool_output()` helper escapes external closing markers and source names for model-facing copies |
 | `ols/src/prompts/prompts.py` | `TOOL_DATA_TRUST_INSTRUCTION` constant |
 | `ols/src/prompts/prompt_generator.py` | Injects trust instruction via `_get_agent_instructions()` when `tool_call=True` |
 
@@ -129,8 +130,7 @@ Test coverage in `tests/unit/tools/test_tools.py` and
 - Every tool result in the LLM context is visually and semantically demarcated.
 - The LLM receives an explicit instruction to treat demarcated content as
   untrusted reference data.
-- Token overhead is minimal (~10 tokens per tool result + ~50 tokens for the
-  trust instruction, once per conversation with tools).
-- Future hardening (e.g., randomized delimiters, per-result nonces) can be added
-  by modifying `_wrap_tool_output()` without changing the injection point or
-  trust instruction.
+- Token overhead includes the escaped wrapper for each tool result and the
+  trust instruction once per conversation with tools.
+- Escaping prevents external text from closing or breaking the wrapper. It does
+  not guarantee model behavior or enforce a security boundary.

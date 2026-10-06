@@ -474,6 +474,8 @@ def test_tool_calling_two_iteration():
         ),
     ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer.model_config.context_window_size = 1000
+        summarizer._tracker.context_window_size = 1000
         summarizer._tool_calling_enabled = True
         summarizer.create_response("How many namespaces are there in my cluster?")
         assert mock_invoke.call_count == 2
@@ -511,6 +513,8 @@ def test_tool_calling_force_stop():
             ]
         )
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer.model_config.context_window_size = 1000
+        summarizer._tracker.context_window_size = 1000
         summarizer._tool_calling_enabled = True
         summarizer.create_response("How many namespaces are there in my cluster?")
         assert mock_invoke.call_count == 3
@@ -570,6 +574,7 @@ def test_tool_calling_tool_execution(caplog):
         summarizer.model_config.max_tokens_for_tools = 100
         summarizer.model_config.context_window_size = 1000
         summarizer.model_config.parameters.max_tokens_for_response = 100
+        summarizer._tracker.context_window_size = 1000
         summarizer.create_response("How many namespaces are there in my cluster?")
 
         assert "get_namespaces_mock" in caplog.text
