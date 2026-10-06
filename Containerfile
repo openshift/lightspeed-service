@@ -88,9 +88,14 @@ RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
     done
 
 FROM ${RUNTIME_BASE_IMAGE}
+ARG RUNTIME_DNF_COMMAND=microdnf
 ARG APP_ROOT=/app-root
 
 WORKDIR /app-root
+
+USER root
+RUN ${RUNTIME_DNF_COMMAND} update -y --nodocs && \
+    ${RUNTIME_DNF_COMMAND} clean all
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
@@ -117,7 +122,6 @@ COPY --chmod=775 --from=builder /app-root/embeddings_model ./embeddings_model
 # Two cache trees are needed: the standard HF hub cache (used by huggingface_hub and
 # transformers when no cache_dir override is given) and the llama_index cache (passed as
 # cache_folder to SentenceTransformer by llama_index's HuggingFaceEmbedding wrapper).
-USER root
 RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
     case "$model_dir" in \
       all-mpnet-base-v2) hf_id="sentence-transformers--all-mpnet-base-v2" ;; \
