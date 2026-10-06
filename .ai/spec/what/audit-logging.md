@@ -87,6 +87,8 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 14e. Audit capture is per result, even when tool calls execute concurrently. If one result passes inspection and a sibling result fails, the service MUST record the passing result with its raw, unwrapped output and MUST NOT record the rejected result. This audit record does not make the passing result eligible for model reinjection, a `tool_result` SSE event, or conversation/transcript storage; the all-or-nothing concurrent-round rule still applies to those destinations.
 
+14f. The audit event MUST include the complete output from tool execution. Capture it before aggregate round-budget truncation. Preserve it separately from the model-facing copy.
+
 ### Content Capture Policy
 
 14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) may contain PII or sensitive data. When audit logging is enabled, these content attributes MUST be captured at full fidelity. User-controlled content-capture settings are deferred; no `audit.capture_content` configuration is exposed.
