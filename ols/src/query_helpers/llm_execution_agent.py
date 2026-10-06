@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeAlias
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
@@ -44,6 +44,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MIN_TOOL_EXECUTION_TOKENS = 100
+FINAL_SYNTHESIS_INSTRUCTION = (
+    "Tool investigation is exhausted. Do not call tools again.\n"
+    "Summarize available evidence; clearly state what remains uncertain if evidence is partial."
+)
+FINAL_SYNTHESIS_FAILURE = (
+    "I could not complete an answer from the available evidence. Please retry."
+)
 ToolCallDefinition: TypeAlias = tuple[str, dict[str, object], StructuredTool]
 
 
@@ -296,6 +303,31 @@ class LLMExecutionAgent:
         )
         return cur_input, cur_output
 
+    def _prepare_round_request(
+        self,
+        messages: ChatPromptTemplate,
+        all_mcp_tools: list[StructuredTool],
+        is_final_round: bool,
+    ) -> tuple[ChatPromptTemplate, list[StructuredTool], bool] | None:
+        """Prepare round prompt and tools, or return None if synthesis exceeds budget."""
+        synthesize = (
+            is_final_round
+            and bool(all_mcp_tools)
+            and self.provider_type == constants.PROVIDER_GOOGLE_VERTEX
+        )
+        if not synthesize:
+            return messages, all_mcp_tools, False
+
+        instruction_tokens = self._tracker.count_tokens(FINAL_SYNTHESIS_INSTRUCTION)
+        if instruction_tokens > self._tracker.remaining:
+            logger.warning("Insufficient context budget for final synthesis")
+            return None
+
+        self._tracker.charge(TokenCategory.PROMPT, instruction_tokens)
+        round_messages = messages.model_copy(deep=True)
+        round_messages.append(HumanMessage(content=FINAL_SYNTHESIS_INSTRUCTION))
+        return round_messages, [], True
+
     async def _iterate_with_tools(  # noqa: C901
         self,
         messages: ChatPromptTemplate,
@@ -332,6 +364,15 @@ class LLMExecutionAgent:
             is_final_round = (not all_mcp_tools) or (i == max_rounds)
             logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
+            round_request = self._prepare_round_request(
+                messages, all_mcp_tools, is_final_round
+            )
+            if round_request is None:
+                yield StreamedChunk(
+                    type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE
+                )
+                return
+            round_messages, round_tools, synthesize = round_request
             round_result = RoundLLMResult()
             turn_span = (
                 self._audit_ctx.span(
@@ -348,14 +389,15 @@ class LLMExecutionAgent:
                 else nullcontext()
             )
             with turn_span:
-                async for chunk in self._collect_round_llm_chunks(
-                    messages=messages,
+                async for chunk in self._collect_round_response(
+                    messages=round_messages,
                     llm_input_values=llm_input_values,
-                    all_mcp_tools=all_mcp_tools,
+                    all_mcp_tools=round_tools,
                     is_final_round=is_final_round,
                     token_counter=token_counter,
                     round_index=i,
                     result=round_result,
+                    synthesize=synthesize,
                 ):
                     yield chunk
 
@@ -632,6 +674,42 @@ class LLMExecutionAgent:
                         block.get("type"),
                     )
         return result
+
+    async def _collect_round_response(
+        self,
+        messages: ChatPromptTemplate,
+        llm_input_values: dict[str, str],
+        all_mcp_tools: list[StructuredTool],
+        is_final_round: bool,
+        token_counter: GenericTokenCounter,
+        round_index: int,
+        result: RoundLLMResult,
+        synthesize: bool,
+    ) -> AsyncGenerator[StreamedChunk, None]:
+        """Collect a response and recover synthesis failures before any usable answer."""
+        has_answer = False
+        try:
+            async for chunk in self._collect_round_llm_chunks(
+                messages=messages,
+                llm_input_values=llm_input_values,
+                all_mcp_tools=all_mcp_tools,
+                is_final_round=is_final_round,
+                token_counter=token_counter,
+                round_index=round_index,
+                result=result,
+            ):
+                if chunk.type == StreamChunkType.TEXT and chunk.text.strip():
+                    has_answer = True
+                yield chunk
+        except Exception:
+            if not synthesize or has_answer:
+                raise
+            logger.exception("Final synthesis invocation failed")
+            result.should_stop = True
+
+        if synthesize and not has_answer:
+            logger.error("Final synthesis returned no text")
+            yield StreamedChunk(type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE)
 
     async def _collect_round_llm_chunks(  # noqa: C901  # pylint: disable=R0912
         self,

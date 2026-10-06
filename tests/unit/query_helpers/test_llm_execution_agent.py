@@ -2,6 +2,8 @@
 
 import asyncio
 import logging
+from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,13 +13,17 @@ from langchain_core.tools.structured import StructuredTool
 from opentelemetry.trace import SpanKind
 from pydantic import BaseModel
 
-from ols import config
+from ols import config, constants
 
 # must be set before importing modules that pull in auth
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.models.models import StreamChunkType, StreamedChunk  # noqa: E402
+from ols.src.prompts import prompts  # noqa: E402
+from ols.src.prompts.prompt_generator import GeneratePrompt  # noqa: E402
 from ols.src.query_helpers.llm_execution_agent import (  # noqa: E402
+    FINAL_SYNTHESIS_FAILURE,
+    FINAL_SYNTHESIS_INSTRUCTION,
     LLMExecutionAgent,
     RoundLLMResult,
 )
@@ -1225,6 +1231,166 @@ async def test_iterate_with_tools_handles_tool_execution_error():
     assert len(chunks) == 1
     assert chunks[0].type == StreamChunkType.TEXT
     assert "I could not complete this request." in chunks[0].text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mode", [constants.QueryMode.ASK, constants.QueryMode.TROUBLESHOOTING]
+)
+@pytest.mark.parametrize("answer", ["Evidence-based answer.", ""])
+async def test_iterate_with_tools_final_synthesis_preserves_system_prompt(
+    mode: constants.QueryMode,
+    answer: str,
+) -> None:
+    """Keep full system prompt while requesting final answer without bound tools."""
+    agent = _make_agent(provider_type=constants.PROVIDER_GOOGLE_VERTEX)
+    tool = mock_tools_map[0]
+    system_instruction = (
+        prompts.TROUBLESHOOTING_SYSTEM_INSTRUCTION
+        if mode == constants.QueryMode.TROUBLESHOOTING
+        else prompts.QUERY_SYSTEM_INSTRUCTION
+    )
+    messages, inputs = GeneratePrompt(
+        "question", [], [], system_instruction, True, mode
+    ).generate_prompt(agent.model)
+    original_system = messages.messages[0].prompt.template
+    agent._tracker.charge(TokenCategory.TOOL_RESULT, agent._tracker.prompt_budget)
+    calls: list[dict[str, Any]] = []
+
+    async def collect(**kwargs: Any) -> AsyncGenerator[StreamedChunk, None]:
+        """Request tools until the final round, then emit the configured answer."""
+        calls.append(kwargs)
+        if len(calls) < 5 or not answer:
+            kwargs["result"].tool_call_chunks.append(
+                AIMessageChunk(
+                    content="",
+                    tool_calls=[{"name": tool.name, "args": {}, "id": "call"}],
+                )
+            )
+        if len(calls) == 5 and answer:
+            yield StreamedChunk(type=StreamChunkType.TEXT, text=answer)
+
+    async def process(**kwargs: Any) -> AsyncGenerator[StreamedChunk, None]:
+        """Append and stream tool evidence for the next round."""
+        kwargs["messages"].append(ToolMessage(content="evidence", tool_call_id="call"))
+        yield StreamedChunk(
+            type=StreamChunkType.TOOL_RESULT, data={"content": "evidence"}
+        )
+
+    with (
+        patch.object(agent, "_collect_round_llm_chunks", new=collect),
+        patch.object(agent, "_process_tool_calls_for_round", new=process),
+    ):
+        chunks = [
+            chunk
+            async for chunk in agent._iterate_with_tools(
+                messages=messages,
+                max_rounds=5,
+                llm_input_values=inputs,
+                token_counter=AsyncMock(),
+                all_mcp_tools=[tool],
+            )
+        ]
+
+    assert len(calls) == 5
+    assert calls[-1]["all_mcp_tools"] == []
+    final_messages = calls[-1]["messages"].messages
+    assert final_messages[0].prompt.template == original_system
+    if mode == constants.QueryMode.TROUBLESHOOTING:
+        assert "# TOOL USAGE" in final_messages[0].prompt.template
+    else:
+        assert (
+            "Given the user's query you must decide"
+            in final_messages[0].prompt.template
+        )
+    assert len([msg for msg in final_messages if isinstance(msg, ToolMessage)]) == 4
+    assert final_messages[-1].content == FINAL_SYNTHESIS_INSTRUCTION
+    assert sum(chunk.type == StreamChunkType.TOOL_RESULT for chunk in chunks) == 4
+    assert [chunk.text for chunk in chunks if chunk.type == StreamChunkType.TEXT] == [
+        answer or FINAL_SYNTHESIS_FAILURE
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("initial_text", ["", " \n"])
+async def test_execute_final_synthesis_invocation_error_emits_fallback_and_end(
+    initial_text: str,
+) -> None:
+    """Emit fallback and END when final synthesis fails before a usable answer."""
+    agent = _make_agent(provider_type=constants.PROVIDER_GOOGLE_VERTEX)
+    messages, inputs = GeneratePrompt("question").generate_prompt(agent.model)
+
+    async def failing_invoke(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        """Emit optional whitespace before simulating an upstream failure."""
+        yield AIMessageChunk(content=initial_text)
+        raise RuntimeError("upstream unavailable")
+
+    with patch.object(agent, "_invoke_llm", new=failing_invoke):
+        chunks = [
+            chunk
+            async for chunk in agent.execute(
+                messages, inputs, 1, [mock_tools_map[0]], [], False
+            )
+        ]
+
+    text = "".join(chunk.text for chunk in chunks if chunk.type == StreamChunkType.TEXT)
+    assert text.strip() == FINAL_SYNTHESIS_FAILURE
+    assert chunks[-1].type == StreamChunkType.END
+    assert sum(chunk.type == StreamChunkType.END for chunk in chunks) == 1
+    assert all(
+        chunk.type in (StreamChunkType.TEXT, StreamChunkType.END) for chunk in chunks
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "provider_type,max_rounds,has_tools,initial_text",
+    [
+        (constants.PROVIDER_GOOGLE_VERTEX, 1, True, "Partial answer."),
+        (constants.PROVIDER_GOOGLE_VERTEX, 2, True, ""),
+        (constants.PROVIDER_OPENAI, 1, True, ""),
+        (constants.PROVIDER_GOOGLE_VERTEX, 1, False, ""),
+    ],
+)
+async def test_execute_propagates_invocation_error_outside_empty_final_synthesis(
+    provider_type: str, max_rounds: int, has_tools: bool, initial_text: str
+) -> None:
+    """Preserve errors after partial answers and outside tool-loop synthesis."""
+    agent = _make_agent(provider_type=provider_type)
+    messages, inputs = GeneratePrompt("question").generate_prompt(agent.model)
+    tools = [mock_tools_map[0]] if has_tools else []
+
+    async def failing_invoke(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        """Emit an optional partial answer before an upstream failure."""
+        yield AIMessageChunk(content=initial_text)
+        raise RuntimeError("upstream unavailable")
+
+    with patch.object(agent, "_invoke_llm", new=failing_invoke):
+        stream = agent.execute(messages, inputs, max_rounds, tools, [], False)
+        if initial_text:
+            chunk = await anext(stream)
+            assert chunk.type == StreamChunkType.TEXT
+            assert chunk.text == initial_text
+        with pytest.raises(RuntimeError, match="upstream unavailable"):
+            await anext(stream)
+
+
+def test_prepare_round_request_returns_none_when_budget_insufficient() -> None:
+    """Reject final synthesis when added instruction exceeds remaining budget."""
+    agent = _make_agent(provider_type=constants.PROVIDER_GOOGLE_VERTEX)
+    messages, _ = GeneratePrompt(
+        "question", [], [], prompts.QUERY_SYSTEM_INSTRUCTION, True
+    ).generate_prompt(agent.model)
+    instruction_tokens = agent._tracker.count_tokens(FINAL_SYNTHESIS_INSTRUCTION)
+    agent._tracker.charge(
+        TokenCategory.PROMPT, agent._tracker.remaining - instruction_tokens + 1
+    )
+
+    assert agent._prepare_round_request(messages, [mock_tools_map[0]], True) is None
 
 
 @pytest.mark.asyncio
