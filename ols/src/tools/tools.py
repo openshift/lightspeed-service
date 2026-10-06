@@ -1,7 +1,9 @@
 """Functions/Tools definition."""
 
 import asyncio
+import html
 import logging
+import re
 import time
 from collections.abc import AsyncGenerator
 from contextlib import nullcontext
@@ -41,9 +43,21 @@ _TRUNCATION_WARNING = (
     "\n[OUTPUT TRUNCATED - The tool returned more data than can be "
     "processed. Please ask a more specific question to get complete results.]"
 )
+_MINIMAL_TRUNCATION_WARNING = "\n[OUTPUT TRUNCATED]"
 _TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
     TokenHandler().text_to_tokens(_TRUNCATION_WARNING)
 )
+_MINIMAL_TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
+    TokenHandler().text_to_tokens(_MINIMAL_TRUNCATION_WARNING)
+)
+TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE = (
+    "Tool results exceeded the remaining token budget. "
+    "Please ask a more specific question."
+)
+
+
+class ToolResultBudgetExceededError(Exception):
+    """Indicate that the round cannot fit a result or its truncation notice."""
 
 
 class ApprovalRequiredPayload(TypedDict):
@@ -286,7 +300,14 @@ async def execute_tool_call(
 
 def _wrap_tool_output(text: str, tool_name: str) -> str:
     """Mark external tool output as untrusted reference data."""
-    return f'<tool_data source="{tool_name}">\n{text}\n</tool_data>'
+    escaped_text = re.sub(
+        r"</tool_data",
+        lambda match: f"<\\/{match.group(0)[2:]}",
+        text,
+        flags=re.IGNORECASE,
+    )
+    escaped_name = html.escape(tool_name, quote=True)
+    return f'<tool_data source="{escaped_name}">\n{escaped_text}\n</tool_data>'
 
 
 def _tool_result_event(
@@ -714,27 +735,32 @@ def _truncate_wrapped_tool_content(
     token_handler: TokenHandler,
 ) -> tuple[str, int, bool]:
     content_tokens = token_handler.text_to_tokens(content)
-    empty_wrapper = _wrap_tool_output("", tool_name)
-    wrapper_tokens = TokenHandler._get_token_count(
-        token_handler.text_to_tokens(empty_wrapper)
+    warning = _TRUNCATION_WARNING
+    warning_tokens = TokenHandler._get_token_count(
+        token_handler.text_to_tokens(_wrap_tool_output(warning, tool_name))
     )
-    if wrapper_tokens > token_limit:
+    if warning_tokens > token_limit:
+        warning = _MINIMAL_TRUNCATION_WARNING
+        warning_tokens = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(_wrap_tool_output(warning, tool_name))
+        )
+    if warning_tokens > token_limit:
         return "", 0, False
 
-    content_limit = max(0, token_limit - wrapper_tokens - _TRUNCATION_WARNING_TOKENS)
+    content_limit = max(0, token_limit - warning_tokens)
 
     while True:
         raw = token_handler.tokens_to_text(content_tokens[:content_limit])
         cut = raw.rfind("\n")
         body = raw[:cut].rstrip("\r") if cut > 0 else raw
-        truncated_text = body.strip() + _TRUNCATION_WARNING
+        truncated_text = body.strip() + warning
         wrapped_count = TokenHandler._get_token_count(
             token_handler.text_to_tokens(_wrap_tool_output(truncated_text, tool_name))
         )
         if wrapped_count <= token_limit:
             return truncated_text, wrapped_count, True
         if content_limit == 0:
-            return "", wrapper_tokens, True
+            return warning, warning_tokens, True
         content_limit = max(0, content_limit - (wrapped_count - token_limit))
 
 
@@ -742,19 +768,27 @@ def _truncate_unwrapped_tool_content(
     content_tokens: list[int], token_limit: int, token_handler: TokenHandler
 ) -> tuple[str, int]:
     """Truncate generated content to its exact token limit."""
-    content_limit = max(0, token_limit - _TRUNCATION_WARNING_TOKENS)
+    warning = _TRUNCATION_WARNING
+    warning_tokens = _TRUNCATION_WARNING_TOKENS
+    if warning_tokens > token_limit:
+        warning = _MINIMAL_TRUNCATION_WARNING
+        warning_tokens = _MINIMAL_TRUNCATION_WARNING_TOKENS
+    if warning_tokens > token_limit:
+        return "", 0
+
+    content_limit = max(0, token_limit - warning_tokens)
     while True:
         raw = token_handler.tokens_to_text(content_tokens[:content_limit])
         cut = raw.rfind("\n")
         body = raw[:cut].rstrip("\r") if cut > 0 else raw
-        truncated_text = body.strip() + _TRUNCATION_WARNING
+        truncated_text = body.strip() + warning
         token_count = TokenHandler._get_token_count(
             token_handler.text_to_tokens(truncated_text)
         )
         if token_count <= token_limit:
             return truncated_text, token_count
         if content_limit == 0:
-            return "", 0
+            return warning, warning_tokens
         content_limit = max(0, content_limit - (token_count - token_limit))
 
 
@@ -775,7 +809,7 @@ def _truncate_tool_message(
             str(message.content), message.name, token_limit, token_handler
         )
         if not can_keep_wrapper:
-            result_name = None
+            raise ToolResultBudgetExceededError(TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE)
 
     truncated_message = ToolMessage(
         content=truncated_text,
@@ -791,6 +825,50 @@ def _truncate_tool_message(
     return truncated_message, token_count
 
 
+def _minimum_tool_message_token_count(
+    message: ToolMessage, token_count: int, token_handler: TokenHandler
+) -> int:
+    """Return the smallest representation that explains a truncated result."""
+    if message.name is None:
+        minimum_content = _MINIMAL_TRUNCATION_WARNING
+    else:
+        minimum_content = _wrap_tool_output(_MINIMAL_TRUNCATION_WARNING, message.name)
+    minimum_count = TokenHandler._get_token_count(
+        token_handler.text_to_tokens(minimum_content)
+    )
+    return min(token_count, minimum_count)
+
+
+def _allocate_limits_with_minimums(
+    token_counts: list[int], minimum_counts: list[int], remaining_budget: int
+) -> list[int]:
+    """Allocate a round budget while reserving a visible notice per truncated result."""
+    minimum_total = sum(minimum_counts)
+    if minimum_total > remaining_budget:
+        raise ToolResultBudgetExceededError(TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE)
+
+    capacities = [
+        count - minimum for count, minimum in zip(token_counts, minimum_counts)
+    ]
+    remaining = remaining_budget - minimum_total
+    total_capacity = sum(capacities)
+    if total_capacity == 0 or remaining == 0:
+        return minimum_counts
+
+    allocations = [
+        minimum + (remaining * capacity // total_capacity)
+        for minimum, capacity in zip(minimum_counts, capacities)
+    ]
+    unassigned = remaining_budget - sum(allocations)
+    for index, capacity in enumerate(capacities):
+        if unassigned == 0:
+            break
+        if allocations[index] < token_counts[index] and capacity > 0:
+            allocations[index] += 1
+            unassigned -= 1
+    return allocations
+
+
 def enforce_tool_token_budget(
     tool_messages: list[ToolMessage],
     remaining_budget: int,
@@ -801,8 +879,12 @@ def enforce_tool_token_budget(
     Uses a three-tier strategy to avoid unnecessary tokenization:
     1. Cheap character-based estimate — skip tokenization if clearly under budget.
     2. Precise tokenization — only if the estimate suggests overflow.
-    3. Truncation — if the longest message dominates (>= 2x excess), only it
-       is shrunk; otherwise all messages are scaled proportionally.
+    3. Truncation — preserve a visible notice for every truncated result and
+       reallocate the round budget when a result's share is too small.
+
+    Raises:
+        ToolResultBudgetExceededError: If the round cannot fit a truncation notice
+            for every result that must be truncated.
 
     Args:
         tool_messages: Tool result messages to enforce budget on.
@@ -815,11 +897,19 @@ def enforce_tool_token_budget(
     if not tool_messages:
         return tool_messages
 
-    # Tier 1: cheap char-based estimate (~4 chars/token). The 0.9 factor
-    # compensates for the approximation; if we're clearly under budget,
-    # skip the expensive tokenization entirely.
+    # Tier 1: cheap char-based estimate (~4 chars/token), with exact wrapper
+    # overhead reserved for each named result. The 0.9 factor compensates for
+    # the character approximation; if we're clearly under budget, skip the
+    # expensive tokenization entirely.
     estimated_tokens = sum(
-        len(_tool_message_budget_content(msg)) // _CHARS_PER_TOKEN_ESTIMATE
+        (
+            TokenHandler._get_token_count(
+                token_handler.text_to_tokens(_wrap_tool_output("", msg.name))
+            )
+            if msg.name is not None
+            else 0
+        )
+        + len(str(msg.content)) // _CHARS_PER_TOKEN_ESTIMATE
         for msg in tool_messages
     )
     if estimated_tokens <= int(remaining_budget * 0.9):
@@ -844,35 +934,31 @@ def enforce_tool_token_budget(
 
     excess = total - remaining_budget
     longest_idx = max(range(len(token_counts)), key=lambda i: token_counts[i])
+    minimum_counts = [
+        _minimum_tool_message_token_count(message, count, token_handler)
+        for message, count in zip(tool_messages, token_counts)
+    ]
 
-    # Tier 3: if the longest message alone can absorb the excess while
-    # retaining at least half its content, shrink only that one.
-    # Otherwise scale all messages proportionally to fit the budget.
+    # If the longest result can absorb the excess, keep the other results intact
+    # unless doing so would leave no room for the truncation notice.
     if token_counts[longest_idx] // 2 >= excess:
-        targets = [longest_idx]
-        limits = [token_counts[longest_idx] - excess]
-        logger.debug(
-            "Truncating longest message [%d] from %d to %d tokens (excess %d)",
-            longest_idx,
-            token_counts[longest_idx],
-            limits[0],
-            excess,
-        )
+        longest_limit = token_counts[longest_idx] - excess
+        if longest_limit >= minimum_counts[longest_idx]:
+            targets = [longest_idx]
+            limits = [longest_limit]
+        else:
+            targets = list(range(len(token_counts)))
+            limits = _allocate_limits_with_minimums(
+                token_counts, minimum_counts, remaining_budget
+            )
     else:
-        ratio = remaining_budget / total
         targets = list(range(len(token_counts)))
-        limits = [int(token_counts[i] * ratio) for i in targets]
-        unassigned_tokens = remaining_budget - sum(limits)
-        for idx in targets:
-            if unassigned_tokens == 0:
-                break
-            if limits[idx] < token_counts[idx]:
-                limits[idx] += 1
-                unassigned_tokens -= 1
+        limits = _allocate_limits_with_minimums(
+            token_counts, minimum_counts, remaining_budget
+        )
         logger.debug(
-            "Scaling all %d messages by %.2f (budget %d, total %d)",
+            "Scaling all %d messages to fit budget %d (total %d)",
             len(targets),
-            ratio,
             remaining_budget,
             total,
         )

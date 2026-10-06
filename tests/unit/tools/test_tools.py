@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from ols.src.tools import tools as tools_module
 from ols.src.tools.tools import (
+    ToolResultBudgetExceededError,
     ToolResultEvent,
     _extract_text_from_tool_output,
     _is_transient_tool_error,
@@ -194,17 +195,31 @@ async def _collect_tool_messages(
     ]
 
 
-def test_wrap_tool_output_uses_fixed_tool_data_boundary() -> None:
-    """Preserve inner marker text inside the fixed boundary."""
-    tool_output = '<tool_data source="untrusted">inner</tool_data>'
+@pytest.mark.parametrize(
+    ("tool_name", "tool_output", "expected"),
+    [
+        (
+            "get_pods",
+            "before </tool_data> after",
+            '<tool_data source="get_pods">\nbefore <\\/tool_data> after\n</tool_data>',
+        ),
+        (
+            'bad"</tool_data>',
+            "before </TOOL_DATA > after",
+            '<tool_data source="bad&quot;&lt;/tool_data&gt;">\n'
+            r"before <\/TOOL_DATA > after"
+            "\n</tool_data>",
+        ),
+    ],
+)
+def test_wrap_tool_output_escapes_external_terminators_and_source(
+    tool_name: str, tool_output: str, expected: str
+) -> None:
+    """Prevent external text and tool names from breaking the wrapper."""
     formatter = getattr(tools_module, "_wrap_tool_output", None)
 
     assert formatter is not None
-    assert formatter(tool_output, "get_pods") == (
-        '<tool_data source="get_pods">\n'
-        '<tool_data source="untrusted">inner</tool_data>\n'
-        "</tool_data>"
-    )
+    assert formatter(tool_output, tool_name) == expected
 
 
 @pytest.mark.asyncio
@@ -819,6 +834,17 @@ def test_enforce_tool_token_budget_under_budget():
     assert result[0].additional_kwargs["truncated"] is False
 
 
+def test_enforce_tool_token_budget_reserves_wrapper_overhead_for_many_small_results():
+    """Keep wrapped results within budget when raw outputs are tiny."""
+    token_handler = TokenHandler()
+    messages = [
+        _make_tool_message("0", f"call-{index}", "get_pods") for index in range(8)
+    ]
+
+    with pytest.raises(ToolResultBudgetExceededError, match="remaining token budget"):
+        enforce_tool_token_budget(messages, 100, token_handler)
+
+
 def test_enforce_tool_token_budget_counts_wrapper_overhead():
     """Count the boundary tokens when truncating external results."""
     content = "line\n" * 400
@@ -835,35 +861,55 @@ def test_enforce_tool_token_budget_counts_wrapper_overhead():
     assert len(TokenHandler().text_to_tokens(wrapped)) <= budget
 
 
-def test_enforce_tool_token_budget_keeps_empty_wrapper_when_only_boundary_fits():
-    """Keep the boundary when its warning text cannot fit the result budget."""
+def test_enforce_tool_token_budget_rejects_budget_below_minimum_notice():
+    """Fail explicitly if even the boundary and truncation notice cannot fit."""
     token_handler = TokenHandler()
     tool_name = "get_pods"
     wrapper = tools_module._wrap_tool_output("", tool_name)
     budget = TokenHandler._get_token_count(token_handler.text_to_tokens(wrapper))
     message = _make_tool_message("row\n" * 100, "call", tool_name)
 
-    result = enforce_tool_token_budget([message], budget, token_handler)
-
-    assert result[0].content == ""
-    assert result[0].name == tool_name
-    assert result[0].additional_kwargs["token_count"] == budget
+    with pytest.raises(ToolResultBudgetExceededError, match="remaining token budget"):
+        enforce_tool_token_budget([message], budget, token_handler)
 
 
-def test_enforce_tool_token_budget_handles_minimum_wrappers_exceeding_budget():
-    """Drop unfit external payloads rather than exceed a tiny round budget."""
+def test_enforce_tool_token_budget_rejects_round_below_minimum_notices():
+    """Fail explicitly when all tool-call notices cannot fit in the round budget."""
     messages = [
         _make_tool_message("row\n" * 100, f"call-{index}", f"tool-{index}")
         for index in range(5)
     ]
-    budget = 10
 
-    result = enforce_tool_token_budget(messages, budget, TokenHandler())
+    with pytest.raises(ToolResultBudgetExceededError, match="remaining token budget"):
+        enforce_tool_token_budget(messages, 10, TokenHandler())
 
-    counted_tokens = sum(message.additional_kwargs["token_count"] for message in result)
-    assert counted_tokens <= budget
+
+def test_enforce_tool_token_budget_reallocates_for_minimum_truncation_notices():
+    """Reserve a visible notice for each result before allocating output content."""
+    token_handler = TokenHandler()
+    notice = "\n[OUTPUT TRUNCATED]"
+    messages = [
+        _make_tool_message("row\n" * 100, f"call-{index}", f"tool-{index}")
+        for index in range(5)
+    ]
+    minimum_cost = sum(
+        TokenHandler._get_token_count(
+            token_handler.text_to_tokens(
+                tools_module._wrap_tool_output(notice, message.name or "")
+            )
+        )
+        for message in messages
+    )
+
+    result = enforce_tool_token_budget(messages, minimum_cost, token_handler)
+
     assert all(message.additional_kwargs["truncated"] for message in result)
-    assert all(message.name is None and message.content == "" for message in result)
+    assert all("[OUTPUT TRUNCATED]" in message.content for message in result)
+    assert all(message.name is not None for message in result)
+    assert (
+        sum(message.additional_kwargs["token_count"] for message in result)
+        <= minimum_cost
+    )
 
 
 def test_enforce_tool_token_budget_truncates_longest():

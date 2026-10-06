@@ -25,7 +25,11 @@ from ols.src.tools.tool_result_inspection import (  # noqa: E402
     ToolResultInspectionError,
     ToolResultRejectedError,
 )
-from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
+from ols.src.tools.tools import (  # noqa: E402
+    ApprovalRequiredEvent,
+    ToolResultBudgetExceededError,
+    ToolResultEvent,
+)
 from ols.utils.audit_logger import AuditContext, AuditLogger  # noqa: E402
 from ols.utils.token_handler import (  # noqa: E402
     TokenBudgetTracker,
@@ -789,6 +793,83 @@ async def test_process_tool_calls_inspects_raw_then_wraps_external_result():
 
 
 @pytest.mark.asyncio
+async def test_process_tool_calls_audits_raw_output_and_delivers_raw_events(otel_setup):
+    """Inspect budgeted content but audit and stream the complete raw result."""
+    audit_ctx = make_audit_ctx(otel_setup)
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock()
+    agent = _make_agent(tool_result_classifier=classifier, audit_ctx=audit_ctx)
+    agent._tracker.max_tool_tokens = 500
+    messages: list = []
+    raw_content = "pod-a\n" * 1000
+    audit_span = audit_ctx.start_span("execute_tool get_namespaces_mock")
+
+    async def _fake_execute(*args, **kwargs):
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content=raw_content,
+                status="success",
+                tool_call_id="call_raw_audit",
+                name="get_namespaces_mock",
+                additional_kwargs={"truncated": False, "duration_ms": 4},
+            ),
+            audit_span=audit_span,
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[
+                {
+                    "name": "get_namespaces_mock",
+                    "args": {},
+                    "id": "call_raw_audit",
+                }
+            ],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        streamed = [
+            chunk
+            async for chunk in agent._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                duplicate_tool_names=set(),
+                messages=messages,
+            )
+        ]
+
+    inspected_content = classifier.inspect.await_args.args[2]
+    assert inspected_content != raw_content
+    assert "<tool_data" not in inspected_content
+    assert streamed[-1].data["content"] == raw_content
+    model_message = next(
+        message for message in messages if isinstance(message, ToolMessage)
+    )
+    assert inspected_content in model_message.content
+    assert model_message.content.startswith('<tool_data source="get_namespaces_mock">')
+    assert model_message.additional_kwargs["token_count"] <= 300
+
+    exporter, _ = otel_setup
+    tool_span = next(
+        span
+        for span in exporter.spans
+        if span.name == "execute_tool get_namespaces_mock"
+    )
+    result_event = next(
+        event for event in tool_span.events if event.name == "tool.result"
+    )
+    assert result_event.attributes["output"] == raw_content
+
+
+@pytest.mark.asyncio
 async def test_process_tool_calls_wraps_external_error_result():
     """Wrap tool-generated errors after inspection passes."""
     classifier = MagicMock()
@@ -1056,6 +1137,51 @@ async def test_iterate_with_tools_deduplicates_tool_names(caplog):
 
     assert chunks == []
     assert "Duplicate MCP tool names detected and disabled" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_iterate_with_tools_reports_tool_result_budget_failure():
+    """Explain when no tool result or truncation notice can fit the budget."""
+    agent = _make_agent()
+    tool = mock_tools_map[0]
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": tool.name, "args": {}, "id": "call_budget"}],
+        )
+    ]
+
+    async def _mock_collect(**kwargs):  # type: ignore [no-untyped-def]
+        kwargs["result"].tool_call_chunks = tool_call_chunks
+        if False:
+            yield
+
+    async def _failing_process(**kwargs):  # type: ignore [no-untyped-def]
+        if False:
+            yield
+        raise ToolResultBudgetExceededError(
+            "cannot represent tool results within token budget"
+        )
+
+    with (
+        patch.object(agent, "_collect_round_llm_chunks", new=_mock_collect),
+        patch.object(agent, "_process_tool_calls_for_round", new=_failing_process),
+    ):
+        chunks = [
+            chunk
+            async for chunk in agent._iterate_with_tools(
+                messages=[],
+                max_rounds=2,
+                llm_input_values={},
+                token_counter=AsyncMock(),
+                all_mcp_tools=[tool],
+            )
+        ]
+
+    assert len(chunks) == 1
+    assert chunks[0].type == StreamChunkType.TEXT
+    assert "tool results exceeded the remaining token budget" in chunks[0].text.lower()
 
 
 @pytest.mark.asyncio

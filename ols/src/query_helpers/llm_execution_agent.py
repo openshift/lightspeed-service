@@ -29,6 +29,8 @@ from ols.src.tools.tool_result_inspection import (
     chunk_text,
 )
 from ols.src.tools.tools import (
+    TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE,
+    ToolResultBudgetExceededError,
     _wrap_tool_output,
     enforce_tool_token_budget,
     execute_tool_calls_stream,
@@ -407,6 +409,15 @@ class LLMExecutionAgent:
                     )
             except ToolResultInspectionError:
                 raise
+            except ToolResultBudgetExceededError:
+                log_tool_loop_iteration(
+                    self._tracker, i, max_rounds, "tool_result_budget_exceeded"
+                )
+                yield StreamedChunk(
+                    type=StreamChunkType.TEXT,
+                    text=TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE,
+                )
+                return
             except Exception:
                 log_tool_loop_iteration(
                     self._tracker, i, max_rounds, "tool_execution_failed"
@@ -745,6 +756,7 @@ class LLMExecutionAgent:
         self,
         *,
         tool_call_message: ToolMessage,
+        raw_tool_call_message: ToolMessage | None = None,
         tool_name: str,
         tool: Optional[StructuredTool],
         round_index: int,
@@ -761,8 +773,9 @@ class LLMExecutionAgent:
                 model_content = _wrap_tool_output(model_content, tool_call_message.name)
             content_token_count = self._tracker.count_tokens(model_content)
 
-        was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
-        base_status = tool_call_message.status
+        event_message = raw_tool_call_message or tool_call_message
+        was_truncated = event_message.additional_kwargs.get("truncated", False)
+        base_status = event_message.status
         tool_status = "truncated" if was_truncated else base_status
         has_meta = bool(
             isinstance(tool.metadata, dict) and tool.metadata.get("_meta")
@@ -789,16 +802,14 @@ class LLMExecutionAgent:
             "id": tool_call_message.tool_call_id,
             "name": tool_name,
             "status": tool_status,
-            "content": tool_call_message.content,
+            "content": event_message.content,
             "type": StreamChunkType.TOOL_RESULT.value,
             "round": round_index,
         }
-        structured_content = tool_call_message.additional_kwargs.get(
-            "structured_content"
-        )
+        structured_content = event_message.additional_kwargs.get("structured_content")
         if structured_content:
             tool_result_data["structured_content"] = structured_content
-        ref_docs = tool_call_message.additional_kwargs.get("referenced_documents")
+        ref_docs = event_message.additional_kwargs.get("referenced_documents")
         if ref_docs:
             tool_result_data["referenced_documents"] = ref_docs
         self._enrich_with_tool_metadata(tool_result_data, tool)
@@ -812,6 +823,7 @@ class LLMExecutionAgent:
         tool_messages: list[ToolMessage],
         tool_id_to_name: dict[str, str],
         tool_id_to_audit_span: dict[str, Span] | None = None,
+        raw_tool_messages_by_id: dict[str, ToolMessage] | None = None,
     ) -> None:
         """Inspect and audit each result before deciding whether to deliver the round."""
         max_tokens = 0
@@ -834,6 +846,9 @@ class LLMExecutionAgent:
             audit_span = (tool_id_to_audit_span or {}).get(message.tool_call_id)
             result_error = await self._inspect_single_tool_message(
                 message=message,
+                audit_message=(raw_tool_messages_by_id or {}).get(
+                    message.tool_call_id, message
+                ),
                 tool_name=tool_id_to_name.get(message.tool_call_id, "unknown"),
                 max_tokens=max_tokens,
                 overlap_tokens=overlap_tokens,
@@ -857,6 +872,7 @@ class LLMExecutionAgent:
         self,
         *,
         message: ToolMessage,
+        audit_message: ToolMessage,
         tool_name: str,
         max_tokens: int,
         overlap_tokens: int,
@@ -868,8 +884,13 @@ class LLMExecutionAgent:
             if isinstance(message.content, str)
             else json.dumps(message.content, ensure_ascii=False)
         )
+        audit_content = (
+            audit_message.content
+            if isinstance(audit_message.content, str)
+            else json.dumps(audit_message.content, ensure_ascii=False)
+        )
         if self._tool_result_classifier is None:
-            self._audit_tool_result(message, audit_span, content)
+            self._audit_tool_result(audit_message, audit_span, audit_content)
             return None
 
         result_span_context = (
@@ -940,7 +961,7 @@ class LLMExecutionAgent:
             if inspection_error is not None:
                 return inspection_error
 
-        self._audit_tool_result(message, audit_span, content)
+        self._audit_tool_result(audit_message, audit_span, audit_content)
         return None
 
     def _audit_tool_result(
@@ -961,7 +982,7 @@ class LLMExecutionAgent:
                 output_content=content,
             )
 
-    async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912
+    async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912,R0915
         self,
         *,
         round_index: int,
@@ -1088,6 +1109,10 @@ class LLMExecutionAgent:
                                     execution_event,
                                 )
 
+            raw_tool_messages_by_id = {
+                message.tool_call_id: message
+                for message in skipped_tool_messages + tool_calls_messages
+            }
             all_tool_messages = skipped_tool_messages + tool_calls_messages
             if remaining > 0:
                 all_tool_messages = enforce_tool_token_budget(
@@ -1097,6 +1122,7 @@ class LLMExecutionAgent:
                 all_tool_messages,
                 tool_id_to_name,
                 tool_id_to_audit_span,
+                raw_tool_messages_by_id,
             )
         finally:
             for audit_span in tool_id_to_audit_span.values():
@@ -1122,6 +1148,9 @@ class LLMExecutionAgent:
             content_token_count, tool_result_chunk = (
                 self._tool_result_chunk_for_message(
                     tool_call_message=tool_call_message,
+                    raw_tool_call_message=raw_tool_messages_by_id.get(
+                        tool_call_message.tool_call_id
+                    ),
                     tool_name=tool_name,
                     tool=all_tools_dict.get(tool_name),
                     round_index=round_index,
