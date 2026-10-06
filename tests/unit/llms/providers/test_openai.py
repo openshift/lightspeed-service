@@ -234,6 +234,42 @@ def test_params_replace_default_values_with_none(provider_config):
     assert openai.params["base_url"] is None
 
 
+def test_gpt_6_luna_uses_responses_api_for_function_tools(provider_config):
+    """Use Responses API for GPT-6-Luna even without reasoning configuration."""
+    model_config = provider_config.models.pop("test_model_name")
+    provider_config.models["gpt-6-luna"] = model_config
+
+    llm = OpenAI(model="gpt-6-luna", provider_config=provider_config).load()
+    payload = llm._get_request_payload(
+        "hello",
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "lookup",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ],
+    )
+
+    assert llm.use_responses_api is True
+    assert "input" in payload
+    assert "messages" not in payload
+    assert payload["tools"][0]["name"] == "lookup"
+
+
+def test_responses_default_and_chat_completions_opt_out(provider_config):
+    """Select Responses for any OpenAI model unless explicitly disabled."""
+    assert (
+        OpenAI(model="gpt-4o", provider_config=provider_config).load().use_responses_api
+    )
+    provider_config.models["test_model_name"].options = {"use_responses_api": False}
+    llm = OpenAI(model="test_model_name", provider_config=provider_config).load()
+    assert llm.use_responses_api is False
+    assert "messages" in llm._get_request_payload("hello")
+
+
 @pytest.mark.parametrize("model_name", ["gpt-4o", "gpt-5-mini", "o1-mini"])
 def test_models_do_not_get_sampling_defaults_without_reasoning_config(
     provider_config, model_name

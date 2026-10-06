@@ -60,6 +60,7 @@ AzureOpenAIParameters = {
     ProviderParameter("http_async_client", httpx.AsyncClient),
     ProviderParameter("reasoning", dict),
     ProviderParameter("verbosity", str),
+    ProviderParameter("use_responses_api", bool),
 }
 
 OpenAIParameters = {
@@ -79,6 +80,7 @@ OpenAIParameters = {
     ProviderParameter("http_async_client", httpx.AsyncClient),
     ProviderParameter("reasoning", dict),
     ProviderParameter("verbosity", str),
+    ProviderParameter("use_responses_api", bool),
 }
 
 RHOAIVLLMParameters = {

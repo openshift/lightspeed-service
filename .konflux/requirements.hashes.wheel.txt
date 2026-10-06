@@ -144,8 +144,6 @@ langchain-core==1.4.6 \
     --hash=sha256:9c77dcf0dcebedb20d7629175329f3187692fbbcc4869ee0401044a5baeab7d4
 langchain-google-genai==4.2.5 \
     --hash=sha256:59dd0bdc9ad42040b48b2676438c2d144565dee326be8106fdc2af8d14717d50
-langchain-openai==0.3.35 \
-    --hash=sha256:0077e8349200951922eaf1daf979e227ba8ee905aae90f9220e90b3516ca7b56
 langchain-protocol==0.0.16 \
     --hash=sha256:76024edc5684172fa039bf6acdd6f5821beecefdcf839f0544bfcadacf63faa1
 langgraph==1.2.4 \

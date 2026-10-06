@@ -1,17 +1,20 @@
 """Unit tests for Azure OpenAI provider."""
 
+import hashlib
 import time
 from unittest.mock import patch
 
 import httpx
 import pytest
 from azure.core.credentials import AccessToken
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import AnyHttpUrl
 
 from ols.app.models.config import AzureOpenAIConfig, ProviderConfig
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.azure_openai import (
+    AZURE_AI_TOKEN_SCOPE,
+    TOKEN_CACHES,
     TOKEN_EXPIRATION_LEEWAY,
     AzureOpenAI,
     TokenCache,
@@ -196,7 +199,7 @@ def test_basic_interface(provider_config):
         model="uber-model", params={}, provider_config=provider_config
     )
     llm = azure_openai.load()
-    assert isinstance(llm, AzureChatOpenAI)
+    assert isinstance(llm, ChatOpenAI)
     assert azure_openai.default_params
 
     # parameter presence test
@@ -230,7 +233,7 @@ def test_load_uses_configured_model_temperature(
     """Send temperature only when configured for the Azure OpenAI model."""
     provider_config.models["test_model_name"].parameters.temperature = temperature
     llm = AzureOpenAI(model="test_model_name", provider_config=provider_config).load()
-    assert isinstance(llm, AzureChatOpenAI)
+    assert isinstance(llm, ChatOpenAI)
 
     if temperature is None:
         assert "temperature" not in llm._default_params
@@ -246,7 +249,7 @@ def test_credentials_in_directory_handling(provider_config_credentials_directory
         provider_config=provider_config_credentials_directory,
     )
     llm = azure_openai.load()
-    assert isinstance(llm, AzureChatOpenAI)
+    assert isinstance(llm, ChatOpenAI)
     assert azure_openai.default_params
 
     assert azure_openai.default_params["api_key"] == "secret_key"
@@ -260,7 +263,7 @@ def test_loading_provider_specific_parameters(provider_config_with_specific_para
         provider_config=provider_config_with_specific_parameters,
     )
     llm = azure_openai.load()
-    assert isinstance(llm, AzureChatOpenAI)
+    assert isinstance(llm, ChatOpenAI)
     assert azure_openai.default_params
 
     # parameter presence test
@@ -301,7 +304,7 @@ def test_params_handling(provider_config):
         model="uber-model", params=params, provider_config=provider_config
     )
     llm = azure_openai.load()
-    assert isinstance(llm, AzureChatOpenAI)
+    assert isinstance(llm, ChatOpenAI)
     assert azure_openai.default_params
     assert azure_openai.params
 
@@ -330,7 +333,9 @@ def test_api_version_can_not_be_none(provider_config):
     }
 
     azure_openai = AzureOpenAI(
-        model="uber-model", params=params, provider_config=provider_config
+        model="uber-model",
+        params={**params, "use_responses_api": False},
+        provider_config=provider_config,
     )
 
     # api_version is required parameter and can not be None
@@ -355,7 +360,7 @@ def test_none_params_handling(provider_config):
         model="uber-model", params=params, provider_config=provider_config
     )
     llm = azure_openai.load()
-    assert isinstance(llm, AzureChatOpenAI)
+    assert isinstance(llm, ChatOpenAI)
     assert azure_openai.default_params
     assert azure_openai.params
 
@@ -480,7 +485,7 @@ def test_retrieve_access_token_on_error(
             "ols.src.llms.providers.azure_openai.ClientSecretCredential",
             new=MockedCredentialThrowingException,
         ),
-        patch("ols.src.llms.providers.azure_openai.TOKEN_CACHE.expires_on", new=0),
+        patch("ols.src.llms.providers.azure_openai.TOKEN_CACHES", new={}),
         pytest.raises(
             LLMConfigurationError,
             match="Failed to acquire Azure Entra ID access token",
@@ -491,6 +496,64 @@ def test_retrieve_access_token_on_error(
             params={},
             provider_config=provider_config_access_token_related_parameters,
         )
+
+
+def test_gpt_6_luna_uses_azure_ai_token_scope(
+    provider_config_access_token_related_parameters,
+):
+    """Use the Azure AI resource scope for the Responses API endpoint."""
+    provider_config = provider_config_access_token_related_parameters
+    provider_config.models["gpt-6-luna"] = provider_config.models.pop("test_model_name")
+    scopes = []
+
+    class CredentialWithScope:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_token(self, scope):
+            scopes.append(scope)
+            return MockedAccessToken()
+
+    with (
+        patch(
+            "ols.src.llms.providers.azure_openai.ClientSecretCredential",
+            new=CredentialWithScope,
+        ),
+        patch("ols.src.llms.providers.azure_openai.TOKEN_CACHES", new={}),
+    ):
+        provider = AzureOpenAI(model="gpt-6-luna", provider_config=provider_config)
+        default_params = provider.params
+
+    assert default_params["azure_ad_token"] == "this-is-access-token"  # noqa: S105
+    assert scopes == ["https://ai.azure.com/.default"]
+
+
+def test_chat_completions_uses_cognitive_services_scope(
+    provider_config_access_token_related_parameters,
+):
+    """Request the legacy token scope for a model opting out of Responses."""
+    provider_config = provider_config_access_token_related_parameters
+    provider_config.models["test_model_name"].options = {"use_responses_api": False}
+    scopes = []
+
+    class CredentialWithScope:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_token(self, scope):
+            scopes.append(scope)
+            return MockedAccessToken()
+
+    with (
+        patch(
+            "ols.src.llms.providers.azure_openai.ClientSecretCredential",
+            CredentialWithScope,
+        ),
+        patch.dict(TOKEN_CACHES, {}, clear=True),
+    ):
+        AzureOpenAI(model="test_model_name", provider_config=provider_config)
+
+    assert scopes == ["https://cognitiveservices.azure.com/.default"]
 
 
 def test_token_is_expired():
@@ -534,7 +597,18 @@ def test_token_is_not_reused(provider_config):
             "ols.src.llms.providers.azure_openai.AzureOpenAI.retrieve_access_token",
             return_value=new_access_token,
         ),
-        patch("ols.src.llms.providers.azure_openai.TOKEN_CACHE", new=token_cache),
+        patch.dict(
+            TOKEN_CACHES,
+            {
+                (
+                    "",
+                    "",
+                    hashlib.sha256(b"").hexdigest(),
+                    AZURE_AI_TOKEN_SCOPE,
+                ): token_cache
+            },
+            clear=True,
+        ),
     ):
         assert token_cache.access_token == "expired_token"  # noqa: S105
 
@@ -555,7 +629,11 @@ def test_token_is_reused(provider_config):
         expires_on=int(time.time()) + 100,  # non-expired value
     )
 
-    with (patch("ols.src.llms.providers.azure_openai.TOKEN_CACHE", new=token_cache),):
+    with patch.dict(
+        TOKEN_CACHES,
+        {("", "", hashlib.sha256(b"").hexdigest(), AZURE_AI_TOKEN_SCOPE): token_cache},
+        clear=True,
+    ):
         assert token_cache.access_token == "non_expired_token"  # noqa: S105
 
         access_token = AzureOpenAI(
@@ -566,6 +644,90 @@ def test_token_is_reused(provider_config):
 
         assert access_token == "non_expired_token"  # noqa: S105
         assert access_token == token_cache.access_token  # cache is updated
+
+
+def test_token_cache_isolated_by_credentials_and_scope(provider_config):
+    """Reuse tokens only for the same Azure identity and API scope."""
+    tokens = []
+
+    def retrieve(self, azure_config):
+        tokens.append(azure_config.client_secret)
+        return AccessToken(
+            token=azure_config.client_secret, expires_on=int(time.time()) + 3600
+        )
+
+    first = AzureOpenAIConfig(
+        url=AnyHttpUrl("https://example.com"),
+        deployment_name="model",
+        tenant_id="tenant",
+        client_id="client",
+        client_secret="first",  # noqa: S106
+    )
+    second = first.model_copy(update={"client_secret": "second"})
+    with (
+        patch.dict(TOKEN_CACHES, {}, clear=True),
+        patch.object(AzureOpenAI, "retrieve_access_token", retrieve),
+    ):
+        responses = AzureOpenAI(model="model", provider_config=provider_config)
+        completions = AzureOpenAI(
+            model="model",
+            provider_config=provider_config,
+            params={"use_responses_api": False},
+        )
+        assert responses.resolve_access_token(first) == "first"
+        assert responses.resolve_access_token(first) == "first"
+        assert responses.resolve_access_token(second) == "second"
+        assert completions.resolve_access_token(first) == "first"
+        assert tokens == ["first", "second", "first"]
+
+
+def test_chat_completions_opt_out(provider_config):
+    """Allow deployments without the Azure v1 Responses API to use the legacy endpoint."""
+    provider_config.models["test_model_name"].options = {"use_responses_api": False}
+    llm = AzureOpenAI(
+        model="test_model_name",
+        provider_config=provider_config,
+    ).load()
+    assert isinstance(llm, AzureChatOpenAI)
+    assert llm.use_responses_api is False
+
+
+@pytest.mark.parametrize(
+    "reasoning_config",
+    [None, {"effort": "high"}, {"effort": "none"}],
+)
+def test_gpt_6_luna_uses_responses_api_for_function_tools(
+    provider_config, reasoning_config
+):
+    """Use Responses API for GPT-6-Luna, including its default reasoning mode."""
+    model_config = provider_config.models.pop("test_model_name")
+    model_config.parameters.reasoning_config = reasoning_config
+    provider_config.models["gpt-6-luna"] = model_config
+
+    provider_config.url = AnyHttpUrl("https://resource.openai.azure.com")
+    llm = AzureOpenAI(model="gpt-6-luna", provider_config=provider_config).load()
+    payload = llm._get_request_payload(
+        "hello",
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "lookup",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ],
+    )
+
+    assert isinstance(llm, ChatOpenAI)
+    assert llm.use_responses_api is True
+    assert str(llm.root_client.base_url) == (
+        "https://resource.openai.azure.com/openai/v1/"
+    )
+    assert llm.model_name == "test_deployment_name"
+    assert "input" in payload
+    assert "messages" not in payload
+    assert payload["tools"][0]["name"] == "lookup"
 
 
 @pytest.mark.parametrize("model_name", ["gpt-4o", "gpt-5-mini", "o1-mini"])

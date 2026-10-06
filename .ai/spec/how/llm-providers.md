@@ -28,8 +28,8 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 
 | File | Class | Decorator key | LangChain class | Notes |
 |---|---|---|---|---|
-| `openai.py` | `OpenAI` | `"openai"` | `ChatOpenAI` | Reasoning via `reasoning_config` |
-| `azure_openai.py` | `AzureOpenAI` | `"azure_openai"` | `AzureChatOpenAI` | Entra ID token caching; reasoning via `reasoning_config` |
+| `openai.py` | `OpenAI` | `"openai"` | `ChatOpenAI` | Responses API by default; `use_responses_api: false` opts out |
+| `azure_openai.py` | `AzureOpenAI` | `"azure_openai"` | `AzureChatOpenAI` / `ChatOpenAI` | Azure `/openai/v1/` Responses API by default; legacy AzureChatOpenAI opt-out |
 | `watsonx.py` | `Watsonx` | `"watsonx"` | `ChatWatsonx` | IBM-specific parameter names; see below |
 | `rhoai_vllm.py` | `RHOAIVLLM` | `"rhoai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. Uses `ChatVLLMReasoning` when `reasoning_config.enabled` |
 | `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. Uses `ChatVLLMReasoning` when `reasoning_config.enabled` |
@@ -149,7 +149,7 @@ Each provider follows the same pattern: read generic fields from `ProviderConfig
 
 ### Azure Entra ID token caching
 
-`azure_openai.py` uses a module-level `TOKEN_CACHE` singleton (`TokenCache` dataclass). When credentials (API key) are not set, it fetches an Entra ID token via `ClientSecretCredential.get_token()` and caches it. The cache applies a 30-second leeway (`TOKEN_EXPIRATION_LEEWAY`) before the actual expiry to avoid using nearly-expired tokens. The cache is per-process (one per Uvicorn worker). The cache key is implicit -- there is a single `TOKEN_CACHE` instance, so it assumes one Azure provider per process.
+`azure_openai.py` caches Entra ID tokens per process using a key composed of tenant ID, client ID, hashed client secret and API scope. The v1 Responses endpoint uses `https://ai.azure.com/.default`; legacy Chat Completions uses `https://cognitiveservices.azure.com/.default`. The cache applies a 30-second leeway (`TOKEN_EXPIRATION_LEEWAY`) before token expiry.
 
 ### WatsonX parameter name translation
 

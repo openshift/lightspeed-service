@@ -103,7 +103,7 @@ Parameters are applied in this order (later overrides earlier):
 provider must not introduce a temperature default.
 `temperature_supported` is removed; existing configurations using it are rejected.
 
-Unknown parameters (not in the provider's `ProviderParameter` set) are silently filtered out before `load()` is called.
+Unknown parameters (not in the provider's `ProviderParameter` set) are silently filtered out before `load()` is called. OpenAI and Azure OpenAI default to the Responses API; set `models[].options.use_responses_api: false` (or pass it in caller parameters) to use Chat Completions when an endpoint does not support Responses. Azure's v1 route uses `ChatOpenAI` because `AzureChatOpenAI` targets the versioned deployment endpoint.
 
 ## Testing a New Provider
 
@@ -120,8 +120,8 @@ Unknown parameters (not in the provider's `ProviderParameter` set) are silently 
 
 | Constant | File | LangChain class |
 |---|---|---|
-| `PROVIDER_OPENAI` | `openai.py` | `ChatOpenAI` |
-| `PROVIDER_AZURE_OPENAI` | `azure_openai.py` | `AzureChatOpenAI` |
+| `PROVIDER_OPENAI` | `openai.py` | `ChatOpenAI` (Responses API by default; Chat Completions opt-out) |
+| `PROVIDER_AZURE_OPENAI` | `azure_openai.py` | `ChatOpenAI` with Azure `/openai/v1/` Responses API by default; `AzureChatOpenAI` for Chat Completions opt-out |
 | `PROVIDER_RHOAI_VLLM` | `rhoai_vllm.py` | `ChatOpenAI` (OpenAI-compatible) |
 | `PROVIDER_RHELAI_VLLM` | `rhelai_vllm.py` | `ChatOpenAI` (OpenAI-compatible) |
 | `PROVIDER_WATSONX` | `watsonx.py` | `WatsonxLLM` |

@@ -1,5 +1,6 @@
 """Azure OpenAI provider implementation."""
 
+import hashlib
 import logging
 import time
 from dataclasses import dataclass
@@ -8,10 +9,10 @@ from typing import Any, Optional
 from azure.core.credentials import AccessToken
 from azure.identity import ClientSecretCredential
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
-from ols import constants
-from ols.app.models.config import AzureOpenAIConfig, ModelParameters
+from ols import config, constants
+from ols.app.models.config import AzureOpenAIConfig, ModelParameters, ProviderConfig
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
@@ -21,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 TOKEN_EXPIRATION_LEEWAY = 30  # seconds
+COGNITIVE_SERVICES_TOKEN_SCOPE = (
+    "https://cognitiveservices.azure.com/.default"  # noqa: S105
+)
+AZURE_AI_TOKEN_SCOPE = "https://ai.azure.com/.default"  # noqa: S105
 
 
 @dataclass
@@ -40,7 +45,7 @@ class TokenCache:
         self.expires_on = expires_on - TOKEN_EXPIRATION_LEEWAY
 
 
-TOKEN_CACHE = TokenCache()  # per-process/worker cache
+TOKEN_CACHES: dict[tuple[str, str, str, str], TokenCache] = {}
 
 
 @register_llm_provider_as(constants.PROVIDER_AZURE_OPENAI)
@@ -49,6 +54,25 @@ class AzureOpenAI(LLMProvider):
 
     url: str = "https://thiswillalwaysfail.openai.azure.com"
     credentials: Optional[str] = None
+
+    def __init__(
+        self,
+        model: str,
+        provider_config: ProviderConfig,
+        params: Optional[dict] = None,
+    ) -> None:
+        """Select the authentication scope before resolving default parameters."""
+        model_config = provider_config.models.get(model)
+        model_options = model_config.options or {} if model_config else {}
+        self._use_responses_api = config.dev_config.llm_params.get(
+            "use_responses_api",
+            (params or {}).get(
+                "use_responses_api", model_options.get("use_responses_api", True)
+            ),
+        )
+        if not isinstance(self._use_responses_api, bool):
+            raise LLMConfigurationError("use_responses_api must be a boolean")
+        super().__init__(model, provider_config, params)
 
     @property
     def default_params(self) -> dict[str, Any]:
@@ -75,6 +99,7 @@ class AzureOpenAI(LLMProvider):
             "cache": None,
             "max_completion_tokens": 4096,
             "verbose": False,
+            "use_responses_api": self._use_responses_api,
             "http_client": self._construct_httpx_client(False),
             "http_async_client": self._construct_httpx_client(True),
         }
@@ -108,18 +133,51 @@ class AzureOpenAI(LLMProvider):
         return default_parameters
 
     def load(self) -> BaseChatModel:
-        """Load LLM."""
-        return AzureChatOpenAI(**self.params)
+        """Load LLM using Responses API unless Chat Completions is requested."""
+        params = dict(self.params)
+        if params.get("use_responses_api"):
+            azure_endpoint = params.pop("azure_endpoint").rstrip("/")
+            params.pop("api_version", None)
+            deployment_name = params.pop("deployment_name")
+            api_key = params.pop("api_key", None)
+            azure_ad_token = params.pop("azure_ad_token", None)
+            params["base_url"] = f"{azure_endpoint}/openai/v1/"
+            params["model"] = deployment_name
+            params["openai_api_key"] = (
+                api_key if api_key is not None else azure_ad_token
+            )
+            return ChatOpenAI(**params)
+        return AzureChatOpenAI(**params)
 
     def resolve_access_token(self, azure_config: AzureOpenAIConfig) -> str:
         """Retrieve and cache Azure OpenAI access token."""
-        if TOKEN_CACHE.is_expired():
+        if azure_config is None:
+            raise LLMConfigurationError(
+                "Credentials for API token is not set and "
+                "Azure-specific parameters are not provided."
+            )
+        scope = (
+            AZURE_AI_TOKEN_SCOPE
+            if self._use_responses_api
+            else COGNITIVE_SERVICES_TOKEN_SCOPE
+        )
+        secret_hash = hashlib.sha256(
+            (azure_config.client_secret or "").encode()
+        ).hexdigest()
+        cache_key = (
+            azure_config.tenant_id or "",
+            azure_config.client_id or "",
+            secret_hash,
+            scope,
+        )
+        cache = TOKEN_CACHES.setdefault(cache_key, TokenCache())
+        if cache.is_expired():
             logger.info(
                 "Cached AD token has expired (or missing) - generating a new one"
             )
             access_token = self.retrieve_access_token(azure_config)
-            TOKEN_CACHE.update_token(access_token.token, access_token.expires_on)
-        return TOKEN_CACHE.access_token
+            cache.update_token(access_token.token, access_token.expires_on)
+        return cache.access_token
 
     def retrieve_access_token(self, azure_config: AzureOpenAIConfig) -> AccessToken:
         """Retrieve access token to call Azure OpenAI."""
@@ -142,7 +200,12 @@ class AzureOpenAI(LLMProvider):
                 azure_config.client_id,
                 azure_config.client_secret,
             )
-            return credential.get_token("https://cognitiveservices.azure.com/.default")
+            scope = (
+                AZURE_AI_TOKEN_SCOPE
+                if self._use_responses_api
+                else COGNITIVE_SERVICES_TOKEN_SCOPE
+            )
+            return credential.get_token(scope)
         except Exception as e:
             logger.error("Failed to acquire Azure Entra ID access token: %s", e)
             raise LLMConfigurationError(

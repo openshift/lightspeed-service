@@ -95,6 +95,10 @@ function run_suites() {
   (( rc = rc || $? ))
   run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
+  run_suite "openai_gpt6_tool_calling" "gpt6_tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
+  (( rc = rc || $? ))
+  run_suite "azure_openai_gpt6_tool_calling" "gpt6_tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
+  (( rc = rc || $? ))
   # run_suite "google_vertex_tool_calling" "tool_calling" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "tool_calling"
   # (( rc = rc || $? ))
   run_suite "google_vertex_anthropic_tool_calling" "tool_calling" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "tool_calling"

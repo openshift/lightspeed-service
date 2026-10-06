@@ -31,6 +31,7 @@ hatchling==1.32.4
     #   langchain-anthropic
     #   langchain-aws
     #   langchain-google-vertexai
+    #   langchain-openai
     #   langgraph-sdk
     #   llama-index-embeddings-huggingface
     #   llama-index-vector-stores-faiss

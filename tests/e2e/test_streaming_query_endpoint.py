@@ -605,6 +605,7 @@ def test_tool_calling_text() -> None:
 
 
 @pytest.mark.tool_calling
+@pytest.mark.gpt6_tool_calling
 def test_tool_calling_events() -> None:
     """Check the endpoint for tool calling in event format."""
     with metrics_utils.RestAPICallCounterChecker(

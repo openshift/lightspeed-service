@@ -8,6 +8,7 @@ from langchain_openai import ChatOpenAI
 
 from ols import constants
 from ols.app.models.config import ModelParameters
+from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 from ols.src.llms.providers.utils import populate_openai_reasoning
@@ -34,6 +35,12 @@ class OpenAI(LLMProvider):
             if openai_config.api_key is not None:
                 self.credentials = openai_config.api_key
 
+        model_config = self.provider_config.models.get(self.model)
+        model_options = model_config.options or {} if model_config else {}
+        use_responses_api = model_options.get("use_responses_api", True)
+        if not isinstance(use_responses_api, bool):
+            raise LLMConfigurationError("use_responses_api must be a boolean")
+
         default_parameters: dict[str, Any] = {
             "base_url": self.url,
             "openai_api_key": self.credentials,
@@ -42,15 +49,15 @@ class OpenAI(LLMProvider):
             "cache": None,
             "max_completion_tokens": 4096,
             "verbose": False,
+            "use_responses_api": use_responses_api,
             "http_client": self._construct_httpx_client(False),
             "http_async_client": self._construct_httpx_client(True),
         }
 
-        model_config = self.provider_config.models.get(self.model)
         params = getattr(model_config, "parameters", None) or ModelParameters()
         populate_openai_reasoning(params, default_parameters)
         return default_parameters
 
     def load(self) -> BaseChatModel:
-        """Load LLM."""
+        """Load LLM with the configured API selection."""
         return ChatOpenAI(**self.params)
