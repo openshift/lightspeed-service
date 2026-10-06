@@ -20,18 +20,22 @@ flit-core==4.1.0
     #   pyproject-hooks
     #   pyproject-metadata
 hatch-vcs==0.5.0
-    # via virtualenv
+    # via
+    #   fsspec
+    #   virtualenv
 hatchling==1.32.4
     # via
     #   banks
+    #   fsspec
     #   hatch-vcs
     #   langchain-anthropic
     #   langchain-aws
     #   langchain-google-vertexai
+    #   langgraph-sdk
     #   llama-index-embeddings-huggingface
     #   llama-index-vector-stores-faiss
     #   virtualenv
-meson-python==0.22.0
+meson-python==0.22.1
     # via numpy
 meson==1.12.1
     # via meson-python
