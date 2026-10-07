@@ -762,11 +762,11 @@ def test_get_max_iterations_troubleshooting_mode_no_override():
 
 def test_get_max_iterations_config_override_above_default():
     """Test _get_max_iterations uses config value when it exceeds the mode default."""
-    config.ols_config.max_iterations = 20
+    config.ols_config.max_iterations = 40
     try:
         for mode in (QueryMode.ASK, QueryMode.TROUBLESHOOTING):
             summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=mode)
-            assert summarizer._get_max_iterations() == 20
+            assert summarizer._get_max_iterations() == 40
     finally:
         config.ols_config.max_iterations = None
 
