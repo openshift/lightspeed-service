@@ -29,6 +29,7 @@ from ols.src.tools.tool_result_inspection import (
     chunk_text,
 )
 from ols.src.tools.tools import (
+    INTERNAL_APPROVAL_RESULT_KEY,
     TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE,
     ToolResultBudgetExceededError,
     _wrap_tool_output,
@@ -967,6 +968,8 @@ class LLMExecutionAgent:
             if isinstance(audit_message.content, str)
             else json.dumps(audit_message.content, ensure_ascii=False)
         )
+        if audit_message.additional_kwargs.get(INTERNAL_APPROVAL_RESULT_KEY) is True:
+            return None
         if self._tool_result_classifier is None:
             self._audit_tool_result(audit_message, audit_span, audit_content)
             return None

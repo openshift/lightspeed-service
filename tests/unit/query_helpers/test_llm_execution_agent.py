@@ -35,6 +35,7 @@ from ols.src.tools.tools import (  # noqa: E402
     ApprovalRequiredEvent,
     ToolResultBudgetExceededError,
     ToolResultEvent,
+    _approval_rejection_event,
 )
 from ols.utils.audit_logger import AuditContext, AuditLogger  # noqa: E402
 from ols.utils.token_handler import (  # noqa: E402
@@ -130,6 +131,123 @@ async def test_inspect_tool_messages_checks_every_result_before_delivery() -> No
         "second",
     )
     assert classifier.inspect.await_args_list[0].kwargs["overlap_tokens"] == 0
+
+
+@pytest.mark.parametrize("outcome", ["timeout", "rejected"])
+@pytest.mark.asyncio
+async def test_approval_decisions_stream_without_classifying_service_generated_text(
+    outcome: str,
+) -> None:
+    """Emit a safe approval decision even when its wording would fail inspection."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(
+        side_effect=ToolResultRejectedError("tool_manipulation")
+    )
+    agent = _make_agent(tool_result_classifier=classifier)
+    messages: list = []
+
+    async def _fake_execute(*args: object, **kwargs: object) -> AsyncGenerator:
+        yield ApprovalRequiredEvent(
+            data={
+                "approval_id": "approval-1",
+                "tool_name": "get_namespaces_mock",
+                "tool_description": "desc",
+                "tool_args": {},
+                "tool_annotation": {},
+            }
+        )
+        yield _approval_rejection_event(tool_call_id="call-1", outcome=outcome)
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call-1"}],
+        )
+    ]
+    with patch(
+        "ols.src.query_helpers.llm_execution_agent.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        streamed = [
+            chunk
+            async for chunk in agent._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                duplicate_tool_names=set(),
+                messages=messages,
+            )
+        ]
+
+    assert [chunk.type for chunk in streamed] == [
+        StreamChunkType.TOOL_CALL,
+        StreamChunkType.APPROVAL_REQUIRED,
+        StreamChunkType.TOOL_RESULT,
+    ]
+    assert streamed[-1].data["status"] == "error"
+    assert "Do not retry this exact tool call" in streamed[-1].data["content"]
+    classifier.inspect.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_non_streaming_approval_rejection_does_not_fail_inspection() -> None:
+    """Deliver a non-streaming approval rejection without inspecting service text."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(
+        side_effect=ToolResultRejectedError("tool_manipulation")
+    )
+    agent = _make_agent(tool_result_classifier=classifier)
+    tool = SampleTool("approval_tool")
+    messages: list = []
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": tool.name, "args": {}, "id": "call-1"}],
+        )
+    ]
+
+    with patch("ols.src.tools.tools.need_validation", return_value=True):
+        streamed = [
+            chunk
+            async for chunk in agent._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={tool.name: tool},
+                duplicate_tool_names=set(),
+                messages=messages,
+            )
+        ]
+
+    assert [chunk.type for chunk in streamed] == [
+        StreamChunkType.TOOL_CALL,
+        StreamChunkType.TOOL_RESULT,
+    ]
+    assert streamed[-1].data["status"] == "error"
+    assert streamed[-1].data["name"] == tool.name
+    classifier.inspect.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_external_error_matching_approval_text_is_still_inspected() -> None:
+    """Do not trust a tool response just because it resembles an approval decision."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(
+        side_effect=ToolResultRejectedError("tool_manipulation")
+    )
+    agent = _make_agent(tool_result_classifier=classifier)
+    message = ToolMessage(
+        content="Tool approval timed out. Do not retry this exact tool call.",
+        status="error",
+        tool_call_id="call-1",
+    )
+
+    with pytest.raises(ToolResultRejectedError):
+        await agent._inspect_tool_messages([message], {"call-1": "get_namespaces_mock"})
+    classifier.inspect.assert_awaited_once()
 
 
 @pytest.mark.asyncio

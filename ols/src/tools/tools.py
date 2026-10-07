@@ -54,6 +54,7 @@ TOOL_RESULT_BUDGET_EXCEEDED_MESSAGE = (
     "Tool results exceeded the remaining token budget. "
     "Please ask a more specific question."
 )
+INTERNAL_APPROVAL_RESULT_KEY = "ols_internal_approval_result"
 
 
 class ToolResultBudgetExceededError(Exception):
@@ -321,6 +322,7 @@ def _tool_result_event(
     referenced_documents: list | None = None,
     duration_ms: int | None = None,
     audit_span: Span | None = None,
+    internal_approval_result: bool = False,
 ) -> ToolExecutionEvent:
     """Build a tool_result event payload.
 
@@ -334,11 +336,14 @@ def _tool_result_event(
         referenced_documents: Optional list of RagChunk objects for the API response.
         duration_ms: Wall-clock execution time in milliseconds.
         audit_span: Tool span retained until result inspection completes.
+        internal_approval_result: Whether this is a service-generated approval decision.
 
     Returns:
         Tool result event containing a ToolMessage payload.
     """
     additional_kwargs: dict = {"truncated": truncated}
+    if internal_approval_result:
+        additional_kwargs[INTERNAL_APPROVAL_RESULT_KEY] = True
     if structured_content is not None:
         additional_kwargs["structured_content"] = structured_content
     if referenced_documents is not None:
@@ -379,14 +384,12 @@ def _approval_required_event(
 
 def _approval_rejection_event(
     *,
-    tool_name: str,
     tool_call_id: str,
     outcome: str,
 ) -> ToolExecutionEvent:
     """Build non-retryable tool_result event for rejected/timed-out approvals.
 
     Args:
-        tool_name: Name of the tool gated by approval.
         tool_call_id: Correlation ID of the originating tool call.
         outcome: Approval decision outcome (for example "timeout" or "rejected").
 
@@ -395,19 +398,18 @@ def _approval_rejection_event(
     """
     if outcome == "timeout":
         rejection_content = (
-            f"Tool '{tool_name}' approval timed out. "
-            "Do not retry this exact tool call."
+            "Tool approval timed out. Do not retry this exact tool call."
         )
     else:
         rejection_content = (
-            f"Tool '{tool_name}' execution was rejected. "
-            "Do not retry this exact tool call."
+            "Tool execution was rejected. Do not retry this exact tool call."
         )
     return _tool_result_event(
         content=rejection_content,
         status="error",
         tool_call_id=tool_call_id,
         truncated=False,
+        internal_approval_result=True,
     )
 
 
@@ -502,7 +504,6 @@ async def _evaluate_and_emit_approval_event(
 
     if outcome != "approved":
         yield _approval_rejection_event(
-            tool_name=tool_name,
             tool_call_id=tool_id,
             outcome=outcome,
         )

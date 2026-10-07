@@ -621,6 +621,11 @@ async def test_execute_tool_calls_stream_approval_rejection_unmarked(
     assert events[1].data.status == "error"
     assert "execution was rejected" in events[1].data.content
     assert "Do not retry this exact tool call." in events[1].data.content
+    assert "rejected_tool" not in events[1].data.content
+    assert (
+        events[1].data.additional_kwargs[tools_module.INTERNAL_APPROVAL_RESULT_KEY]
+        is True
+    )
     assert events[1].data.name is None
 
 
@@ -656,6 +661,11 @@ async def test_execute_tool_calls_stream_timeout_returns_timeout_result(
     assert events[1].event == "tool_result"
     assert events[1].data.status == "error"
     assert "approval timed out" in events[1].data.content
+    assert "timeout_tool" not in events[1].data.content
+    assert (
+        events[1].data.additional_kwargs[tools_module.INTERNAL_APPROVAL_RESULT_KEY]
+        is True
+    )
 
 
 @pytest.mark.asyncio
