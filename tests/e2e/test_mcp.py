@@ -87,7 +87,7 @@ def _query(
         json=body,
         timeout=LLM_REST_API_TIMEOUT,
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text[:500]
     return response.json()
 
 
@@ -129,7 +129,7 @@ def test_discovery_endpoint_lists_client_auth_servers() -> None:
     response = pytest.client.get(
         "/v1/mcp/client-auth-headers", timeout=LLM_REST_API_TIMEOUT
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text[:500]
     data = response.json()
 
     server_names = [s["server_name"] for s in data["servers"]]

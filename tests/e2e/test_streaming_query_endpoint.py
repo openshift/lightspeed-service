@@ -65,7 +65,7 @@ def test_invalid_question():
             },
         )
 
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
         response_lower = response.text.lower()
@@ -87,7 +87,7 @@ def test_invalid_question_without_conversation_id():
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
         events = parse_streaming_response_to_events(response.text)
 
@@ -107,7 +107,9 @@ def test_query_call_without_payload():
         response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
         # the actual response might differ when new Pydantic version
@@ -127,7 +129,9 @@ def test_query_call_with_improper_payload():
             json={"parameter": "this-is-unknown-parameter"},
             timeout=test_api.NON_LLM_REST_API_TIMEOUT,
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
         # the actual response might differ when new Pydantic version will be used
@@ -146,7 +150,7 @@ def test_valid_question_improper_conversation_id() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
         )
-        assert response.status_code == requests.codes.bad_request
+        assert response.status_code == requests.codes.bad_request, response.text[:500]
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
         json_response = response.json()
@@ -178,7 +182,9 @@ def test_too_long_question() -> None:
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         response_utils.check_content_type(response, "application/json")
         json_response = response.json()
@@ -201,7 +207,7 @@ def test_valid_question() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": cid, "query": "what is kubernetes?"},
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
@@ -227,7 +233,7 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
         events = parse_streaming_response_to_events(response.text)
@@ -255,7 +261,7 @@ def test_valid_question_tokens_counter() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={"query": "what is kubernetes?"},
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
 
@@ -275,7 +281,7 @@ def test_invalid_question_tokens_counter() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={"query": "how to make burger?"},
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
 
@@ -302,7 +308,9 @@ def test_token_counters_for_query_call_without_payload() -> None:
         response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
 
@@ -330,7 +338,9 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={"parameter": "this-is-not-proper-question-my-friend"},
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
 
@@ -349,7 +359,7 @@ def test_rag_question() -> None:
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
         events = parse_streaming_response_to_events(response.text)
@@ -377,7 +387,7 @@ def test_query_filter() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={"query": query},
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
         # values to be filtered and replaced are defined in:
@@ -441,7 +451,7 @@ def test_conversation_history() -> None:
         )
 
         scenario_fail_msg = "Second call to LLM with conversation history has failed"
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(
             response, constants.MEDIA_TYPE_JSON, scenario_fail_msg
         )
@@ -467,7 +477,9 @@ def test_query_with_provider_but_not_model() -> None:
                 "provider": "openai",
             },
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
         json_response = response.json()
@@ -495,7 +507,9 @@ def test_query_with_model_but_not_provider() -> None:
                 "model": "model-name",
             },
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
         json_response = response.json()
@@ -526,7 +540,9 @@ def test_query_with_unknown_provider() -> None:
                 "model": model,
             },
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
         json_response = response.json()
@@ -562,7 +578,9 @@ def test_query_with_unknown_model() -> None:
                 "model": "bar",
             },
         )
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
         json_response = response.json()
@@ -590,7 +608,7 @@ def test_tool_calling_text() -> None:
                 "media_type": constants.MEDIA_TYPE_TEXT,
             },
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
@@ -620,7 +638,7 @@ def test_tool_calling_events() -> None:
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
         events = parse_streaming_response_to_events(response.text)

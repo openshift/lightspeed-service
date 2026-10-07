@@ -33,7 +33,7 @@ def test_valid_question_with_empty_attachment_list() -> None:
         )
 
         # HTTP OK should be returned
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
 
         response_utils.check_content_type(response, "application/json")
 
@@ -63,7 +63,7 @@ def test_valid_question_with_one_attachment() -> None:
         )
 
         # HTTP OK should be returned
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
 
         response_utils.check_content_type(response, "application/json")
 
@@ -98,7 +98,7 @@ def test_valid_question_with_more_attachments() -> None:
         )
 
         # HTTP OK should be returned
-        assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok, response.text[:500]
 
         response_utils.check_content_type(response, "application/json")
 
@@ -130,7 +130,9 @@ def test_valid_question_with_wrong_attachment_format_unknown_field() -> None:
         )
 
         # the attachment should not be processed correctly
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         json_response = response.json()
         details = json_response["detail"][0]
@@ -161,7 +163,9 @@ def test_valid_question_with_wrong_attachment_format_missing_fields() -> None:
         )
 
         # the attachment should not be processed correctly
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         json_response = response.json()
         details = json_response["detail"][0]
@@ -196,7 +200,9 @@ def test_valid_question_with_wrong_attachment_format_field_of_different_type() -
         )
 
         # the attachment should not be processed correctly
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         json_response = response.json()
         details = json_response["detail"][0]
@@ -231,7 +237,9 @@ def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -
         )
 
         # the attachment should not be processed correctly
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         json_response = response.json()
         expected_response = {
@@ -270,7 +278,9 @@ def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> N
         )
 
         # the attachment should not be processed correctly
-        assert response.status_code == requests.codes.unprocessable_entity
+        assert (
+            response.status_code == requests.codes.unprocessable_entity
+        ), response.text[:500]
 
         json_response = response.json()
         expected_response = {
