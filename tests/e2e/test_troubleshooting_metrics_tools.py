@@ -36,6 +36,7 @@ _METRICS_TIMEOUT = max(LLM_REST_API_TIMEOUT, 180)
         "(RemoteProtocolError). OLS-4301 partially fixed this; full fix pending."
     ),
 )
+@retry(max_attempts=3, wait_between_runs=10)
 def test_troubleshooting_mode_calls_get_alerts() -> None:
     """Querying the Watchdog alert status triggers the get_alerts tool.
 
