@@ -138,10 +138,7 @@ class DocsSummarizer(QueryHelper):
             classifier_llm = self.llm_loader(
                 self.provider,
                 self.model,
-                {
-                    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128,
-                    GenericLLMParameters.TEMPERATURE: 0.0,
-                },
+                {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128},
             )
             if not hasattr(classifier_llm, "with_structured_output"):
                 raise ToolResultInspectionError(

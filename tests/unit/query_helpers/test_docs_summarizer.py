@@ -14,6 +14,7 @@ from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+    GenericLLMParameters,
     QueryMode,
 )
 from ols.utils.config import AppConfig
@@ -133,6 +134,35 @@ def test_tool_result_classifier_logging(caplog):
         DocsSummarizer(llm_loader=mock_llm_loader(None))
 
     assert "Tool-result classifier initialized" in caplog.text
+
+
+@pytest.mark.parametrize("model", ["m1", "gpt-6-luna"])
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+def test_tool_result_classifier_does_not_override_temperature(
+    model: str, temperature: float | None
+) -> None:
+    """Let the provider apply optional model temperature, just as for regular queries."""
+    provider_config = config.llm_config.providers["p1"]
+    provider_config.models["gpt-6-luna"] = provider_config.models["m1"]
+    loader = MagicMock(side_effect=mock_llm_loader(None))
+    with (
+        patch.object(
+            provider_config.models[model].parameters, "temperature", temperature
+        ),
+        patch.object(
+            config.ols_config.guardrails.tool_result_inspection, "enabled", True
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value={"test_server": {}},
+        ),
+    ):
+        summarizer = DocsSummarizer(llm_loader=loader, model=model)
+
+    assert loader.call_args_list[1].args[2] == {
+        GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128
+    }
+    assert summarizer._tool_result_classifier is not None
 
 
 def test_tool_result_inspection_fails_closed_without_structured_output():
