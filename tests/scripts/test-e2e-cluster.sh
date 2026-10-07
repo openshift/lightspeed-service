@@ -91,7 +91,7 @@ function run_suites() {
   # Run tool calling - Enable tool_calling
   run_suite "bedrock_openai_tool_calling" "tool_calling" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
-  run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
+  run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
   run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))

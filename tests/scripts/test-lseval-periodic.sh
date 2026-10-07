@@ -1,6 +1,6 @@
 #!/bin/bash
 # CI job: run the LSEval periodic suite only — full 797-question QnA dataset (eval/eval_data.yaml).
-# OpenAI GPT-4o-mini in-cluster; judge model is gpt-5-mini (from eval YAML).
+# OpenAI gpt-6-luna in-cluster; judge model is gpt-5-mini (from eval YAML).
 # Troubleshooting evals are not run from this entrypoint (run them separately if needed).
 #
 # When RHOAI_PROVISION=true, the script provisions RHOAI operators, GPU infra,
@@ -123,11 +123,11 @@ function run_suites() {
       "meta-llama/Llama-3.1-8B-Instruct" "$OLS_IMAGE" "lseval"
     (( rc = rc || $? ))
   else
-    # Deploy OLS with OpenAI GPT-4o-mini.
+    # Deploy OLS with OpenAI gpt-6-luna.
     # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
     # OLS_CONFIG_SUFFIX="lseval" -> ols_installer builds: olsconfig.crd.openai_lseval.yaml
     SUITE_ID="lseval_periodic" run_suite \
-      "lseval_periodic" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "lseval"
+      "lseval_periodic" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "lseval"
     (( rc = rc || $? ))
   fi
 

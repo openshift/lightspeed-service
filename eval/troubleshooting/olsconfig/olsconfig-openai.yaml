@@ -17,6 +17,9 @@ llm_providers:
     credentials_path: openai_api_key.txt
     models:
       - name: gpt-6-luna
+        parameters:
+          reasoning_config:
+            effort: medium
       - name: gpt-5-mini
 
 mcp_servers:

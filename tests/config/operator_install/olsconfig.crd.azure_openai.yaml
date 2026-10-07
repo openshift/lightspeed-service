@@ -15,17 +15,25 @@ spec:
         type: azure_openai
         credentialsSecretRef:
           name: llmcreds
+        apiVersion: "2025-04-01-preview"
         deploymentName: gpt-6-luna
         models:
           - name: gpt-6-luna
+            parameters:
+              reasoningConfig:
+                effort: medium
         url: 'https://ols-test.openai.azure.com/'
       - name: azure_openai_with_entra_id
         type: azure_openai
         credentialsSecretRef:
           name: azure-entra-id
+        apiVersion: "2025-04-01-preview"
         deploymentName: gpt-6-luna
         models:
           - name: gpt-6-luna
+            parameters:
+              reasoningConfig:
+                effort: medium
         url: 'https://ols-test.openai.azure.com/'
   ols:
     defaultModel: gpt-6-luna

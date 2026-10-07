@@ -16,10 +16,13 @@ llm_providers:
     type: azure_openai
     url: "https://<your-deployment>.openai.azure.com/"  # replace with your Azure endpoint
     credentials_path: azure_openai_api_key.txt
-    api_version: "2024-02-15-preview"
+    api_version: "2025-04-01-preview"
     deployment_name: <your-deployment-name>  # replace with your deployment name
     models:
       - name: gpt-6-luna
+        parameters:
+          reasoning_config:
+            effort: medium
 
 mcp_servers:
   - name: obs-mcp
