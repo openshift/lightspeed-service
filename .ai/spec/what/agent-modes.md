@@ -73,12 +73,12 @@ behavior; other specs reference it rather than redefining mode rules.
       not be guessed.
 
 11. TROUBLESHOOTING mode uses a default maximum tool-calling iteration limit
-    of 15 (`DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING`).
+    of 25 (`DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING`).
 
 ### Iteration Limit Resolution
 
 12. The effective iteration limit for a request is resolved as follows:
-    - Each mode has a built-in default: ASK = 5, TROUBLESHOOTING = 15.
+    - Each mode has a built-in default: ASK = 5, TROUBLESHOOTING = 25.
       These defaults are stored in `MAX_ITERATIONS_BY_MODE`.
     - The administrator may set `ols_config.max_iterations` in the
       configuration file to raise the cap. The effective limit is the greater

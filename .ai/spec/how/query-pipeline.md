@@ -321,4 +321,4 @@ The `round_cap_fraction` (default 0.6, range 0.3-0.8) limits how much of the rem
 
 ### Max iterations by mode
 
-The tool-calling loop cap depends on the query mode: ASK defaults to 5 rounds, TROUBLESHOOTING defaults to 15 rounds. An explicit `max_iterations` config value can raise but never lower the mode-specific default. The final round always forces `tool_choice="none"` to guarantee a text answer.
+The tool-calling loop cap depends on the query mode: ASK defaults to 5 rounds, TROUBLESHOOTING defaults to 25 rounds. An explicit `max_iterations` config value can raise but never lower the mode-specific default. The final round always forces `tool_choice="none"` to guarantee a text answer.
