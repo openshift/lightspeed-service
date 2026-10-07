@@ -111,6 +111,7 @@ def test_model_provider():
         ("deepseek.v3.2", "bedrock"),
         ("gemini-3.1-flash-lite", "google_vertex"),
         ("claude-sonnet-4-6", "google_vertex_anthropic"),
+        ("claude-haiku-4-5", "anthropic"),
     }
 
 
