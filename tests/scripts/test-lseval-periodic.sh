@@ -1,6 +1,6 @@
 #!/bin/bash
 # CI job: run the LSEval periodic suite only — full 797-question QnA dataset (eval/eval_data.yaml).
-# OpenAI gpt-6-luna in-cluster; judge model is gpt-5-mini (from eval YAML).
+# Six providers run sequentially; judge model is gpt-5-mini (from eval YAML).
 # Troubleshooting evals are not run from this entrypoint (run them separately if needed).
 #
 # When RHOAI_PROVISION=true, the script provisions RHOAI operators, GPU infra,
@@ -11,8 +11,13 @@
 # weekly trend plots are written to ARTIFACT_DIR.
 #
 # Input environment variables:
-#   OPENAI_PROVIDER_KEY_PATH  - path to file containing the OpenAI API key
-#   OLS_IMAGE                 - pullspec for the OLS container image to deploy
+#   OPENAI_PROVIDER_KEY_PATH       - path to the OpenAI key (judge and OLS)
+#   WATSONX_PROVIDER_KEY_PATH      - path to the WatsonX key
+#   AZUREOPENAI_PROVIDER_KEY_PATH  - path to the Azure OpenAI key
+#   VERTEX_PROVIDER_KEY_PATH       - path to the Vertex credentials
+#   BEDROCK_AWS_ACCESS_KEY_ID      - AWS access key ID for Bedrock
+#   BEDROCK_AWS_SECRET_ACCESS_KEY  - AWS secret access key for Bedrock
+#   OLS_IMAGE                      - pullspec for the OLS image
 #
 # Additional env vars when RHOAI_PROVISION=true:
 #   HUGGING_FACE_HUB_TOKEN    - download Llama 3.1 8B from HuggingFace
@@ -123,12 +128,19 @@ function run_suites() {
       "meta-llama/Llama-3.1-8B-Instruct" "$OLS_IMAGE" "lseval"
     (( rc = rc || $? ))
   else
-    # Deploy OLS with OpenAI gpt-6-luna.
-    # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
-    # OLS_CONFIG_SUFFIX="lseval" -> ols_installer builds: olsconfig.crd.openai_lseval.yaml
-    SUITE_ID="lseval_periodic" run_suite \
-      "lseval_periodic" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "lseval"
-    (( rc = rc || $? ))
+    # Keep the same provider order and models as the current presubmit matrix.
+    SUITE_ID="lseval_periodic_openai" run_suite \
+      "lseval_periodic_openai" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "lseval" || rc=1
+    SUITE_ID="lseval_periodic_watsonx" run_suite \
+      "lseval_periodic_watsonx" "lseval" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "lseval" || rc=1
+    SUITE_ID="lseval_periodic_azure_openai" run_suite \
+      "lseval_periodic_azure_openai" "lseval" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "lseval" || rc=1
+    SUITE_ID="lseval_periodic_vertex_gemini" run_suite \
+      "lseval_periodic_vertex_gemini" "lseval" "vertex_gemini" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "lseval" || rc=1
+    SUITE_ID="lseval_periodic_vertex_claude" run_suite \
+      "lseval_periodic_vertex_claude" "lseval" "vertex_claude" "$VERTEX_PROVIDER_KEY_PATH" "claude-opus-4-6" "$OLS_IMAGE" "lseval" || rc=1
+    SUITE_ID="lseval_periodic_bedrock_openai" run_suite \
+      "lseval_periodic_bedrock_openai" "lseval" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "lseval" || rc=1
   fi
 
   set -e
@@ -157,33 +169,29 @@ function record_trends() {
   # Append periodic LSEval summary to score history and refresh trend plots.
   mkdir -p eval
 
-  # Determine which provider dir to look for artifacts in
-  local provider_dir
+  local providers=(openai watsonx azure_openai vertex_gemini vertex_claude bedrock_openai)
   if [[ "${RHOAI_PROVISION:-false}" == "true" ]]; then
-    provider_dir="rhoai_vllm"
-  else
-    provider_dir="openai"
+    providers=(rhoai_vllm)
   fi
 
-  local periodic
-  periodic="$(_newest_eval_summary "${ARTIFACT_DIR}/lseval/${provider_dir}")"
-  if [[ -z "$periodic" ]]; then
-    echo "WARNING: no periodic evaluation_*_summary.json under ${ARTIFACT_DIR}/lseval/${provider_dir}, skipping trend update"
-    return 0
-  fi
+  local provider periodic suite_id
+  for provider in "${providers[@]}"; do
+    periodic="$(_newest_eval_summary "${ARTIFACT_DIR}/lseval/${provider}")"
+    if [[ -z "$periodic" ]]; then
+      echo "WARNING: no periodic summary under ${ARTIFACT_DIR}/lseval/${provider}, skipping trend update"
+      continue
+    fi
 
-  local suite_id
-  if [[ "${RHOAI_PROVISION:-false}" == "true" ]]; then
-    suite_id="lseval_periodic_rhoai"
-  else
-    suite_id="lseval_periodic"
-  fi
-
-  uv run --extra evaluation python eval/scripts/update_eval_trends.py \
-    --history-csv eval/score_history.csv \
-    --output-dir "${ARTIFACT_DIR}" \
-    --suite "$suite_id" \
-    --summary-json "$periodic" || true
+    suite_id="lseval_periodic_${provider}"
+    if [[ "$provider" == "rhoai_vllm" ]]; then
+      suite_id="lseval_periodic_rhoai"
+    fi
+    uv run --extra evaluation python eval/scripts/update_eval_trends.py \
+      --history-csv eval/score_history.csv \
+      --output-dir "${ARTIFACT_DIR}" \
+      --suite "$suite_id" \
+      --summary-json "$periodic" || true
+  done
   return 0
 }
 

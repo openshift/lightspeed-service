@@ -3,7 +3,8 @@ r"""LSEval evaluation tests for the periodic provider matrix.
 Each provider uses the judge LLM defined in ``eval/system_<provider>_lseval.yaml`` (OpenAI
 ``gpt-5-mini`` for scoring). The model sent to OLS is defined in the same file under ``api``.
 
-Periodic LSEval runs these providers: openai, watsonx, azure_openai, rhoai_vllm.
+Periodic LSEval runs these providers: openai, watsonx, azure_openai, rhoai_vllm,
+vertex_gemini, vertex_claude, bedrock_openai.
 
 When ``PROVIDER`` is set to a single provider (typical CI), other parametrized providers
 are skipped so the suite does not call OLS with the wrong backend.
@@ -41,7 +42,15 @@ import pytest
 import yaml
 
 # LSEval periodic provider matrix (operator-backed backends under test)
-_LSEVAL_PERIODIC_PROVIDERS = ("openai", "watsonx", "azure_openai", "rhoai_vllm")
+_LSEVAL_PERIODIC_PROVIDERS = (
+    "openai",
+    "watsonx",
+    "azure_openai",
+    "rhoai_vllm",
+    "vertex_gemini",
+    "vertex_claude",
+    "bedrock_openai",
+)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 EVAL_DIR = PROJECT_ROOT / "eval"
@@ -53,6 +62,9 @@ _PROVIDER_CONFIGS: dict[str, Path] = {
     "watsonx": EVAL_DIR / "system_watsonx_lseval.yaml",
     "azure_openai": EVAL_DIR / "system_azure_openai_lseval.yaml",
     "rhoai_vllm": EVAL_DIR / "system_rhoai_vllm_lseval.yaml",
+    "vertex_gemini": EVAL_DIR / "system_vertex_gemini_lseval.yaml",
+    "vertex_claude": EVAL_DIR / "system_vertex_claude_lseval.yaml",
+    "bedrock_openai": EVAL_DIR / "system_bedrock_openai_lseval.yaml",
 }
 
 
