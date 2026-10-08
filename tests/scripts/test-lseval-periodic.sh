@@ -27,14 +27,17 @@ DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 . "$DIR/utils.sh"
 
-# Install operator-sdk
-export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
-export OS=$(uname | awk '{print tolower($0)}')
-export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.36.1
-curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}
-mkdir -p $HOME/.local/bin
-chmod +x operator-sdk_${OS}_${ARCH} && mv operator-sdk_${OS}_${ARCH} $HOME/.local/bin/operator-sdk
-export PATH=$HOME/.local/bin:$PATH
+# CI provides operator-sdk in its test image; local runs can still download it.
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v operator-sdk >/dev/null 2>&1; then
+  ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
+  OS=$(uname | awk '{print tolower($0)}')
+  OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.36.1
+  mkdir -p "$HOME/.local/bin"
+  curl --fail --location --output "$HOME/.local/bin/operator-sdk" \
+    "${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}"
+  chmod +x "$HOME/.local/bin/operator-sdk"
+fi
 operator-sdk version
 
 # Export OpenAI key so the judge LLM can authenticate
