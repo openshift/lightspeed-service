@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 import pytest
 import requests
 from fastapi.testclient import TestClient
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config, constants
@@ -1053,8 +1053,17 @@ def test_tool_calling(_setup, caplog) -> None:
                 )
                 assert mock_invoke.call_count == 2
 
+                tool_messages = [
+                    message
+                    for message in mock_invoke.call_args_list[1].args[0].messages
+                    if isinstance(message, ToolMessage)
+                ]
+                assert len(tool_messages) == 1
+                assert tool_messages[0].tool_call_id == "call_id1"
+                assert NAMESPACES_OUTPUT.strip() in str(tool_messages[0].content)
+
                 assert "Tool: get_namespaces_mock" in caplog.text
-                assert f"Output: {NAMESPACES_OUTPUT}" in caplog.text
+                assert NAMESPACES_OUTPUT.strip() not in caplog.text
 
                 assert response.status_code == requests.codes.ok
                 assert response.json()["response"] == "You have 1 namespace."

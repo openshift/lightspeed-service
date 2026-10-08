@@ -288,10 +288,9 @@ async def execute_tool_call(
 
     status = "success"
     logger.debug(
-        "Tool: %s | Args: %s | Output: %s | Truncated: %s | Has structured_content: %s",
+        "Tool: %s | Output length: %d | Truncated: %s | Has structured_content: %s",
         tool_name,
-        tool_args,
-        tool_output[:200] if len(tool_output) > 200 else tool_output,
+        len(tool_output),
         was_truncated,
         structured_content is not None,
     )
@@ -546,11 +545,10 @@ async def _execute_with_retries(
             should_retry = _is_transient_tool_error(error) or is_rate_limited_error
             if attempt < MAX_TOOL_CALL_RETRIES and should_retry:
                 logger.warning(
-                    "Retrying tool '%s' after transient error on attempt %d/%d: %s",
+                    "Retrying tool '%s' after transient error on attempt %d/%d",
                     tool_name,
                     attempt + 1,
                     attempts,
-                    error,
                 )
                 backoff_base = (
                     RATE_LIMIT_RETRY_BACKOFF_SECONDS
@@ -565,7 +563,7 @@ async def _execute_with_retries(
     if len(reason) > 220:
         reason = f"{reason[:217]}..."
     tool_output = f"Tool '{tool_name}' failed: {reason}"
-    logger.error(tool_output)
+    logger.error("Tool '%s' failed (error length: %d)", tool_name, len(reason))
     return "error", tool_output, False, None, None
 
 

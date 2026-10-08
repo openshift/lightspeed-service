@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
+from contextlib import nullcontext
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -203,6 +204,77 @@ async def test_inspection_failure_metadata_is_exported(
     assert inspection_span.status.status_code.name == "ERROR"
     if expected_category is not None:
         assert inspection_span.attributes["inspection.category"] == expected_category
+
+
+@pytest.mark.parametrize(
+    ("inspection_error", "expected_outcome"),
+    [
+        (None, "benign"),
+        (ToolResultRejectedError("rejected"), "malicious"),
+        (ToolResultInspectionError("provider unavailable"), "classifier_error"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_inspection_debug_log_records_outcome_without_content(
+    caplog: pytest.LogCaptureFixture,
+    inspection_error: ToolResultInspectionError | None,
+    expected_outcome: str,
+) -> None:
+    """Distinguish rejection from provider failure without logging tool output."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.query_helpers.llm_execution_agent")
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(side_effect=inspection_error)
+    agent = _make_agent(tool_result_classifier=classifier)
+    content = "private-result-for-inspection-test"
+    error_context = (
+        pytest.raises(type(inspection_error)) if inspection_error else nullcontext()
+    )
+
+    with error_context:
+        await agent._inspect_tool_messages(
+            [ToolMessage(content=content, tool_call_id="call-1")],
+            {"call-1": "status_tool"},
+        )
+
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.query_helpers.llm_execution_agent"
+    ]
+    assert any(
+        f"Tool result inspection outcome={expected_outcome}" in m for m in messages
+    )
+    assert not any(content in m for m in messages)
+
+
+@pytest.mark.asyncio
+async def test_rejected_tool_error_logs_result_type_without_content(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Identify an inspected error result without printing its untrusted text."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.query_helpers.llm_execution_agent")
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(side_effect=ToolResultRejectedError("rejected"))
+    agent = _make_agent(tool_result_classifier=classifier)
+    content = "private-error-result-for-inspection-test"
+
+    with pytest.raises(ToolResultRejectedError):
+        await agent._inspect_tool_messages(
+            [ToolMessage(content=content, tool_call_id="call-1", status="error")],
+            {"call-1": "events_tool"},
+        )
+
+    assert classifier.inspect.await_args.args[1] == "error"
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.query_helpers.llm_execution_agent"
+    ]
+    assert any(
+        "Tool result inspection outcome=malicious result_type=error" in m
+        for m in messages
+    )
+    assert not any(content in m for m in messages)
 
 
 @pytest.mark.asyncio

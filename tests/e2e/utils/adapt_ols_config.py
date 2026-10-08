@@ -13,6 +13,7 @@ from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.ols_installer import ensure_azure_entra_id_secret
+from tests.e2e.utils.olsconfig_cr import apply_e2e_olsconfig
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -38,32 +39,27 @@ def apply_olsconfig(provider_list: list[str]) -> None:
             crd_yml_name += f"_{ols_config_suffix}"
         crd_yml_file = f"tests/config/operator_install/{crd_yml_name}.yaml"
         print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
-        if "rhoai_vllm_lseval" in crd_yml_file:
-            if not os.environ.get("KSVC_URL"):
-                raise RuntimeError(
-                    "KSVC_URL environment variable is not set; "
-                    "required for rhoai_vllm_lseval CR template"
-                )
-            with open(crd_yml_file, encoding="utf-8") as fh:
-                substituted = os.path.expandvars(fh.read())
-            cluster_utils.run_oc(
-                ["apply", "-f", "-"],
-                command=substituted,
-                ignore_existing_resource=False,
+        substitute_environment = "rhoai_vllm_lseval" in crd_yml_file
+        if substitute_environment and not os.environ.get("KSVC_URL"):
+            raise RuntimeError(
+                "KSVC_URL environment variable is not set; "
+                "required for rhoai_vllm_lseval CR template"
             )
-        else:
-            cluster_utils.run_oc(
-                ["apply", "-f", crd_yml_file],
-                ignore_existing_resource=False,
-            )
+        apply_e2e_olsconfig(
+            crd_yml_file,
+            "apply",
+            suffix=ols_config_suffix,
+            substitute_environment=substitute_environment,
+            ignore_existing_resource=False,
+        )
     else:
         print("Applying evaluation olsconfig CR for multiple providers")
-        cluster_utils.run_oc(
-            [
-                "apply",
-                "-f",
-                "tests/config/operator_install/olsconfig.crd.evaluation.yaml",
-            ],
+        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+        apply_e2e_olsconfig(
+            "tests/config/operator_install/olsconfig.crd.evaluation.yaml",
+            "apply",
+            suffix=ols_config_suffix,
+            substitute_environment=False,
             ignore_existing_resource=True,
         )
     print("OLSConfig CR applied successfully")

@@ -6,7 +6,6 @@ import logging
 from contextlib import nullcontext
 from typing import Any, AsyncGenerator, Coroutine, Optional
 
-from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
@@ -83,7 +82,6 @@ class DocsSummarizer(QueryHelper):
         super().__init__(*args, **kwargs)
         self._audit_ctx = audit_ctx
         self._prepare_llm()
-        self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self.streaming = streaming
         self._cluster_version = (
             K8sClientSingleton.get_cluster_version()
@@ -130,8 +128,6 @@ class DocsSummarizer(QueryHelper):
             round_cap_fraction=config.ols_config.tool_round_cap_fraction,
         )
         self._tracker.set_tool_loop_max_rounds(self._get_max_iterations())
-
-        set_debug(self.verbose)
 
         tool_result_classifier = None
         if self._tool_calling_enabled and tool_result_inspection_enabled:
