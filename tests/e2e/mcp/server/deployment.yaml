@@ -18,6 +18,7 @@ spec:
       containers:
         - name: mcp-mock-server
           image: quay.io/openshift-lightspeed/ols-qe:test-mcp-server
+          command: ["python", "-u", "/opt/mcp/server.py", "3000"]
           ports:
             - containerPort: 3000
           readinessProbe:
@@ -26,6 +27,14 @@ spec:
               port: 3000
             initialDelaySeconds: 2
             periodSeconds: 5
+          volumeMounts:
+            - name: mcp-mock-server-source
+              mountPath: /opt/mcp
+              readOnly: true
+      volumes:
+        - name: mcp-mock-server-source
+          configMap:
+            name: mcp-mock-server-source
 ---
 apiVersion: v1
 kind: Service

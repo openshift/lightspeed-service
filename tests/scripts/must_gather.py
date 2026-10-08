@@ -4,6 +4,7 @@ Configuration is via the `ARTIFACT_DIR` and `SUITE_ID` environment variables.
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -164,14 +165,15 @@ def must_gather():
             print(f"Pod {pod} vanished before logs could be collected, skipping")
             continue
         for container in containers:
-            cluster_utils.run_oc_and_store_stdout(
-                [
-                    "logs",
-                    f"pod/{pod}",
-                    "-c",
-                    container,
-                ],
-                f"{pod_logs_dir.as_posix()}/{pod}-{container}.log",
+            try:
+                result = cluster_utils.run_oc(["logs", f"pod/{pod}", "-c", container])
+            except subprocess.CalledProcessError as error:
+                if "(NotFound)" not in (error.stderr or ""):
+                    raise
+                print(f"Pod {pod} vanished before logs could be collected, skipping")
+                break
+            (pod_logs_dir / f"{pod}-{container}.log").write_text(
+                result.stdout, encoding="utf-8"
             )
 
 

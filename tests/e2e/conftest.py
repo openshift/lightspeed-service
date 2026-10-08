@@ -285,16 +285,20 @@ def pytest_addoption(parser):
 def pytest_collection_modifyitems(items: list) -> None:
     """Filter and reorder collected tests.
 
+    - Deselect inspection tests unless the dedicated suite is active.
     - Deselect mcp-marked tests when the MCP suite is not active.
     - Ensure test_user_data_collection runs last in the data_export suite.
     """
     ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
     mcp_enabled = "mcp" in ols_config_suffix
+    inspection_enabled = ols_config_suffix == "mcp_inspection"
 
     selected = []
     deselected = []
     for item in items:
-        if not mcp_enabled and item.get_closest_marker("mcp"):
+        if item.get_closest_marker("inspection") and not inspection_enabled:
+            deselected.append(item)
+        elif not mcp_enabled and item.get_closest_marker("mcp"):
             deselected.append(item)
         else:
             selected.append(item)
@@ -318,6 +322,8 @@ def pytest_sessionfinish():
     """Gather OLS artifacts and clean up test resources after session finishes."""
     if on_cluster:
         ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-        if "mcp" in ols_config_suffix:
-            teardown_mcp_on_cluster()
-        must_gather()
+        try:
+            must_gather()
+        finally:
+            if "mcp" in ols_config_suffix:
+                teardown_mcp_on_cluster()

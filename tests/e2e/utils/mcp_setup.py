@@ -16,6 +16,7 @@ from tests.e2e.utils.retry import retry_until_timeout_or_success
 
 NAMESPACE = "openshift-lightspeed"
 MOCK_SERVER_NAME = "mcp-mock-server"
+MOCK_SERVER_SOURCE_CONFIGMAP = "mcp-mock-server-source"
 SERVER_DIR = Path(__file__).resolve().parents[1] / "mcp" / "server"
 DEPLOYMENT_YAML = SERVER_DIR / "deployment.yaml"
 
@@ -34,8 +35,34 @@ def _ensure_namespace() -> None:
     )
 
 
+def _apply_mock_server_source() -> None:
+    """Apply the checked-out mock server source as a ConfigMap."""
+    source = (SERVER_DIR / "server.py").read_text(encoding="utf-8")
+    configmap = {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "metadata": {"name": MOCK_SERVER_SOURCE_CONFIGMAP, "namespace": NAMESPACE},
+        "data": {"server.py": source},
+    }
+    cluster_utils.run_oc(
+        ["apply", "-f", "-"],
+        command=yaml.safe_dump(configmap),
+    )
+
+
 def _deploy_mock_server() -> None:
-    """Deploy the mock MCP server pod and service on the cluster."""
+    """Deploy the current mock MCP server source and service on the cluster."""
+    _apply_mock_server_source()
+    cluster_utils.run_oc(
+        [
+            "delete",
+            "deployment",
+            MOCK_SERVER_NAME,
+            "-n",
+            NAMESPACE,
+            "--ignore-not-found",
+        ]
+    )
     cluster_utils.run_oc(
         ["apply", "-f", str(DEPLOYMENT_YAML)],
         ignore_existing_resource=True,
@@ -187,6 +214,16 @@ def teardown_mcp_on_cluster() -> None:
                 "delete",
                 "service",
                 MOCK_SERVER_NAME,
+                "-n",
+                NAMESPACE,
+                "--ignore-not-found",
+            ]
+        )
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "configmap",
+                MOCK_SERVER_SOURCE_CONFIGMAP,
                 "-n",
                 NAMESPACE,
                 "--ignore-not-found",

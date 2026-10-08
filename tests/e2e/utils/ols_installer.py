@@ -9,6 +9,7 @@ import yaml
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
+from tests.e2e.utils.olsconfig_cr import apply_e2e_olsconfig
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -557,36 +558,31 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     try:
         crd_yml_file = "tests/config/operator_install/olsconfig.crd.evaluation.yaml"
+        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
 
         if len(provider_list) == 1:
             crd_yml_name = f"olsconfig.crd.{provider}"
-            ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-
             if ols_config_suffix != "default":
                 crd_yml_name += f"_{ols_config_suffix}"
             crd_yml_file = f"tests/config/operator_install/{crd_yml_name}.yaml"
 
         print(f"CRD path: {crd_yml_file}.")
-
-        if "rhoai_vllm_lseval" in crd_yml_file:
+        substitute_environment = "rhoai_vllm_lseval" in crd_yml_file
+        if substitute_environment:
             print("Running envsubst on CR YAML (rhoai_vllm_lseval template)...")
             if not os.environ.get("KSVC_URL"):
                 raise RuntimeError(
                     "KSVC_URL environment variable is not set; "
                     "required for rhoai_vllm_lseval CR template"
                 )
-            with open(crd_yml_file, encoding="utf-8") as fh:
-                raw = fh.read()
-            substituted = os.path.expandvars(raw)
-            cluster_utils.run_oc(
-                ["create", "-f", "-"],
-                command=substituted,
-                ignore_existing_resource=True,
-            )
-        else:
-            cluster_utils.run_oc(
-                ["create", "-f", crd_yml_file], ignore_existing_resource=True
-            )
+
+        apply_e2e_olsconfig(
+            crd_yml_file,
+            "create",
+            suffix=ols_config_suffix,
+            substitute_environment=substitute_environment,
+            ignore_existing_resource=True,
+        )
 
     except subprocess.CalledProcessError as e:
         csv = cluster_utils.run_oc(

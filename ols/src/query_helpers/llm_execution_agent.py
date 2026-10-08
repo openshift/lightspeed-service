@@ -1017,6 +1017,10 @@ class LLMExecutionAgent:
                     )
                 except ToolResultRejectedError as error:
                     inspection_error = error
+                    logger.debug(
+                        "Tool result inspection outcome=malicious result_type=%s",
+                        result_type,
+                    )
                     if self._audit_ctx:
                         inspection_span.set_attribute("inspection.outcome", "malicious")
                         inspection_span.set_attribute(
@@ -1026,6 +1030,10 @@ class LLMExecutionAgent:
                         parent_span.set_status(StatusCode.ERROR, "malicious")
                 except ToolResultInspectionError as error:
                     inspection_error = error
+                    logger.debug(
+                        "Tool result inspection outcome=classifier_error result_type=%s",
+                        result_type,
+                    )
                     if self._audit_ctx:
                         inspection_span.set_attribute(
                             "inspection.outcome", "classifier_error"
@@ -1033,6 +1041,10 @@ class LLMExecutionAgent:
                         inspection_span.set_status(StatusCode.ERROR, "classifier_error")
                         parent_span.set_status(StatusCode.ERROR, "classifier_error")
                 else:
+                    logger.debug(
+                        "Tool result inspection outcome=benign result_type=%s",
+                        result_type,
+                    )
                     if self._audit_ctx:
                         inspection_span.set_attribute("inspection.outcome", "benign")
 

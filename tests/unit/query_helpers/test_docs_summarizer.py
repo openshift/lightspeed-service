@@ -5,6 +5,7 @@ from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
+from langchain_core.globals import get_debug, set_debug
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
@@ -97,6 +98,21 @@ def test_tool_calling_disabled_without_mcp_and_without_solr_docs_tool():
     """Tool calling stays off when neither MCP nor Solr docs tool is active."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     assert summarizer._tool_calling_enabled is False
+
+
+def test_debug_app_logging_does_not_enable_global_langchain_prompt_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Do not dump classifier prompts through LangChain's global DEBUG callbacks."""
+    set_debug(False)
+    monkeypatch.setattr(
+        config.ols_config.logging_config, "app_log_level", logging.DEBUG
+    )
+    try:
+        DocsSummarizer(llm_loader=mock_llm_loader(None))
+        assert get_debug() is False
+    finally:
+        set_debug(False)
 
 
 def test_tool_result_inspection_logging(caplog):

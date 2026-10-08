@@ -55,6 +55,12 @@ function run_suites() {
   run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "mcp"
   (( rc = rc || $? ))
 
+  # Run inspection separately in PR CI; allow an explicit 0 to skip it locally.
+  if [[ "${RUN_TOOL_RESULT_INSPECTION_E2E:-1}" == "1" ]]; then
+    run_suite "openai_tool_result_inspection" "inspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "mcp_inspection"
+    (( rc = rc || $? ))
+  fi
+
   run_suite "google_vertex" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 

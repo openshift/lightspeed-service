@@ -236,6 +236,99 @@ async def test_execute_tool_call_success() -> None:
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_call_debug_log_excludes_untrusted_content(caplog) -> None:
+    """Keep useful tool metadata without recording results or arguments."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.tools.tools")
+    output = "fake_output_from_fake_tool"
+    argument = "sensitive-argument-for-log-test"
+
+    status, actual, truncated, _, _ = await execute_tool_call(
+        FakeTool("fake_tool"), {"message": argument}, _LARGE_TOKEN_BUDGET
+    )
+
+    assert status == "success"
+    assert actual == output
+    assert truncated is False
+    records = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.tools.tools"
+    ]
+    assert any(
+        "fake_tool" in message and str(len(output)) in message for message in records
+    )
+    assert not any(output in message or argument in message for message in records)
+
+
+@pytest.mark.asyncio
+async def test_tool_error_result_is_inspectable_without_leaking_to_logs(caplog) -> None:
+    """Keep an untrusted tool error for inspection, not developer logs."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.tools.tools")
+    rejected_content = "untrusted-tool-error-content-for-log-test"
+
+    async def failing_tool(**kwargs: Any) -> str:
+        raise RuntimeError(rejected_content)
+
+    tool = StructuredTool(
+        name="events_tool",
+        description="Get cluster events",
+        func=lambda **kwargs: "unused",
+        coroutine=failing_tool,
+        args_schema=FakeSchema,
+    )
+    status, output, _, _, _ = await tools_module._execute_with_retries(
+        tool=tool, tool_args={}, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
+
+    assert status == "error"
+    assert rejected_content in output
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.tools.tools"
+    ]
+    assert any("events_tool" in message and "failed" in message for message in messages)
+    assert not any(rejected_content in message for message in messages)
+
+
+@pytest.mark.asyncio
+async def test_transient_tool_error_retry_does_not_log_error_content(
+    caplog, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Retry errors without logging untrusted text before inspection."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.tools.tools")
+    rejected_content = "private-tool-error-retry-content"
+
+    async def failing_tool(**kwargs: Any) -> str:
+        raise RuntimeError(f"temporary failure: {rejected_content}")
+
+    async def no_delay(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(tools_module.asyncio, "sleep", no_delay)
+    tool = StructuredTool(
+        name="events_tool",
+        description="Get cluster events",
+        func=lambda **kwargs: "unused",
+        coroutine=failing_tool,
+        args_schema=FakeSchema,
+    )
+    status, output, _, _, _ = await tools_module._execute_with_retries(
+        tool=tool, tool_args={}, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
+
+    assert status == "error"
+    assert rejected_content in output
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.tools.tools"
+    ]
+    assert any("Retrying tool" in message for message in messages)
+    assert not any(rejected_content in message for message in messages)
+
+
+@pytest.mark.asyncio
 async def test_execute_tool_call_failure_raises() -> None:
     """Test execute_tool_call raises tool exception."""
     with pytest.raises(Exception, match="Tool execution failed"):
