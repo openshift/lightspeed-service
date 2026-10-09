@@ -507,7 +507,15 @@ class LLMExecutionAgent:
         elif is_final_round:
             # Responses API dumps tool args as text when tools are unbound;
             # tool_choice="none" prevents this.
-            llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", **strict_kwargs)  # type: ignore [assignment]
+            tool_choice: str | dict[str, str] = "none"
+            if self.provider_type in (
+                constants.PROVIDER_ANTHROPIC,
+                constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
+            ):
+                tool_choice = {"type": "none"}
+            llm = self.bare_llm.bind_tools(
+                tools_map, tool_choice=tool_choice, **strict_kwargs
+            )  # type: ignore [assignment]
         else:
             llm = self.bare_llm.bind_tools(tools_map, **strict_kwargs)  # type: ignore [assignment]
 

@@ -1678,6 +1678,43 @@ class TestGenAISpanNaming:
             assert "gen_ai.reasoning_content" not in e.attributes
 
 
+@pytest.mark.parametrize(
+    ("provider_type", "expected_tool_choice"),
+    [
+        (constants.PROVIDER_ANTHROPIC, {"type": "none"}),
+        (constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC, {"type": "none"}),
+        (constants.PROVIDER_OPENAI, "none"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_invoke_llm_uses_provider_compatible_none_tool_choice(
+    provider_type: str, expected_tool_choice: str | dict[str, str]
+) -> None:
+    """Use Anthropic's object form to disable tools on final round."""
+    from langchain_core.prompts import ChatPromptTemplate
+
+    from ols.app.metrics.token_counter import GenericTokenCounter
+
+    agent = _make_agent(provider_type=provider_type)
+    tool = SampleTool("probe")
+    bind_tools = MagicMock(return_value=agent.bare_llm)
+    messages = ChatPromptTemplate.from_messages(
+        [("system", "test"), ("human", "{query}")]
+    )
+
+    with patch.object(agent.bare_llm, "bind_tools", bind_tools):
+        async for _ in agent._invoke_llm(
+            messages=messages,
+            llm_input_values={"query": "hello"},
+            tools_map=[tool],
+            is_final_round=True,
+            token_counter=GenericTokenCounter(agent.bare_llm),
+        ):
+            pass
+
+    bind_tools.assert_called_once_with([tool], tool_choice=expected_tool_choice)
+
+
 @pytest.mark.asyncio
 async def test_invoke_llm_observes_duration_histogram():
     """LLM invocation records gen_ai_client_operation_duration_seconds histogram."""
