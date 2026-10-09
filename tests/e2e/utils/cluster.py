@@ -51,7 +51,6 @@ def run_oc(
                     "resource exists",
                 ]
             ):
-                print(f"Resource already exists: {e}\nproceeding...")
                 return subprocess.CompletedProcess(e.cmd, 0, stdout="", stderr="")
 
         print(
