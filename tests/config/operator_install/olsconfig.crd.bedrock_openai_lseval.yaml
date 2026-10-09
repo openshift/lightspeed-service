@@ -8,12 +8,12 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: deepseek.v3.2
+          - name: openai.gpt-6-luna
         name: bedrock
         type: bedrock
         url: "https://bedrock-mantle.us-east-1.api.aws"
   ols:
-    defaultModel: deepseek.v3.2
+    defaultModel: openai.gpt-6-luna
     defaultProvider: bedrock
     deployment:
       replicas: 1

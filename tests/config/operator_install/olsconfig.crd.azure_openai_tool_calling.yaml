@@ -15,12 +15,16 @@ spec:
         type: azure_openai
         credentialsSecretRef:
           name: llmcreds
-        deploymentName: gpt-5.4-mini
+        apiVersion: "2025-04-01-preview"
+        deploymentName: gpt-6-luna
         models:
-          - name: gpt-5.4-mini
+          - name: gpt-6-luna
+            parameters:
+              reasoningConfig:
+                effort: medium
         url: 'https://ols-test.openai.azure.com/'
   ols:
-    defaultModel: gpt-5.4-mini
+    defaultModel: gpt-6-luna
     defaultProvider: azure_openai
     deployment:
       replicas: 1

@@ -16,7 +16,10 @@ llm_providers:
     url: "https://api.openai.com/v1"
     credentials_path: openai_api_key.txt
     models:
-      - name: gpt-5.4-mini
+      - name: gpt-6-luna
+        parameters:
+          reasoning_config:
+            effort: medium
       - name: gpt-5-mini
 
 mcp_servers:
@@ -39,7 +42,7 @@ ols_config:
     lib_log_level: warning
     uvicorn_log_level: info
   default_provider: openai
-  default_model: gpt-5.4-mini
+  default_model: gpt-6-luna
   authentication_config:
     module: "noop-with-token"
   user_data_collection:

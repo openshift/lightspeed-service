@@ -272,7 +272,7 @@ def pytest_addoption(parser):
             "rhoai_vllm",
             "vertex_gemini",
             "vertex_claude",
-            "bedrock_deepseek",
+            "bedrock_openai",
         ],
         help=(
             "Run lseval periodic/presubmit tests for a single provider only. "

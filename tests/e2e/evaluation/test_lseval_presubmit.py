@@ -41,7 +41,7 @@ _LSEVAL_PRESUBMIT_PROVIDERS = (
     "rhoai_vllm",
     "vertex_gemini",
     "vertex_claude",
-    "bedrock_deepseek",
+    "bedrock_openai",
 )
 
 _PROVIDER_CONFIGS: dict[str, Path] = {
@@ -51,7 +51,7 @@ _PROVIDER_CONFIGS: dict[str, Path] = {
     "rhoai_vllm": EVAL_DIR / "system_rhoai_vllm_lseval.yaml",
     "vertex_gemini": EVAL_DIR / "system_vertex_gemini_lseval.yaml",
     "vertex_claude": EVAL_DIR / "system_vertex_claude_lseval.yaml",
-    "bedrock_deepseek": EVAL_DIR / "system_bedrock_deepseek_lseval.yaml",
+    "bedrock_openai": EVAL_DIR / "system_bedrock_openai_lseval.yaml",
 }
 
 EVAL_DATA_SHORT = EVAL_DIR / "eval_data_short.yaml"

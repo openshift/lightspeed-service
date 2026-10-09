@@ -35,12 +35,12 @@ def test_short_suite_matrix_is_shared_and_failure_is_reported(tmp_path):
     )
     assert result.returncode != 0
     assert calls.read_text().splitlines() == [
-        "lseval_daily_openai|openai|gpt-5.4-mini",
+        "lseval_daily_openai|openai|gpt-6-luna",
         "lseval_daily_watsonx|watsonx|ibm/granite-4-h-small",
-        "lseval_daily_azure_openai|azure_openai|gpt-5.4-mini",
+        "lseval_daily_azure_openai|azure_openai|gpt-6-luna",
         "lseval_daily_vertex_gemini|vertex_gemini|gemini-3.1-flash-lite",
         "lseval_daily_vertex_claude|vertex_claude|claude-opus-4-6",
-        "lseval_daily_bedrock_deepseek|bedrock_deepseek|deepseek.v3.2",
+        "lseval_daily_bedrock_openai|bedrock_openai|openai.gpt-6-luna",
     ]
 
 
@@ -70,7 +70,7 @@ def test_presubmit_uses_same_matrix(tmp_path):
             "azure_openai",
             "vertex_gemini",
             "vertex_claude",
-            "bedrock_deepseek",
+            "bedrock_openai",
         )
     ]
 
