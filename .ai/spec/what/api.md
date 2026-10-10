@@ -707,7 +707,7 @@ The `mode` field on query requests controls which system prompt and iteration li
 | Mode              | Default max iterations | Description |
 |-------------------|------------------------|-------------|
 | `ask`             | 5                      | General Q&A mode (default) |
-| `troubleshooting` | 15                     | Troubleshooting mode with higher iteration limit for tool use |
+| `troubleshooting` | 25                     | Troubleshooting mode with higher iteration limit for tool use |
 
 ---
 

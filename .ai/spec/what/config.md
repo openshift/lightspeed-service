@@ -78,7 +78,7 @@ The YAML file has four top-level sections:
 | `ols_config.reference_content` | object | none | RAG index paths and embeddings model | see what/rag.md |
 | `ols_config.system_prompt_path` | string | none | Path to file containing custom system prompt | -- |
 | `ols_config.history_compression_enabled` | bool | true | Toggle conversation history compression | -- |
-| `ols_config.max_iterations` | int | mode-dependent | Tool-calling loop iteration cap (ask=5, troubleshooting=15) | -- |
+| `ols_config.max_iterations` | int | mode-dependent | Tool-calling loop iteration cap (ask=5, troubleshooting=25) | -- |
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Max fraction of remaining tool token budget usable per round (0.3--0.8) | -- |
 | `ols_config.guardrails.tool_result_inspection.enabled` | bool | true | Enable LLM inspection of model-visible tool results and errors | see what/tools.md |
 | `ols_config.credential_hot_reload` | bool | false | When true, LLM credentials are re-read from disk on each request (OLS-3450) |
