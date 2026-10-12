@@ -112,9 +112,6 @@ class DataCollectorControl:
             # Convert back to YAML string
             exporter_config_str = yaml.dump(exporter_config, default_flow_style=False)
 
-            # Debug: show what we're about to patch
-            print(f"ConfigMap YAML to be patched:\n{exporter_config_str}")
-
             # Patch the ConfigMap
             patch_data = json.dumps(
                 {"data": {EXPORTER_CONFIG_FILENAME: exporter_config_str}}
@@ -132,8 +129,6 @@ class DataCollectorControl:
                     patch_data,
                 ]
             )
-            print(f"ConfigMap patch result: {result.stdout}")
-
             # Log what was updated
             print("Exporter config updated:")
             if collection_interval is not None:

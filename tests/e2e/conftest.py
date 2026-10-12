@@ -59,7 +59,6 @@ def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
         ]
     )
     csv_data = json.loads(result.stdout)
-    print(csv_data)
 
     has_csv = bool(csv_data["items"])
     has_manager = cluster.lightspeed_operator_manager_deployed()

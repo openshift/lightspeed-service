@@ -344,7 +344,6 @@ def test_user_data_collection():
     container_log = cluster_utils.get_container_log(
         pod_name, data_collection_container_name
     )
-    print(f"\n=== Full exporter container log (startup) ===\n{container_log}\n")
     last_log_line = get_last_log_line(container_log)
 
     # Wait another cycle to verify exporter ran but found no data
@@ -354,11 +353,9 @@ def test_user_data_collection():
         pod_name, data_collection_container_name
     )
     logs = filter_logs(container_log, last_log_line)
-    print(f"\n=== Exporter logs after first cycle (expecting no data) ===\n{logs}\n")
-
     # Verify exporter ran and found no data to collect
-    assert "No data marked for collection in" in logs
-    assert "Uploading data chunk" not in logs
+    assert "No data marked for collection in" in logs, logs[-2000:]
+    assert "Uploading data chunk" not in logs, logs[-2000:]
 
     # Get log point for next check
     last_log_line = get_last_log_line(container_log)
@@ -384,14 +381,16 @@ def test_user_data_collection():
         pod_name, data_collection_container_name
     )
     logs = filter_logs(container_log, last_log_line)
-    print(f"\n=== Exporter logs after data creation (expecting upload) ===\n{logs}\n")
-
     # Verify data was collected and uploaded
-    assert "Collected 1 files" in logs, "Expected 'Collected 1 files' in logs"
-    assert "Uploading data chunk" in logs, "Expected 'Uploading data chunk' in logs"
-    assert (
-        "Data uploaded with request_id:" in logs
-    ), "Expected 'Data uploaded with request_id:' in logs"
+    assert "Collected 1 files" in logs, (
+        "Expected 'Collected 1 files' in logs:\n" f"{logs[-2000:]}"
+    )
+    assert "Uploading data chunk" in logs, (
+        "Expected 'Uploading data chunk' in logs:\n" f"{logs[-2000:]}"
+    )
+    assert "Data uploaded with request_id:" in logs, (
+        "Expected 'Data uploaded with request_id:' in logs:\n" f"{logs[-2000:]}"
+    )
 
     # Verify data was cleaned up after upload
     user_data = cluster_utils.list_path(pod_name, f"{OLS_USER_DATA_PATH}/feedback/")
@@ -437,7 +436,6 @@ def test_azure_entra_id():
     assert response.status_code == requests.codes.ok
 
     response_utils.check_content_type(response, "application/json")
-    print(vars(response))
     json_response = response.json()
 
     # checking a few major information from response

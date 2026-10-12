@@ -31,4 +31,3 @@ def perform_query(client, conversation_id, query):
         timeout=LLM_REST_API_TIMEOUT,
     )
     check_content_type(response, "application/json")
-    print(vars(response))
