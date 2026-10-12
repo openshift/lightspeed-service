@@ -136,7 +136,6 @@ class DocsSummarizer(QueryHelper):
                 self.model,
                 {
                     GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128,
-                    GenericLLMParameters.TEMPERATURE: 0.0,
                 },
             )
             if not hasattr(classifier_llm, "with_structured_output"):
