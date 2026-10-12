@@ -606,27 +606,37 @@ def test_tool_calling() -> None:
 
 @pytest.mark.byok1
 def test_rag_question_byok1() -> None:
-    """Ensure response include expected top rag reference."""
+    """Verify that the first configured SkyNet source supplies the top citation."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"query": "about openshift virtualization"},
+            json={
+                "query": "How do I check the status of Cyberdyne SkyNet on OpenShift?"
+            },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
-        assert "4.17" in response.json()["referenced_documents"][0]["doc_url"]
+        assert (
+            response.json()["referenced_documents"][0]["doc_url"]
+            == "https://docs.cyberdyne.example.invalid/skynet/1.1/operations"
+        )
 
 
 @pytest.mark.byok2
 def test_rag_question_byok2() -> None:
-    """Ensure response include expected top rag reference."""
+    """Verify that the first configured SkyNet source supplies the top citation."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"query": "about openshift virtualization"},
+            json={
+                "query": "How do I check the status of Cyberdyne SkyNet on OpenShift?"
+            },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
-        assert "4.16" in response.json()["referenced_documents"][0]["doc_url"]
+        assert (
+            response.json()["referenced_documents"][0]["doc_url"]
+            == "https://docs.cyberdyne.example.invalid/skynet/1.2/operations"
+        )
