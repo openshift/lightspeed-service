@@ -4,8 +4,8 @@ torch==2.11.0
 # CVE-2026-102273: RHOAI 3.5 ships vulnerable 2.13.0
 pyjwt==2.14.0
 
-# CVE-2026-61536: RHOAI 3.5 ships 2.4.5 (fix is 2.5.0)
-banks==2.5.0
+# CVE-2026-107716: RHOAI 3.5 ships 2.5.0 (fix is 2.5.1)
+banks==2.5.1
 
 # CVE-2026-63374: RHOAI 3.5 ships 4.14.2 (fix is 4.15.1)
 anyio==4.15.1
