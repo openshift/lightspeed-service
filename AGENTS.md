@@ -136,7 +136,7 @@ Do not refactor, rename, or reformat outside the direct path of the task. Unrela
 ## Git and PR Workflow
 
 ### Commit Messages
-- Start with the Jira ticket reference: `OLS-XXXX description`
+- Start with the Jira ticket reference: `OLS-XXXX: description`
 - Keep the first line under 72 characters
 - Use imperative mood
 
@@ -149,7 +149,7 @@ This repo uses a **fork-based workflow**:
    git push <your-fork-remote> <branch>
    gh pr create --repo openshift/lightspeed-service --head <your-github-user>:<branch> --base main
    ```
-3. **PR title** must start with the Jira reference: `OLS-XXXX description`
+3. **PR title** must start with the Jira reference: `OLS-XXXX: description`
 4. **Squash commits** before pushing -- one logical commit per PR unless the PR explicitly tracks multiple independent changes
 
 ### Branch Completion
