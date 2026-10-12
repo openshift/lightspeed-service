@@ -15,6 +15,7 @@ from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+    GenericLLMParameters,
     QueryMode,
 )
 from ols.utils.config import AppConfig
@@ -149,6 +150,30 @@ def test_tool_result_classifier_logging(caplog):
         DocsSummarizer(llm_loader=mock_llm_loader(None))
 
     assert "Tool-result classifier initialized" in caplog.text
+
+
+def test_tool_result_classifier_does_not_force_temperature() -> None:
+    """Initialize the classifier without overriding model sampling parameters."""
+    loader = MagicMock(side_effect=mock_llm_loader(None))
+    with (
+        patch.object(
+            config.ols_config.guardrails.tool_result_inspection,
+            "enabled",
+            True,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value={"test_server": {}},
+        ),
+    ):
+        summarizer = DocsSummarizer(llm_loader=loader)
+
+    assert summarizer._tool_result_classifier is not None
+    loader.assert_called_with(
+        summarizer.provider,
+        summarizer.model,
+        {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128},
+    )
 
 
 def test_tool_result_inspection_fails_closed_without_structured_output():
