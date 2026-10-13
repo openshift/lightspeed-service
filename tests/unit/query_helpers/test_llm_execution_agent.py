@@ -254,7 +254,9 @@ async def test_rejected_tool_error_logs_result_type_without_content(
     """Identify an inspected error result without printing its untrusted text."""
     caplog.set_level(logging.DEBUG, logger="ols.src.query_helpers.llm_execution_agent")
     classifier = MagicMock()
-    classifier.inspect = AsyncMock(side_effect=ToolResultRejectedError("rejected"))
+    classifier.inspect = AsyncMock(
+        side_effect=ToolResultRejectedError("rejected", category="tool_manipulation")
+    )
     agent = _make_agent(tool_result_classifier=classifier)
     content = "private-error-result-for-inspection-test"
 
@@ -271,7 +273,8 @@ async def test_rejected_tool_error_logs_result_type_without_content(
         if record.name == "ols.src.query_helpers.llm_execution_agent"
     ]
     assert any(
-        "Tool result inspection outcome=malicious result_type=error" in m
+        "Tool result inspection outcome=malicious result_type=error "
+        "category=tool_manipulation" in m
         for m in messages
     )
     assert not any(content in m for m in messages)
