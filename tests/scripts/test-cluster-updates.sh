@@ -1,5 +1,5 @@
 #!/bin/bash
-# CI job: run cluster-updates eval (18 conversations, 35 evaluations) against OLS using OpenAI GPT-4o-mini + GPT-4.1-mini judge.
+# CI job: run cluster-updates eval (18 conversations, 35 evaluations) with OpenAI gpt-6-luna as judge.
 #
 # Input environment variables:
 #   OPENAI_PROVIDER_KEY_PATH  - path to file containing the OpenAI API key
@@ -55,7 +55,7 @@ function run_suites() {
   echo "  Config suffix: cluster_updates"
   echo "  Artifact dir: $ARTIFACT_DIR"
 
-  # Deploy OLS with OpenAI GPT-4o-mini and run cluster-updates evaluation (18 conversations, 35 evaluations).
+  # Deploy OLS with gpt-6-luna and run cluster-updates evaluation (18 conversations, 35 evaluations).
   # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
   # OLS_CONFIG_SUFFIX="cluster_updates" → ols_installer builds: olsconfig.crd.openai_cluster_updates.yaml
   run_suite "cluster_updates" "cluster_updates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "cluster_updates"

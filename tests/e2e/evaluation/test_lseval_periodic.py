@@ -1,7 +1,7 @@
 r"""LSEval evaluation tests for the periodic provider matrix.
 
 Each provider uses the judge LLM defined in ``eval/system_<provider>_lseval.yaml`` (OpenAI
-``gpt-5-mini`` for scoring). The model sent to OLS is defined in the same file under ``api``.
+OpenAI gpt-6-luna for scoring). The model sent to OLS is defined in the same file under ``api``.
 
 Periodic LSEval runs these providers: openai, watsonx, azure_openai, rhoai_vllm,
 vertex_gemini, vertex_claude, bedrock_openai.

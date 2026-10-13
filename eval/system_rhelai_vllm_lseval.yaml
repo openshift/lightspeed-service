@@ -1,6 +1,6 @@
 # LightSpeed Evaluation Framework Configuration
 # OLS Provider: RHEL AI vLLM (model being evaluated)
-# Judge LLM: OpenAI GPT-5-mini (scoring responses)
+# Judge LLM: OpenAI gpt-6-luna (scoring responses)
 #
 # The default model "gpt-4.1-mini" is the alias registered in the vLLM deployment.
 # Override it for your deployment via the LSEVAL_OLS_MODEL environment variable, e.g.:
@@ -17,9 +17,9 @@ core:
 # Requires OPENAI_API_KEY environment variable.
 llm:
   provider: "openai"
-  model: "gpt-5-mini"
+  model: "gpt-6-luna"
   temperature: 1
-  max_tokens: 512
+  max_tokens: 1024
   timeout: 300
   num_retries: 3
 
