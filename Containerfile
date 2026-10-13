@@ -154,7 +154,7 @@ LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
     summary="Red Hat OpenShift Lightspeed Service" \
     com.redhat.component=openshift-lightspeed-service \
     name="openshift-lightspeed/lightspeed-service-api-rhel9" \
-    cpe="cpe:/a:redhat:openshift_lightspeed:1::el9" \
+    cpe="cpe:/a:redhat:openshift_lightspeed:2::el9" \
     vendor="Red Hat, Inc."
 
 
