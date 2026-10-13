@@ -1,6 +1,6 @@
 # LightSpeed Evaluation Framework Configuration — Troubleshooting Evals
 # OLS backend (api): model sent to OLS /query — must match cluster OLSConfig (e.g. gpt-4o-mini for lseval CR).
-# Judge (llm): OpenAI GPT-5-mini for scoring (GPT-5 family; avoid deprecated GPT-4 judge).
+# Judge (llm): OpenAI gpt-6-luna for scoring.
 #
 # api_base is overridden at runtime with the actual OLS cluster URL.
 # Requires OPENAI_API_KEY for the judge LLM.
@@ -13,9 +13,9 @@ core:
 # Judge LLM — scores OLS responses against expected answers
 llm:
   provider: "openai"
-  model: "gpt-5-mini"
+  model: "gpt-6-luna"
   temperature: 1
-  max_tokens: 5000
+  max_tokens: 1024
   timeout: 300
   num_retries: 3
   cache_enabled: false

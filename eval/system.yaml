@@ -3,9 +3,9 @@
 # LLM Configuration
 llm:
   provider: "openai"          # Judge LLM Provider (openai, gemini etc..)
-  model: "gpt-5-mini"         # Model name for the provider
+  model: "gpt-6-luna"         # Judge model for scoring responses
   temperature: 1              # Generation temperature
-  max_tokens: 512             # Maximum tokens in response
+  max_tokens: 1024             # Maximum tokens in response
   timeout: 300                # Request timeout in seconds
   num_retries: 3              # Retry attempts
 

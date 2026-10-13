@@ -1,6 +1,6 @@
 # LightSpeed Evaluation Framework Configuration
 # OLS Provider: WatsonX ibm/granite-4-h-small (model being evaluated)
-# Judge LLM: OpenAI GPT-5-mini (scoring responses)
+# Judge LLM: OpenAI gpt-6-luna (scoring responses)
 
 # Core Evaluation Configuration
 # Limits concurrent evaluations to avoid OpenAI API rate limiting on the judge LLM.
@@ -10,13 +10,13 @@ core:
   max_threads: 5
 
 # Judge LLM Configuration
-# Uses OpenAI GPT-5-mini for evaluation scoring.
+# Uses OpenAI gpt-6-luna for evaluation scoring.
 # Requires OPENAI_API_KEY environment variable.
 llm:
   provider: "openai"
-  model: "gpt-5-mini"
+  model: "gpt-6-luna"
   temperature: 1
-  max_tokens: 2000
+  max_tokens: 1024
   timeout: 300
   num_retries: 3
 
