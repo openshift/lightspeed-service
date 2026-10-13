@@ -10,11 +10,12 @@ execution with retry/backoff, and token-budget-aware result truncation.
 |---|---|---|
 | `ols/utils/mcp_utils.py` | `build_mcp_config`, `gather_mcp_tools`, `get_mcp_tools`, `resolve_header_value`, `_normalize_tool_schema` | MCP client lifecycle: builds per-server transport configs with placeholder resolution, connects to servers via `MultiServerMCPClient`, gathers tools with fault isolation (one failing server does not block others), deduplicates by name (first-seen wins), and normalizes schemas for OpenAI compatibility. Optionally routes through ToolsRAG for query-based filtering. |
 | `ols/src/tools/tools.py` | `execute_tool_calls_stream`, `enforce_tool_token_budget`, `execute_tool_call`, `_execute_with_retries`, `_extract_text_from_tool_output` | Tool execution engine: runs tool calls in parallel via `aiostream.merge`, applies retry/backoff for transient errors, extracts text from both string and content-block outputs, and enforces tool-result budgets. |
-| [PLANNED: OLS-3928] `ols/src/tools/result_inspection.py` | Result inspector and safety exception | Applies the normative inspection contract through the active model and emits the controlled service failure signal. |
+| `ols/src/tools/tool_result_inspection.py` | `ToolResultClassifier`, `ToolResultInspectionDecision`, `WatsonxToolResultInspectionDecision`, `ToolResultInspectionError` | Sends structured classifier requests. It selects the Watsonx-specific schema by provider type. The shared decision model rejects inconsistent responses from every provider. |
 | `ols/src/tools/approval.py` | `need_validation`, `get_approval_decision`, `set_approval_decision`, `register_pending_approval`, `InMemoryPendingApprovalStore` | Approval state machine: determines whether a tool call requires user approval (based on config strategy and tool annotations), registers pending approvals in an in-memory store backed by `asyncio.Event`, waits for decisions with configurable timeout, and cleans up state on completion. |
 | `ols/src/tools/tools_rag/hybrid_tools_rag.py` | `ToolsRAG`, `populate_tools`, `retrieve_hybrid`, `remove_tools` | Hybrid RAG for tool filtering: indexes tool name+description into Qdrant (in-memory) with dense embeddings and BM25 sparse vectors, retrieves relevant tools via reciprocal rank fusion (RRF) with configurable alpha weighting, grouped by server. Supports default servers (always included) and per-request client servers. |
 | `ols/app/endpoints/tool_approvals.py` | `submit_tool_approval_decision` | REST endpoint (`POST /tool-approvals/decision`) for receiving user approval/rejection decisions. Delegates to `set_approval_decision` and returns 404/409 for missing or already-resolved approvals. |
-| `ols/src/query_helpers/docs_summarizer.py` | `_resolve_tool_call_definitions`, `_process_tool_calls_for_round` | Caller-side orchestration: resolves LLM-emitted tool calls to executable definitions (validating name, args type, deduplication), invokes the execution engine, enforces the aggregate token budget, and emits streaming events for tool_call, approval_required, and tool_result. |
+| `ols/src/query_helpers/docs_summarizer.py` | `DocsSummarizer` | Loads the classifier model and passes the configured provider type to `ToolResultClassifier`. It gives the classifier to `LLMExecutionAgent`. |
+| `ols/src/query_helpers/llm_execution_agent.py` | `LLMExecutionAgent`, `_inspect_tool_messages` | Enforces the aggregate result budget, inspects the complete concurrent batch, and delivers results only after inspection passes. |
 
 ## Data Flow
 
@@ -73,7 +74,7 @@ LLM streaming response
 ### 4. Tool Execution (per round)
 
 ```
-_process_tool_calls_for_round
+LLMExecutionAgent._process_tool_calls_for_round
   -> Stream tool_call events to client
   -> execute_tool_calls_stream(tool_call_definitions, tools_token_budget)
      -> Split budget equally: per_tool_budget = total // len(calls)
@@ -103,8 +104,8 @@ _process_tool_calls_for_round
          If longest message can absorb excess (>= 2x excess): shrink only that one
          Otherwise: scale all messages proportionally (ratio = budget/total)
          Cut at last newline, append truncation warning
-  -> [PLANNED: OLS-3928] Inspect the complete concurrent result batch
-       Apply the normative classifier contract to every effective result or error
+  -> LLMExecutionAgent._inspect_tool_messages checks the complete result batch
+       ToolResultClassifier inspects each effective result or error
        Complete batch passes: continue
        Inspection failure: raise the controlled safety exception
   -> Yield tool_result streaming events, charge token budget
@@ -173,11 +174,12 @@ arbitrarily large raw tool outputs before they even reach the budget enforcer.
 
 | Boundary | How it connects |
 |---|---|
-| **DocsSummarizer** | Calls `get_mcp_tools` during init and binds tools to the LLM. It executes tools, enforces the result budget, and [PLANNED: OLS-3928] inspects the complete result batch before it emits any `tool_result` event. |
+| **DocsSummarizer** | Loads the active provider and model for classification. It passes the configured provider type to `ToolResultClassifier` and gives the classifier to `LLMExecutionAgent`. |
+| **LLMExecutionAgent** | Enforces the result budget and inspects every result in a concurrent batch before it emits any `tool_result` event or sends results to the model. |
 | **Tool Approvals Endpoint** | `POST /tool-approvals/decision` receives `{approval_id, approved}` from the client. Calls `set_approval_decision` which sets the `asyncio.Event`, unblocking the waiter in `get_approval_decision`. |
 | **TokenBudgetTracker** | DocsSummarizer charges tool results via `tracker.charge(TokenCategory.TOOL_RESULT, count)`. The tools_token_budget passed to execution is derived from the tracker's remaining budget. |
 | **Streaming Protocol** | Three event types flow to the client: `StreamChunkType.TOOL_CALL` (before execution), `StreamChunkType.APPROVAL_REQUIRED` (when gated), `StreamChunkType.TOOL_RESULT` (after execution). Each carries structured data including tool name, args, output, truncation status, and optional structured_content from MCP artifacts. |
-| **Config** | `MCPServers` / `MCPServerConfig` models define servers. `ToolsApprovalConfig` sets approval strategy and timeout. `ToolsRAGConfig` controls filtering parameters. [PLANNED: OLS-3928] `GuardrailsConfig` controls tool-result inspection. All live under `OLSConfig`. |
+| **Config** | `MCPServers` / `MCPServerConfig` models define servers. `ToolsApprovalConfig` sets approval strategy and timeout. `ToolsRAGConfig` controls filtering parameters. `GuardrailsConfig` controls tool-result inspection. All live under `OLSConfig`. |
 
 ## Implementation Notes
 
@@ -250,12 +252,14 @@ Each tool-call round (LLM streaming + tool execution) is wrapped in
 loop. This is separate from the per-tool retry timeouts and the approval
 decision timeout.
 
-### Tool-Result Inspection [PLANNED: OLS-3928]
+### Tool-Result Inspection
 
-The normative contract is `openshift/ols/.ai/spec/what/tool-result-inspection.md`. This repository conforms at the Classic service integration points.
+The normative contract is `openshift/ols/.ai/spec/what/tool-result-inspection.md`. This service applies it at the Classic tool-result boundary.
 
-The result inspector runs after budget enforcement. Thus, it inspects the exact content that can enter model context. The query flow supplies the active model interface. The inspector creates an isolated call.
+`DocsSummarizer` loads the active provider and model for a separate classifier call. It passes `provider_config.type` to `ToolResultClassifier`.
 
-The inspector processes the complete concurrent round before `DocsSummarizer` emits a result event. A failed result rejects the complete round.
+For Watsonx, the classifier sends `WatsonxToolResultInspectionDecision` with a `oneOf` schema. For other provider types, it sends `ToolResultInspectionDecision` without `oneOf`. Both models use the same Pydantic validation. An inconsistent decision is a classifier failure for every provider.
 
-Classifier calls use the initiating request's quota subject. The safety exception carries only the controlled reason used by the endpoint and storage paths.
+`LLMExecutionAgent` inspects the complete batch after budget enforcement. It does not emit or reinject a result from that batch until every result passes. A failed result rejects the complete batch.
+
+Classifier calls use the quota subject from the request. The safety exception carries only the controlled reason that the endpoints and storage paths use.

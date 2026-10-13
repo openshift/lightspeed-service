@@ -2,6 +2,7 @@
 
 import pytest
 
+from tests.e2e.utils import inspection_assertions
 from tests.e2e.utils.inspection_assertions import (
     assert_inspection_outcome,
     assert_rejected_result_absent,
@@ -51,3 +52,48 @@ def test_inspection_leak_report_names_source_without_content() -> None:
 def test_inspection_leak_report_accepts_clean_sources() -> None:
     """The leak check accepts responses and logs without rejected output."""
     assert_rejected_result_absent({"response_text": False, "service_logs": False})
+
+
+def test_classifier_failure_report_extracts_only_safe_metadata() -> None:
+    """Extract temporary classifier diagnostics without exception messages."""
+    extract = getattr(inspection_assertions, "classifier_failures_since", None)
+    assert callable(extract)
+    previous = "older service logs\n"
+    current = (
+        previous
+        + '{"message":"TEMPORARY tool_result_classifier_failure '
+        + "stage=invoke attempt=1/3 error_type=APIStatusError "
+        + 'cause_types=HTTPStatusError status_code=503"}\n'
+        + "provider exception: api_key=must-not-appear\n"
+    )
+
+    failures = extract(previous, current)
+
+    assert failures == ["invoke/1:APIStatusError:causes=HTTPStatusError:status=503"]
+    assert "must-not-appear" not in str(failures)
+
+
+def test_failure_diagnostics_report_only_safe_request_metadata() -> None:
+    """Failure details show status and outcomes, not response or tool content."""
+    formatter = getattr(
+        inspection_assertions, "format_inspection_failure_diagnostics", None
+    )
+    assert callable(formatter)
+    assert formatter(502, True, [("classifier_error", "result")]) == (
+        "HTTP status=502; mock_tool_called=true; "
+        "inspection_outcomes=classifier_error/result; classifier_failures=unavailable"
+    )
+    assert formatter(500, None, None) == (
+        "HTTP status=500; mock_tool_called=unavailable; "
+        "inspection_outcomes=unavailable; classifier_failures=unavailable"
+    )
+    assert formatter(
+        None,
+        True,
+        [("classifier_error", "result")],
+        ["invoke/1:APIStatusError:causes=HTTPStatusError:status=503", "secret=hidden"],
+    ) == (
+        "HTTP status=unavailable; mock_tool_called=true; "
+        "inspection_outcomes=classifier_error/result; "
+        "classifier_failures=invoke/1:APIStatusError:causes=HTTPStatusError:status=503"
+    )

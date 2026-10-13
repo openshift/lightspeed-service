@@ -10,7 +10,7 @@ from tests.e2e.utils import cluster as cluster_utils
 
 def inspection_enabled_for_e2e(suffix: str) -> bool:
     """Return whether the e2e suffix enables tool-result inspection."""
-    return suffix == "mcp_inspection"
+    return suffix == "mcp_inspection" or suffix.startswith("mcp_inspection_")
 
 
 def apply_e2e_olsconfig(

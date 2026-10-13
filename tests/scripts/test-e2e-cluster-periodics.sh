@@ -54,7 +54,23 @@ function run_suites() {
     (( rc = rc || $? ))
 
     if [[ "${RUN_TOOL_RESULT_INSPECTION_E2E:-0}" == "1" ]]; then
-      run_suite "openai_tool_result_inspection" "inspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "mcp_inspection"
+      run_suite "openai_gpt6_tool_result_inspection" "inspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "azure_openai_tool_result_inspection" "inspection" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "bedrock_anthropic_tool_result_inspection" "inspection" "bedrock_anthropic" "iam" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "bedrock_openai_tool_result_inspection" "inspection" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "google_vertex_tool_result_inspection" "inspection" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "google_vertex_anthropic_tool_result_inspection" "inspection" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "watsonx_tool_result_inspection" "inspection" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "rhoai_vllm_tool_result_inspection" "inspection" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp_inspection_ci"
+      (( rc = rc || $? ))
+      run_suite "rhelai_vllm_tool_result_inspection" "inspection" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp_inspection_ci"
       (( rc = rc || $? ))
     fi
 

@@ -43,7 +43,11 @@ from tests import constants  # noqa: E402
 from tests.mock_classes.mock_langchain_interface import (  # noqa: E402
     mock_langchain_interface,
 )
-from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
+from tests.mock_classes.mock_llm_loader import (  # noqa: E402
+    MockLLMLoader,
+    MockStructuredOutputLLM,
+    mock_llm_loader,
+)
 from tests.mock_classes.mock_retrievers import MockRetriever  # noqa: E402
 from tests.mock_classes.mock_tools import mock_tools_map  # noqa: E402
 
@@ -174,6 +178,42 @@ def test_tool_result_classifier_does_not_force_temperature() -> None:
         summarizer.model,
         {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128},
     )
+
+
+@pytest.mark.parametrize(
+    ("provider_type", "expect_one_of"),
+    [("watsonx", True), ("openai", False)],
+)
+def test_tool_result_classifier_uses_configured_provider_type(
+    provider_type: str, expect_one_of: bool
+) -> None:
+    """Select the schema by configured provider type, not by model name."""
+    schemas: list[dict] = []
+
+    def capture_schema(_llm, schema, **_kwargs):
+        schemas.append(schema.model_json_schema())
+        return MockStructuredOutputLLM()
+
+    with (
+        patch.object(config.llm_config.providers["p1"], "type", provider_type),
+        patch.object(
+            config.ols_config.guardrails.tool_result_inspection, "enabled", True
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value={"test_server": {}},
+        ),
+        patch.object(
+            MockLLMLoader,
+            "with_structured_output",
+            autospec=True,
+            side_effect=capture_schema,
+        ),
+    ):
+        DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    assert len(schemas) == 1
+    assert ("oneOf" in schemas[0]) is expect_one_of
 
 
 def test_tool_result_inspection_fails_closed_without_structured_output():
