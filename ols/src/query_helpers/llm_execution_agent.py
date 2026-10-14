@@ -23,6 +23,7 @@ from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.config import ModelConfig
 from ols.app.models.models import RagChunk, StreamChunkType, StreamedChunk
 from ols.src.tools.tool_result_inspection import (
+    INJECTION_CATEGORIES,
     ToolResultClassifier,
     ToolResultInspectionError,
     ToolResultRejectedError,
@@ -1025,9 +1026,16 @@ class LLMExecutionAgent:
                     )
                 except ToolResultRejectedError as error:
                     inspection_error = error
+                    category = (
+                        error.category
+                        if error.category in INJECTION_CATEGORIES
+                        else "unknown"
+                    )
                     logger.debug(
-                        "Tool result inspection outcome=malicious result_type=%s",
+                        "Tool result inspection outcome=malicious result_type=%s "
+                        "category=%s",
                         result_type,
+                        category,
                     )
                     if self._audit_ctx:
                         inspection_span.set_attribute("inspection.outcome", "malicious")

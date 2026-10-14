@@ -2,17 +2,37 @@
 
 import asyncio
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
+import httpx
+import requests
+from anthropic import APITimeoutError as AnthropicAPITimeoutError
+from botocore.exceptions import ConnectTimeoutError as BotocoreConnectTimeoutError
+from botocore.exceptions import ReadTimeoutError as BotocoreReadTimeoutError
+from google.api_core.exceptions import DeadlineExceeded as GoogleDeadlineExceeded
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
+from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.utils.token_handler import TokenHandler
 
 TOOL_RESULT_SAFETY_FAILURE_MESSAGE = "Lightspeed stopped the operation because a tool result failed the safety inspection."  # noqa: E501
+logger = logging.getLogger(__name__)
+
+_TIMEOUT_EXCEPTIONS = (
+    TimeoutError,
+    AnthropicAPITimeoutError,
+    BotocoreConnectTimeoutError,
+    BotocoreReadTimeoutError,
+    GoogleDeadlineExceeded,
+    OpenAIAPITimeoutError,
+    httpx.TimeoutException,
+    requests.Timeout,
+)
 
 INJECTION_CATEGORIES = (
     "instruction_override",
@@ -200,6 +220,16 @@ class ToolResultClassifier:
                 result = await self._llm.ainvoke(messages)
             except Exception as error:
                 last_error = error
+                failure_type = (
+                    "timeout"
+                    if isinstance(error, _TIMEOUT_EXCEPTIONS)
+                    else "provider_error"
+                )
+                logger.debug(
+                    "Tool result classifier attempt failed failure_type=%s attempt=%d/3",
+                    failure_type,
+                    attempt + 1,
+                )
                 if attempt < 2:
                     await self._sleep((0.5, 1.0)[attempt])
                 continue
@@ -224,6 +254,11 @@ class ToolResultClassifier:
                 return decision
             except Exception as error:
                 last_error = error
+                logger.debug(
+                    "Tool result classifier attempt failed "
+                    "failure_type=invalid_response attempt=%d/3",
+                    attempt + 1,
+                )
                 if attempt < 2:
                     await self._sleep((0.5, 1.0)[attempt])
         raise ToolResultInspectionError("tool-result classifier failed") from last_error

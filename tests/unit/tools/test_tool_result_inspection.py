@@ -1,12 +1,19 @@
 """Tests for Classic tool-result inspection primitives."""
 
 import json
+import logging
 from itertools import pairwise
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
+import requests
+from anthropic import APITimeoutError as AnthropicAPITimeoutError
+from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
+from google.api_core.exceptions import DeadlineExceeded
 from langchain_core.messages import HumanMessage, SystemMessage
+from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import ValidationError
 
 from ols.src.tools.tool_result_inspection import (
@@ -163,6 +170,103 @@ async def test_classifier_retries_technical_failures_with_required_delays() -> N
     assert "untrusted data" in messages[0].content
     assert isinstance(messages[1], HumanMessage)
     assert "safe output" in messages[1].content
+
+
+@pytest.mark.parametrize(
+    ("error", "failure_type"),
+    [
+        (TimeoutError("private timeout detail"), "timeout"),
+        pytest.param(
+            OpenAIAPITimeoutError(request=httpx.Request("POST", "http://llm.svc")),
+            "timeout",
+            id="openai",
+        ),
+        pytest.param(
+            AnthropicAPITimeoutError(request=httpx.Request("POST", "http://llm.svc")),
+            "timeout",
+            id="anthropic",
+        ),
+        pytest.param(
+            httpx.ReadTimeout("private timeout detail"), "timeout", id="httpx"
+        ),
+        pytest.param(
+            requests.Timeout("private timeout detail"), "timeout", id="requests"
+        ),
+        pytest.param(
+            ConnectTimeoutError(endpoint_url="http://llm.svc"),
+            "timeout",
+            id="botocore-connect",
+        ),
+        pytest.param(
+            ReadTimeoutError(endpoint_url="http://llm.svc", error="private detail"),
+            "timeout",
+            id="botocore-read",
+        ),
+        pytest.param(
+            DeadlineExceeded("private timeout detail"),
+            "timeout",
+            id="google-deadline",
+        ),
+        (RuntimeError("private provider detail"), "provider_error"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_classifier_logs_controlled_invocation_failure(
+    caplog: pytest.LogCaptureFixture,
+    error: Exception,
+    failure_type: str,
+) -> None:
+    """Log invocation failure type and attempt without exception or result content."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection")
+    llm = MagicMock()
+    llm.with_structured_output.return_value = llm
+    llm.ainvoke = AsyncMock(
+        side_effect=[error, {"injectionDetected": False, "category": "none"}]
+    )
+    classifier = ToolResultClassifier(llm, sleep=AsyncMock())
+    tool_content = "private tool result"
+
+    decision = await classifier.classify("get_pods", "result", 1, 1, tool_content)
+
+    assert decision.injection_detected is False
+    messages = " ".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.tools.tool_result_inspection"
+    )
+    assert f"failure_type={failure_type} attempt=1/3" in messages
+    assert str(error) not in messages
+    assert tool_content not in messages
+
+
+@pytest.mark.asyncio
+async def test_classifier_logs_invalid_response_without_response_content(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Log invalid structured output without logging its contents."""
+    caplog.set_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection")
+    llm = MagicMock()
+    llm.with_structured_output.return_value = llm
+    llm.ainvoke = AsyncMock(
+        side_effect=[
+            {"parsed": {"injectionDetected": False, "category": "private-output"}},
+            {"injectionDetected": False, "category": "none"},
+        ]
+    )
+    classifier = ToolResultClassifier(llm, sleep=AsyncMock())
+    tool_content = "private tool result"
+
+    decision = await classifier.classify("get_pods", "result", 1, 1, tool_content)
+
+    assert decision.injection_detected is False
+    messages = " ".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "ols.src.tools.tool_result_inspection"
+    )
+    assert "failure_type=invalid_response attempt=1/3" in messages
+    assert "private-output" not in messages
+    assert tool_content not in messages
 
 
 @pytest.mark.asyncio
