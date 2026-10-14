@@ -63,6 +63,26 @@ HASH_PKGS=$( {
 } | normalize_names)
 HASH_COUNT=$(echo "$HASH_PKGS" | grep -c . || true)
 
+# Hermeto's binary.packages setting applies across *all* requirements files.
+# Listing a PyPI source package there makes Hermeto fetch its wheel instead,
+# even when it is listed in requirements.hashes.source.txt.
+SOURCE_PKGS=$(grep -E '^[a-zA-Z0-9]' "$SOURCE_HASH_FILE" | normalize_names)
+for tekton_file in .tekton/lightspeed-service-pull-request.yaml .tekton/lightspeed-service-push.yaml; do
+    if [[ ! -r "$tekton_file" ]]; then
+        echo "ERROR: required pipeline is missing or unreadable: $tekton_file" >&2
+        exit 1
+    fi
+    BINARY_PKGS=$(grep -oE '"packages": "[^"]+"' "$tekton_file" \
+        | sed -E 's/^"packages": "//; s/"$//' | tr ',' '\n' | normalize_names)
+    SOURCE_AS_BINARY=$(comm -12 <(echo "$SOURCE_PKGS") <(echo "$BINARY_PKGS"))
+    if [[ -n "$SOURCE_AS_BINARY" ]]; then
+        echo "ERROR: $tekton_file requests PyPI source packages as binary wheels:" >&2
+        echo "$SOURCE_AS_BINARY" | sed 's/^/  - /' >&2
+        echo "Remove these from binary.packages (or rerun 'make konflux-requirements')." >&2
+        exit 1
+    fi
+done
+
 # --- Build allowlist set ---
 ALLOW_SET=$(printf '%s\n' "${EXPECTED_MISSING[@]}" | normalize_names)
 ALLOW_COUNT=$(echo "$ALLOW_SET" | grep -c . || true)

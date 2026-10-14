@@ -55,6 +55,8 @@ These files are referenced by `.tekton/lightspeed-service-pull-request.yaml` and
 
 After regen, check `requirements-build.txt`. `.konflux/requirements.hashes.wheel.txt` **should** start with `--index-url https://packages.redhat.com/api/pypi/public-rhai/...` (RHOAI wheels). `requirements-build.txt` must **not**. If it gained `--index-url` (especially `console.redhat.com`), discard those generated files and rerun with a clean uv config. `make verify` / `scripts/verify_hermetic_requirements.sh` rejects a leaked index on that file.
 
+Also check that packages in `requirements.hashes.source.txt` are **not** in the `.tekton/` pipelines' `binary.packages` lists. Hermeto uses that list across all requirements files: a source requirement listed as binary will fetch a PyPI wheel and fail Enterprise Contract's disallowed-binary-attribute rule. The verification script checks both pipelines for this overlap. The source requirements file may contain both sdist and wheel hashes; its filename or hashes alone do not force Hermeto to choose the sdist.
+
 After regeneration, verify that all runtime dependency names are accounted for and review the generated changes:
 
 ```bash
