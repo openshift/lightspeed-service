@@ -20,7 +20,10 @@ OC_SUBPROCESS_TIMEOUT = 120
 
 
 def run_oc(
-    args: list[str], command=None, ignore_existing_resource=False
+    args: list[str],
+    command=None,
+    ignore_existing_resource=False,
+    timeout: int = OC_SUBPROCESS_TIMEOUT,
 ) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
     try:
@@ -30,14 +33,12 @@ def run_oc(
             text=True,
             check=True,
             input=command,
-            timeout=OC_SUBPROCESS_TIMEOUT,
+            timeout=timeout,
         )
         return res
     except subprocess.TimeoutExpired as e:
-        print(f"oc command timed out after {OC_SUBPROCESS_TIMEOUT}s: {args}")
-        raise RuntimeError(
-            f"oc command {args} timed out after {OC_SUBPROCESS_TIMEOUT}s"
-        ) from e
+        print(f"oc command timed out after {timeout}s: {args}")
+        raise RuntimeError(f"oc command {args} timed out after {timeout}s") from e
     except subprocess.CalledProcessError as e:
         if ignore_existing_resource:
             error_text = (e.stderr + " " + e.stdout).lower()

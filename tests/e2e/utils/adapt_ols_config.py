@@ -12,7 +12,10 @@ import yaml
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
-from tests.e2e.utils.ols_installer import ensure_azure_entra_id_secret
+from tests.e2e.utils.ols_installer import (
+    ensure_azure_entra_id_secret,
+    warm_up_rhokp_image,
+)
 from tests.e2e.utils.olsconfig_cr import apply_e2e_olsconfig
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
@@ -328,6 +331,7 @@ def _reconcile_olsconfig_with_operator(provider_list: list[str]) -> None:
         print(f"Could not delete old OLSConfig: {e}")
 
     try:
+        warm_up_rhokp_image()
         apply_olsconfig(provider_list)
         print("New OLSConfig CR applied")
     except Exception as e:

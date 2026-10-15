@@ -1,11 +1,14 @@
 """Unit tests for e2e OLS installation."""
 
+import json
+import subprocess
+from threading import Barrier
 from typing import Any
 
 import pytest
 import yaml
 
-from tests.e2e.utils import ols_installer
+from tests.e2e.utils import cluster, ols_installer
 
 
 @pytest.mark.parametrize(
@@ -51,6 +54,7 @@ def test_install_ols_creates_olsconfig_with_suffix_inspection_value(
         ols_installer, "create_and_config_sas", lambda: ("token", "metrics")
     )
     monkeypatch.setattr(ols_installer, "create_secrets", lambda *_args: None)
+    monkeypatch.setattr(ols_installer, "warm_up_rhokp_image", lambda: None)
     monkeypatch.setattr(
         ols_installer, "retry_until_timeout_or_success", lambda *_args, **_kwargs: True
     )
@@ -72,3 +76,167 @@ def test_install_ols_creates_olsconfig_with_suffix_inspection_value(
     if expected_url is not None:
         provider_config = cr["spec"]["llm"]["providers"][0]
         assert provider_config["url"] == expected_url
+
+
+def test_warm_up_rhokp_image_pulls_operator_image_concurrently_on_each_node(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pull the configured image on all nodes concurrently with a long timeout."""
+    image = "registry.example.com/rhokp@sha256:abc123"
+    deployment = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "manager",
+                            "args": ["--leader-elect", f"--rhokp-image={image}"],
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    nodes = {
+        "items": [
+            {"metadata": {"name": "worker-a"}},
+            {"metadata": {"name": "worker-b"}},
+        ]
+    }
+    pull_barrier = Barrier(2)
+    calls: list[tuple[list[str], int]] = []
+
+    def fake_run_oc(
+        args: list[str],
+        command: str | None = None,
+        ignore_existing_resource: bool = False,
+        timeout: int = cluster.OC_SUBPROCESS_TIMEOUT,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append((args, timeout))
+        if args[:2] == ["get", "deployment"]:
+            stdout = json.dumps(deployment)
+        elif args[:2] == ["get", "nodes"]:
+            stdout = json.dumps(nodes)
+        else:
+            pull_barrier.wait(timeout=2)
+            stdout = ""
+        return subprocess.CompletedProcess(args, 0, stdout, "")
+
+    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+
+    ols_installer.warm_up_rhokp_image()
+
+    pull_calls = [args for args, _ in calls if args[0] == "debug"]
+    assert sorted(pull_calls) == sorted(
+        [
+            [
+                "debug",
+                "node/worker-a",
+                "--",
+                "chroot",
+                "/host",
+                "crictl",
+                "pull",
+                image,
+            ],
+            [
+                "debug",
+                "node/worker-b",
+                "--",
+                "chroot",
+                "/host",
+                "crictl",
+                "pull",
+                image,
+            ],
+        ]
+    )
+    assert [timeout for args, timeout in calls if args[0] == "debug"] == [600, 600]
+
+
+def test_warm_up_rhokp_image_raises_when_deployment_has_no_image(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Report a missing RHOKP image before attempting any node pulls."""
+    calls: list[list[str]] = []
+
+    def fake_run_oc(
+        args: list[str],
+        command: str | None = None,
+        ignore_existing_resource: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(
+            args,
+            0,
+            json.dumps(
+                {"spec": {"template": {"spec": {"containers": [{"args": []}]}}}}
+            ),
+            "",
+        )
+
+    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+
+    with pytest.raises(RuntimeError, match="--rhokp-image"):
+        ols_installer.warm_up_rhokp_image()
+
+    assert calls == [
+        [
+            "get",
+            "deployment",
+            "lightspeed-operator-controller-manager",
+            "-n",
+            "openshift-lightspeed",
+            "-o",
+            "json",
+        ]
+    ]
+
+
+def test_warm_up_rhokp_image_raises_when_cluster_has_no_nodes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Report an empty node list instead of silently skipping the warm-up."""
+    deployment = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "args": [
+                                "--rhokp-image=registry.example.com/rhokp@sha256:abc123"
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    outputs = iter([json.dumps(deployment), json.dumps({"items": []})])
+    calls: list[list[str]] = []
+
+    def fake_run_oc(
+        args: list[str],
+        command: str | None = None,
+        ignore_existing_resource: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, next(outputs), "")
+
+    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+
+    with pytest.raises(RuntimeError, match="cluster nodes"):
+        ols_installer.warm_up_rhokp_image()
+
+    assert calls == [
+        [
+            "get",
+            "deployment",
+            "lightspeed-operator-controller-manager",
+            "-n",
+            "openshift-lightspeed",
+            "-o",
+            "json",
+        ],
+        ["get", "nodes", "-o", "json"],
+    ]

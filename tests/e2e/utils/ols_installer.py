@@ -1,8 +1,10 @@
 """Functions to install the service onto an OCP cluster using the OLS operator."""
 
+import json
 import os
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import yaml
 
@@ -469,6 +471,68 @@ def _run_bundle_with_retry(bundle_image: str) -> None:
             raise
 
 
+def warm_up_rhokp_image() -> None:
+    """Pull the operator's RHOKP image onto every cluster node."""
+    operator_deployment = json.loads(
+        cluster_utils.run_oc(
+            [
+                "get",
+                "deployment",
+                "lightspeed-operator-controller-manager",
+                "-n",
+                "openshift-lightspeed",
+                "-o",
+                "json",
+            ]
+        ).stdout
+    )
+    rhokp_image = next(
+        (
+            argument.partition("=")[2]
+            for container in operator_deployment["spec"]["template"]["spec"][
+                "containers"
+            ]
+            for argument in container.get("args", [])
+            if argument.startswith("--rhokp-image=")
+        ),
+        None,
+    )
+    if rhokp_image is None:
+        raise RuntimeError(
+            "Could not find --rhokp-image in the operator controller Deployment"
+        )
+
+    nodes = json.loads(cluster_utils.run_oc(["get", "nodes", "-o", "json"]).stdout)[
+        "items"
+    ]
+    if not nodes:
+        raise RuntimeError("Could not find any cluster nodes to warm up")
+
+    with ThreadPoolExecutor(max_workers=len(nodes)) as executor:
+        pulls = []
+        for node in nodes:
+            node_name = node["metadata"]["name"]
+            print(f"Pulling RHOKP image on node {node_name}: {rhokp_image}")
+            pulls.append(
+                executor.submit(
+                    cluster_utils.run_oc,
+                    [
+                        "debug",
+                        f"node/{node_name}",
+                        "--",
+                        "chroot",
+                        "/host",
+                        "crictl",
+                        "pull",
+                        rhokp_image,
+                    ],
+                    timeout=600,
+                )
+            )
+        for pull in pulls:
+            pull.result()
+
+
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     if not disconnected:
@@ -542,6 +606,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     if "azure_openai" in provider_list:
         ensure_azure_entra_id_secret()
+
+    warm_up_rhokp_image()
 
     # create the olsconfig operand
     try:
