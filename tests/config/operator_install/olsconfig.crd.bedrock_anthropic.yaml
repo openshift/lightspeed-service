@@ -17,9 +17,9 @@ spec:
         credentialsSecretRef:
           name: llmcreds
         models:
-          - name: anthropic.claude-sonnet-4-6
+          - name: anthropic.claude-haiku-5-5
   ols:
-    defaultModel: anthropic.claude-sonnet-4-6
+    defaultModel: anthropic.claude-haiku-5-5
     defaultProvider: bedrock
     deployment:
       replicas: 1
