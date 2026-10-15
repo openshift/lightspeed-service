@@ -73,13 +73,13 @@ function run_suites() {
     # Bedrock suites — PROVIDER_KEY_PATH carries a discriminator ("iam" or
     # "iam_role") instead of a credential file path; see
     # ensure_bedrock_iam_secret() in ols_installer.py.
-    run_suite "bedrock_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_anthropic" "iam" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "default"
+    run_suite "bedrock_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_anthropic" "iam" "anthropic.claude-haiku-5-5" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
     run_suite "bedrock_openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-    run_suite "bedrock_anthropic_iam_role" "smoketest" "bedrock_anthropic" "iam_role" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "default"
+    run_suite "bedrock_anthropic_iam_role" "smoketest" "bedrock_anthropic" "iam_role" "anthropic.claude-haiku-5-5" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
     run_suite "bedrock_openai_iam_role" "smoketest" "bedrock_openai" "iam_role" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
