@@ -110,6 +110,8 @@ def pytest_sessionstart():
                 cluster.run_oc(
                     ["project", "openshift-lightspeed"], ignore_existing_resource=True
                 )
+                # warm up for - load RHOKP image
+                ols_installer.warm_up_rhokp_image()
                 ols_url = cluster.get_ols_url("ols")
                 token = cluster.get_token_for("test-user")
                 metrics_token = cluster.get_token_for("metrics-test-user")
