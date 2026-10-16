@@ -17,6 +17,24 @@ line-length = 100
 "tests/*" = ["S101"]
 "scripts/*" = ["S101"]
 
+[tool.deptry]
+ignore = ["DEP001", "DEP003", "DEP004", "DEP005"]  # DEP002-only audit
+exclude = ['(^|.*/)(\.venv|venv|\.direnv|\.git)(/|$)', '(^|.*/)setup\.py$']
+ignore_notebooks = true
+
+[tool.deptry.package_module_name_map]
+azure-identity = ["azure"]
+faiss-cpu = ["faiss"]
+llama-index-core = ["llama_index"]
+llama-index-vector-stores-faiss = ["llama_index"]
+llama-index-embeddings-huggingface = ["llama_index"]
+opentelemetry-api = ["opentelemetry"]
+opentelemetry-sdk = ["opentelemetry"]
+opentelemetry-exporter-otlp-proto-grpc = ["opentelemetry"]
+psycopg2-binary = ["psycopg2"]
+python-frontmatter = ["frontmatter"]
+scikit-learn = ["sklearn"]
+
 [tool.hatch.version]
 path = "ols/version.py"
 

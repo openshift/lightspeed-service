@@ -12,6 +12,7 @@
     * [Code coverage measurement](#code-coverage-measurement)
     * [Type hints checks](#type-hints-checks)
     * [Linters](#linters)
+    * [Detecting unused dependencies](#detecting-unused-dependencies)
     * [Security checks](#security-checks)
 * [Testing](#testing)
     * [Tips and hints for developing unit tests](#tips-and-hints-for-developing-unit-tests)
@@ -168,6 +169,34 @@ To disable _Pylint_ rule in source code, the comment line in following format ca
 ```
 
 
+
+### Detecting unused dependencies
+
+Run the standalone dependency audit with:
+
+```bash
+make check-unused-deps
+```
+
+This runs a pinned version of [deptry](https://deptry.com/) through `uvx` in an
+isolated tool environment. The first run requires access to the package index;
+no application dependencies, lockfiles, or Konflux requirements are changed.
+It checks Python imports in application code, tests, and scripts against runtime
+and optional dependencies in `pyproject.toml`. Development dependency groups are
+not checked for unused packages. Notebooks are excluded.
+
+Only the unused-dependency rule (`DEP002`) is enabled. The command exits nonzero
+when candidates are found and is intentionally not part of `make verify` yet.
+Treat findings as review candidates, not instructions to remove packages:
+CLI usage, plugins, dynamically loaded modules, transitive requirements, and
+security-version floors may justify dependencies without direct imports.
+
+Package-to-module mappings live under `[tool.deptry.package_module_name_map]`
+in `pyproject.toml`, since the isolated tool cannot inspect the application's
+installed package metadata. Unmapped packages fall back to normalized names and
+produce warnings; add mappings when package and import names differ. Shared
+namespaces such as `llama_index` and `opentelemetry` cannot distinguish usage of
+individual distributions, so these checks are approximate.
 
 ### Security checks
 
