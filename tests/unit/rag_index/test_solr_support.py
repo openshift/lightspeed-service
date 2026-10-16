@@ -8,6 +8,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from ols import constants
 from ols.app.models.config import SolrHybridSettings
 from ols.src.rag_index.solr_support import (
     RetrievedChunk,
@@ -62,9 +63,12 @@ def test_normalize_solr_hybrid_query_empty_fallback() -> None:
 
 
 def test_get_openshift_docs_tool_has_expected_name() -> None:
-    """Factory returns a tool named ``search_openshift_documentation``."""
+    """Factory returns a tool with the first-party registration marker."""
     tool = get_openshift_docs_tool(MagicMock())
-    assert tool.name == "search_openshift_documentation"
+    assert tool.name == constants.OPENSHIFT_DOCS_TOOL_NAME
+    assert tool.metadata[constants.OLS_INTERNAL_TOOL_METADATA_KEY] == (
+        constants.OPENSHIFT_DOCS_TOOL_NAME
+    )
 
 
 def test_solr_hybrid_settings_rejects_unknown_field() -> None:

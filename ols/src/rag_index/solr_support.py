@@ -25,6 +25,7 @@ import httpx
 from langchain_core.tools.structured import StructuredTool
 from packaging.version import InvalidVersion, Version
 
+from ols import constants
 from ols.app.models.models import RagChunk
 from ols.src.rag.stop_words import ENGLISH_STOP_WORDS
 from ols.utils.checks import InvalidConfigurationError
@@ -783,14 +784,18 @@ def get_openshift_docs_tool(client: SolrHybridSearch) -> StructuredTool:
 
     tool = StructuredTool.from_function(
         coroutine=_search_openshift_documentation,
-        name="search_openshift_documentation",
+        name=constants.OPENSHIFT_DOCS_TOOL_NAME,
         description=(
             "Search published Red Hat OpenShift and related product documentation "
             "(not the live cluster). Returns JSON: an array of "
             "{text, score, title, docs_url}, or [] if no hits, or an object with "
             "error on failure. Cite docs_url when using a passage."
         ),
-        metadata={"tools_token_budget": 0, "annotations": {"readOnlyHint": True}},
+        metadata={
+            constants.OLS_INTERNAL_TOOL_METADATA_KEY: constants.OPENSHIFT_DOCS_TOOL_NAME,
+            "tools_token_budget": 0,
+            "annotations": {"readOnlyHint": True},
+        },
     )
     tool_ref.append(tool)
     return tool

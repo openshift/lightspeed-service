@@ -30,6 +30,8 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
     }
 )
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
+OPENSHIFT_DOCS_TOOL_NAME = "search_openshift_documentation"
+OLS_INTERNAL_TOOL_METADATA_KEY = "_ols_internal_tool"
 
 EMBEDDINGS_MODEL_BYOK_SUBDIR = "all-mpnet-base-v2"
 # EMBEDDINGS_MODEL_OKP_SUBDIR = "granite-embedding-30m-english"
