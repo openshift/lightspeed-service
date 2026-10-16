@@ -45,7 +45,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MIN_TOOL_EXECUTION_TOKENS = 100
-TOOL_RESULT_INSPECTION_EXEMPT_TOOL_NAMES = frozenset({"search_openshift_documentation"})
 FINAL_SYNTHESIS_INSTRUCTION = (
     "Tool investigation is exhausted. Do not call tools again.\n"
     "Summarize available evidence; clearly state what remains uncertain if evidence is partial."
@@ -912,13 +911,17 @@ class LLMExecutionAgent:
         tool_id_to_name: dict[str, str],
         tool_id_to_audit_span: dict[str, Span] | None = None,
         raw_tool_messages_by_id: dict[str, ToolMessage] | None = None,
+        tool_id_to_tool: dict[str, StructuredTool | None] | None = None,
     ) -> None:
         """Inspect and audit each result before deciding whether to deliver the round."""
+        tool_by_id = tool_id_to_tool or {}
         inspection_messages = [
             message
             for message in tool_messages
-            if tool_id_to_name.get(message.tool_call_id, "unknown")
-            not in TOOL_RESULT_INSPECTION_EXEMPT_TOOL_NAMES
+            if not self._is_inspection_exempt_tool(
+                tool_id_to_name.get(message.tool_call_id, "unknown"),
+                tool_by_id.get(message.tool_call_id),
+            )
         ]
         max_tokens = 0
         overlap_tokens = 0
@@ -944,6 +947,7 @@ class LLMExecutionAgent:
                     message.tool_call_id, message
                 ),
                 tool_name=tool_id_to_name.get(message.tool_call_id, "unknown"),
+                tool=tool_by_id.get(message.tool_call_id),
                 max_tokens=max_tokens,
                 overlap_tokens=overlap_tokens,
                 audit_span=audit_span,
@@ -968,6 +972,7 @@ class LLMExecutionAgent:
         message: ToolMessage,
         audit_message: ToolMessage,
         tool_name: str,
+        tool: StructuredTool | None,
         max_tokens: int,
         overlap_tokens: int,
         audit_span: Span | None,
@@ -983,7 +988,7 @@ class LLMExecutionAgent:
             if isinstance(audit_message.content, str)
             else json.dumps(audit_message.content, ensure_ascii=False)
         )
-        if tool_name in TOOL_RESULT_INSPECTION_EXEMPT_TOOL_NAMES:
+        if self._is_inspection_exempt_tool(tool_name, tool):
             self._audit_tool_result(audit_message, audit_span, audit_content)
             return None
         if self._tool_result_classifier is None:
@@ -1080,6 +1085,17 @@ class LLMExecutionAgent:
         self._audit_tool_result(audit_message, audit_span, audit_content)
         return None
 
+    @staticmethod
+    def _is_inspection_exempt_tool(tool_name: str, tool: StructuredTool | None) -> bool:
+        """Return whether a registered first-party tool is exempt from inspection."""
+        metadata = tool.metadata or {} if tool is not None else {}
+        return (
+            tool_name == constants.OPENSHIFT_DOCS_TOOL_NAME
+            and metadata.get(constants.OLS_INTERNAL_TOOL_METADATA_KEY)
+            == constants.OPENSHIFT_DOCS_TOOL_NAME
+            and not metadata.get("mcp_server")
+        )
+
     def _audit_tool_result(
         self,
         message: ToolMessage,
@@ -1151,6 +1167,10 @@ class LLMExecutionAgent:
 
         tool_id_to_name: dict[str, str] = {
             str(tc.get("id", "")): str(tc.get("name", "unknown")) for tc in tool_calls
+        }
+        tool_id_to_tool: dict[str, StructuredTool | None] = {
+            str(tc.get("id", "")): all_tools_dict.get(str(tc.get("name", "unknown")))
+            for tc in tool_calls
         }
 
         for tool_call in tool_calls:
@@ -1239,6 +1259,7 @@ class LLMExecutionAgent:
                 tool_id_to_name,
                 tool_id_to_audit_span,
                 raw_tool_messages_by_id,
+                tool_id_to_tool,
             )
         finally:
             for audit_span in tool_id_to_audit_span.values():
