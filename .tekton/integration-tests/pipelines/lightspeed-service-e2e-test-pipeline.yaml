@@ -1,0 +1,311 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: lightspeed-service-e2e-tests-pipeline
+spec:
+  description: Run the SNAPSHOT service revision e2e tests against its built image on an AWS HyperShift cluster.
+    The service harness installs the operator bundle and replaces the service image. Publish artifacts
+    even if tests fail.
+  params:
+  - name: SNAPSHOT
+    description: The JSON string representing the snapshot of the application under test.
+    type: string
+  - name: test-name
+    description: The name of the test corresponding to a defined Konflux integration test.
+    default: ols-e2e-tests
+    type: string
+  - name: openshift-version-prefix
+    description: OpenShift minor version to provision (for example, 4.22).
+    default: '4.22'
+    type: string
+  - name: component-name
+    type: string
+    default: lightspeed-service
+    description: Service component in the Konflux snapshot.
+  - name: bundle-image
+    type: string
+    default: quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest
+    description: Operator bundle installed by the e2e harness; override with a digest for reproducibility.
+  tasks:
+  - name: get-snapshot-component
+    params:
+    - name: SNAPSHOT
+      value: $(params.SNAPSHOT)
+    - name: component-name
+      value: $(params.component-name)
+    taskSpec:
+      params:
+      - name: SNAPSHOT
+        type: string
+      - name: component-name
+        type: string
+      results:
+      - name: commit
+        value: $(steps.extract.results.commit)
+      - name: service-image
+        value: $(steps.extract.results.service-image)
+      steps:
+      - name: extract
+        image: quay.io/konflux-qe-incubator/konflux-qe-tools:latest
+        env:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: COMPONENT_NAME
+          value: $(params.component-name)
+        results:
+        - name: commit
+          type: string
+        - name: service-image
+          type: string
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          component="$(jq -ce --arg name "$COMPONENT_NAME" '
+            [.components[] | select(.name == $name)] |
+            if length == 1 then .[0] else error("Expected exactly one service component") end |
+            if (.containerImage | type) != "string" then error("Missing service image")
+            elif (.containerImage | length) == 0 then error("Empty service image")
+            elif (.source.git.revision | type) != "string" then error("Missing service revision")
+            elif (.source.git.revision | test("^[0-9a-fA-F]{40}$") | not) then error("Expected a full commit SHA")
+            else . end' <<< "$SNAPSHOT")"
+          printf '%s' "$(jq -r '.containerImage' <<< "$component")" > $(step.results.service-image.path)
+          printf '%s' "$(jq -r '.source.git.revision' <<< "$component")" > $(step.results.commit.path)
+  - name: provision-ephemeral-cluster
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: https://github.com/openshift/konflux-tasks
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: tasks/provision-ephemeral-cluster/0.1/provision-ephemeral-cluster.yaml
+    params:
+    - name: ownerName
+      value: $(context.pipelineRun.name)
+    - name: ownerUid
+      value: $(context.pipelineRun.uid)
+    - name: workflow
+      value: hypershift-hostedcluster-workflow
+    - name: clusterProfile
+      value: aws-konflux-prod
+    - name: env
+      value: '{"COMPUTE_NODE_TYPE": "m5.2xlarge", "HYPERSHIFT_NODE_COUNT": "3", "HOSTED_MANAGEMENT_CLUSTER": "hosted-mgmt2"}'
+    - name: releases
+      value: '{"latest":{"release":{"channel":"stable","version":"$(params.openshift-version-prefix)","architecture":"multi"}}}'
+    runAfter:
+    - get-snapshot-component
+  - name: ols-service-tests
+    description: Check out the service snapshot commit, then run its e2e harness with the snapshot image.
+    params:
+    - name: service-image
+      value: $(tasks.get-snapshot-component.results.service-image)
+    - name: commit
+      value: $(tasks.get-snapshot-component.results.commit)
+    - name: bundle-image
+      value: $(params.bundle-image)
+    - name: artifact-run-name
+      value: $(context.pipelineRun.name)
+    - name: clusterCredentialsSecretRef
+      value: $(tasks.provision-ephemeral-cluster.results.secretRef)
+    runAfter:
+    - provision-ephemeral-cluster
+    taskSpec:
+      params:
+      - name: service-image
+        type: string
+      - name: commit
+        type: string
+      - name: bundle-image
+        type: string
+      - name: artifact-run-name
+        type: string
+      - name: clusterCredentialsSecretRef
+        type: string
+      volumes:
+      - name: azure-openai-token
+        secret:
+          secretName: azureopenai-apitoken
+      - name: azureopenai-entra-id
+        secret:
+          secretName: azureopenai-entra-id
+      - name: bam-token
+        secret:
+          secretName: bam-apitoken
+      - name: openai-token
+        secret:
+          secretName: openai
+      - name: watsonx-token
+        secret:
+          secretName: watsonx-apitoken
+      - name: insights-stage-upload-offline-token
+        secret:
+          secretName: insights-stage-upload-offline-token
+      - name: ols-konflux-artifacts-bot-creds
+        secret:
+          secretName: ols-konflux-artifacts-bot
+      - name: vertex-token
+        secret:
+          secretName: vertex-apitoken
+      - name: bedrock-token
+        secret:
+          secretName: bedrock-apitoken
+      - name: bedrock-role-token
+        secret:
+          secretName: bedrock-role-apitoken
+      - name: cluster-credentials
+        secret:
+          secretName: $(params.clusterCredentialsSecretRef)
+      steps:
+      - name: run-e2e-tests
+        onError: continue
+        resources:
+          requests:
+            cpu: '1'
+            memory: 1Gi
+          limits:
+            memory: 10Gi
+        volumeMounts:
+        - name: azure-openai-token
+          mountPath: /var/run/azure_openai
+        - name: azureopenai-entra-id
+          mountPath: /var/run/azureopenai-entra-id
+        - name: bam-token
+          mountPath: /var/run/bam
+        - name: openai-token
+          mountPath: /var/run/openai
+        - name: watsonx-token
+          mountPath: /var/run/watsonx
+        - name: vertex-token
+          mountPath: /var/run/vertex
+        - name: bedrock-token
+          mountPath: /var/run/bedrock
+        - name: bedrock-role-token
+          mountPath: /var/run/bedrock-role
+        - name: insights-stage-upload-offline-token
+          mountPath: /var/run/insights-stage-upload-offline-token
+        - name: cluster-credentials
+          mountPath: /credentials
+        env:
+        - name: BAM_PROVIDER_KEY_PATH
+          value: /var/run/bam/token
+        - name: AZUREOPENAI_PROVIDER_KEY_PATH
+          value: /var/run/azure_openai/token
+        - name: OPENAI_PROVIDER_KEY_PATH
+          value: /var/run/openai/token
+        - name: WATSONX_PROVIDER_KEY_PATH
+          value: /var/run/watsonx/token
+        - name: VERTEX_PROVIDER_KEY_PATH
+          value: /var/run/vertex/token
+        - name: BEDROCK_AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: bedrock-apitoken
+              key: aws_access_key_id
+        - name: BEDROCK_AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: bedrock-apitoken
+              key: aws_secret_access_key
+        - name: BEDROCK_ROLE_AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: bedrock-role-apitoken
+              key: aws_access_key_id
+        - name: BEDROCK_ROLE_AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: bedrock-role-apitoken
+              key: aws_secret_access_key
+        - name: BEDROCK_ROLE_ARN
+          value: arn:aws:iam::103138678430:role/BedrockAccessRole
+        - name: KUBECONFIG
+          value: /credentials/kubeconfig
+        - name: ARTIFACT_DIR
+          value: /workspace/artifacts
+        - name: SUITE_ID
+          value: nosuite
+        - name: OLS_IMAGE
+          value: $(params.service-image)
+        - name: BUNDLE_IMAGE
+          value: $(params.bundle-image)
+        - name: SERVICE_COMMIT_SHA
+          value: $(params.commit)
+        image: registry.redhat.io/openshift4/ose-cli-rhel9:v4.22
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          mkdir -p "$ARTIFACT_DIR"
+          dnf -y install git make python3.12 python3.12-devel python3.12-pip gcc tar gzip jq shadow-utils
+          python3.12 -m pip install --no-cache-dir uv
+          export PATH="$HOME/.local/bin:$PATH"
+          cp "$KUBECONFIG" /tmp/kubeconfig
+          chmod 600 /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
+          cd /workspace
+          git init lightspeed-service
+          cd lightspeed-service
+          git remote add origin https://github.com/openshift/lightspeed-service.git
+          git fetch --depth=1 origin "${SERVICE_COMMIT_SHA}"
+          git checkout --detach FETCH_HEAD
+          export CP_OFFLINE_TOKEN="$(cat /var/run/insights-stage-upload-offline-token/token)"
+          export AZUREOPENAI_ENTRA_ID_TENANT_ID="$(cat /var/run/azureopenai-entra-id/tenant_id)"
+          export AZUREOPENAI_ENTRA_ID_CLIENT_ID="$(cat /var/run/azureopenai-entra-id/client_id)"
+          export AZUREOPENAI_ENTRA_ID_CLIENT_SECRET="$(cat /var/run/azureopenai-entra-id/client_secret)"
+          tests/scripts/test-e2e-cluster.sh
+      - name: list-artifacts
+        onError: continue
+        image: quay.io/konflux-qe-incubator/konflux-qe-tools:latest
+        workingDir: /workspace
+        script: |
+          #!/bin/bash
+          ls -la /workspace
+      - name: push-artifacts
+        timeout: 15m
+        onError: continue
+        ref:
+          resolver: git
+          params:
+          - name: url
+            value: https://github.com/openshift/lightspeed-operator
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: .tekton/integration-tests/stepactions/secure-push-oci/0.1/secure-push-oci.yaml
+        params:
+        - name: workdir-path
+          value: /workspace/artifacts
+        - name: oci-ref
+          value: quay.io/openshift-lightspeed/ols-service-artifacts:$(params.artifact-run-name)-$(params.commit)
+        - name: credentials-volume-name
+          value: ols-konflux-artifacts-bot-creds
+      - name: fail-if-any-step-failed
+        ref:
+          resolver: git
+          params:
+          - name: url
+            value: https://github.com/konflux-ci/tekton-integration-catalog.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: stepactions/fail-if-any-step-failed/0.1/fail-if-any-step-failed.yaml
+  finally:
+  - name: export-logs-for-retention
+    taskRef:
+      resolver: git
+      params:
+      - name: url
+        value: https://github.com/konflux-ci/tekton-integration-catalog.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: tasks/export-logs/0.1/export-logs-to-quay.yaml
+    params:
+    - name: pipeline-run-name
+      value: $(context.pipelineRun.name)
+    - name: namespace
+      value: $(context.pipelineRun.namespace)
+    - name: quay-repo
+      value: quay.io/openshift-lightspeed/ols-service-artifacts
+    - name: artifact-credentials-secret
+      value: ols-konflux-artifacts-bot
