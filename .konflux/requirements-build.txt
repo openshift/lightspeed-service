@@ -14,15 +14,16 @@ flit-core==4.1.0
     #   pathspec
     #   pyproject-metadata
 hatch-fancy-pypi-readme==25.1.0
-    # via anthropic
-hatch-vcs==0.5.0
     # via
-    #   python-discovery
-    #   virtualenv
+    #   anthropic
+    #   langsmith
+hatch-vcs==0.5.0
+    # via urllib3
 hatchling==1.26.3
     # via
     #   anthropic
     #   hatch-fancy-pypi-readme
+    #   langsmith
 hatchling==1.32.4
     # via
     #   banks
@@ -32,8 +33,7 @@ hatchling==1.32.4
     #   langchain-aws
     #   langchain-core
     #   langchain-google-vertexai
-    #   python-discovery
-    #   virtualenv
+    #   urllib3
 meson-python==0.22.1
     # via numpy
 meson==1.12.1
@@ -44,7 +44,7 @@ pdm-backend==2.5.0
     # via
     #   langchain-ibm
     #   langchain-mcp-adapters
-pluggy==1.6.0
+pluggy==1.7.0
     # via hatchling
 poetry-core==2.5.0
     # via tomlkit
@@ -57,14 +57,14 @@ setuptools-rust==1.13.0
 setuptools-scm==10.3.4
     # via
     #   anyio
-    #   hatch-vcs
     #   pluggy
     #   setuptools-rust
-tomlkit==0.15.1
+    #   urllib3
+tomlkit==0.15.2
     # via hatchling
 trove-classifiers==2026.9.21.13
     # via hatchling
-vcs-versioning==2.5.0
+vcs-versioning==2.6.0
     # via setuptools-scm
 versioneer==0.29
     # via bottleneck
