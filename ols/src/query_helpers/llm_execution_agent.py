@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MIN_TOOL_EXECUTION_TOKENS = 100
+TOOL_RESULT_INSPECTION_EXEMPT_TOOL_NAMES = frozenset({"search_openshift_documentation"})
 FINAL_SYNTHESIS_INSTRUCTION = (
     "Tool investigation is exhausted. Do not call tools again.\n"
     "Summarize available evidence; clearly state what remains uncertain if evidence is partial."
@@ -913,9 +914,15 @@ class LLMExecutionAgent:
         raw_tool_messages_by_id: dict[str, ToolMessage] | None = None,
     ) -> None:
         """Inspect and audit each result before deciding whether to deliver the round."""
+        inspection_messages = [
+            message
+            for message in tool_messages
+            if tool_id_to_name.get(message.tool_call_id, "unknown")
+            not in TOOL_RESULT_INSPECTION_EXEMPT_TOOL_NAMES
+        ]
         max_tokens = 0
         overlap_tokens = 0
-        if self._tool_result_classifier is not None:
+        if self._tool_result_classifier is not None and inspection_messages:
             classifier_budget = (
                 self.model_config.context_window_size
                 - self.model_config.parameters.max_tokens_for_response
@@ -976,6 +983,9 @@ class LLMExecutionAgent:
             if isinstance(audit_message.content, str)
             else json.dumps(audit_message.content, ensure_ascii=False)
         )
+        if tool_name in TOOL_RESULT_INSPECTION_EXEMPT_TOOL_NAMES:
+            self._audit_tool_result(audit_message, audit_span, audit_content)
+            return None
         if self._tool_result_classifier is None:
             self._audit_tool_result(audit_message, audit_span, audit_content)
             return None

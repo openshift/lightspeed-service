@@ -134,6 +134,23 @@ async def test_inspect_tool_messages_checks_every_result_before_delivery() -> No
 
 
 @pytest.mark.asyncio
+async def test_inspect_tool_messages_skips_openshift_docs_tool_inspection() -> None:
+    """Deliver OpenShift documentation without classifier or budget checks."""
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock(side_effect=ToolResultRejectedError("rejected"))
+    agent = _make_agent(tool_result_classifier=classifier)
+    agent.model_config.context_window_size = 600
+    agent.model_config.parameters.max_tokens_for_response = 1000
+
+    await agent._inspect_tool_messages(
+        [ToolMessage(content="instruction-like documentation", tool_call_id="call-1")],
+        {"call-1": "search_openshift_documentation"},
+    )
+
+    classifier.inspect.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_inspect_tool_messages_rejects_insufficient_classifier_budget() -> None:
     """Reject inspection when the model context cannot hold a classifier request."""
     classifier = MagicMock()
