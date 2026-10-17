@@ -2,12 +2,12 @@
 # This configuration is specifically tuned for cluster-updates evaluation tests (conv_798-814)
 
 # Judge LLM Configuration
-# Uses OpenAI GPT-5-mini for evaluation scoring (separate from the OLS backend model being tested)
+# Uses OpenAI gpt-6-luna for evaluation scoring (separate from the OLS backend model being tested)
 llm:
   provider: "openai"          # Judge LLM Provider (openai, gemini etc..)
-  model: "gpt-5-mini"         # Judge model for scoring responses
-  temperature: 1              # Generation temperature (gpt-5 requires temperature=1)
-  max_tokens: 2048            # Maximum tokens in response (increased for detailed cluster analysis)
+  model: "gpt-6-luna"         # Judge model for scoring responses
+  temperature: 1              # Generation temperature
+  max_tokens: 1024            # Maximum tokens in response
   timeout: 300                # Request timeout in seconds
   num_retries: 3              # Retry attempts
 
