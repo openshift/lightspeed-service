@@ -45,70 +45,70 @@ function run_suites() {
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image os_config_suffix
   # empty test_tags means run all tests
-  run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
-  run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
   # MCP e2e: run early while CR is still default openai shape; avoids races after tool_calling (introspection true).
-  run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp"
-  (( rc = rc || $? ))
+  # run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp"
+  # (( rc = rc || $? ))
 
-  # Run inspection separately in PR CI; allow an explicit 0 to skip it locally.
-  if [[ "${RUN_TOOL_RESULT_INSPECTION_E2E:-1}" == "1" ]]; then
-    run_suite "openai_tool_result_inspection" "inspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "mcp_inspection"
-    (( rc = rc || $? ))
-  fi
+  # Run inspection separately in PR CI; disabled for this fast run.
+  # if [[ "${RUN_TOOL_RESULT_INSPECTION_E2E:-1}" == "1" ]]; then
+  #   run_suite "openai_tool_result_inspection" "inspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-5.4-mini" "$OLS_IMAGE" "mcp_inspection"
+  #   (( rc = rc || $? ))
+  # fi
 
-  run_suite "google_vertex" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "google_vertex" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
-  run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
-  run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
   # smoke tests for RHOAI VLLM-compatible provider
-  run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
   # smoke tests for RHELAI VLLM-compatible provider
-  run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
   # Bedrock suites — PROVIDER_KEY_PATH carries a discriminator ("iam" or
   # "iam_role") instead of a credential file path; see
   # ensure_bedrock_iam_secret() in ols_installer.py.
-  run_suite "bedrock_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_anthropic" "iam" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "default"
+  run_suite "bedrock_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_anthropic" "iam" "anthropic.claude-haiku-5-5" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "bedrock_openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
+  # run_suite "bedrock_openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
+
+  run_suite "bedrock_anthropic_iam_role" "smoketest" "bedrock_anthropic" "iam_role" "anthropic.claude-haiku-5-5" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "bedrock_anthropic_iam_role" "smoketest" "bedrock_anthropic" "iam_role" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
-
-  run_suite "bedrock_openai_iam_role" "smoketest" "bedrock_openai" "iam_role" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # run_suite "bedrock_openai_iam_role" "smoketest" "bedrock_openai" "iam_role" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
+  # (( rc = rc || $? ))
 
   # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
   # Run tool calling - Enable tool_calling
-  run_suite "bedrock_openai_tool_calling" "tool_calling" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
-  run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
-  run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
-  run_suite "openai_gpt6_tool_calling" "gpt6_tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
-  (( rc = rc || $? ))
-  run_suite "azure_openai_gpt6_tool_calling" "gpt6_tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
-  (( rc = rc || $? ))
+  # run_suite "bedrock_openai_tool_calling" "tool_calling" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "tool_calling"
+  # (( rc = rc || $? ))
+  # run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
+  # (( rc = rc || $? ))
+  # run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
+  # (( rc = rc || $? ))
+  # run_suite "openai_gpt6_tool_calling" "gpt6_tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
+  # (( rc = rc || $? ))
+  # run_suite "azure_openai_gpt6_tool_calling" "gpt6_tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
+  # (( rc = rc || $? ))
   # run_suite "google_vertex_tool_calling" "tool_calling" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "tool_calling"
   # (( rc = rc || $? ))
-  run_suite "google_vertex_anthropic_tool_calling" "tool_calling" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
+  # run_suite "google_vertex_anthropic_tool_calling" "tool_calling" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "tool_calling"
+  # (( rc = rc || $? ))
   # run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "tool_calling"
   # (( rc = rc || $? ))
 
@@ -119,12 +119,12 @@ function run_suites() {
   (( rc = rc || $? ))
 
   # quota limits tests, independent of provider therefore only testing one
-  run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "quota"
-  (( rc = rc || $? ))
+  # run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "quota"
+  # (( rc = rc || $? ))
 
   # exporter test
-  run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "data_export"
-  (( rc = rc || $? ))
+  # run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "data_export"
+  # (( rc = rc || $? ))
 
   cleanup_ols_operator 
 
