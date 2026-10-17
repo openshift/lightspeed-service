@@ -1,0 +1,28 @@
+---
+apiVersion: appstudio.redhat.com/v1beta2
+kind: IntegrationTestScenario
+metadata:
+  name: lightspeed-service-e2e-tests
+  namespace: crt-nshift-lightspeed-tenant
+  labels:
+    test.appstudio.openshift.io/optional: "true"
+spec:
+  application: ols
+  contexts:
+    - name: component_lightspeed-service
+      description: Service snapshot e2e tests on an AWS HyperShift cluster
+  params:
+    - name: test-name
+      value: lightspeed-service-e2e-tests
+    - name: openshift-version-prefix
+      value: "4.22"
+  resolverRef:
+    resolver: git
+    resourceKind: pipeline
+    params:
+      - name: url
+        value: https://github.com/openshift/lightspeed-service
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: .tekton/integration-tests/pipelines/lightspeed-service-e2e-test-pipeline.yaml
