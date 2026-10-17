@@ -142,7 +142,9 @@ class DocsSummarizer(QueryHelper):
                 raise ToolResultInspectionError(
                     "tool-result classifier requires structured output support"
                 )
-            tool_result_classifier = ToolResultClassifier(classifier_llm)
+            tool_result_classifier = ToolResultClassifier(
+                classifier_llm, provider_type=self.provider_config.type
+            )
             logger.info(
                 "Tool-result classifier initialized for provider=%s, model=%s",
                 self.provider,

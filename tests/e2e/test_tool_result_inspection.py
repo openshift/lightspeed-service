@@ -5,6 +5,7 @@
 import json
 import re
 
+import httpx
 import pytest
 
 from ols.src.tools.tool_result_inspection import TOOL_RESULT_SAFETY_FAILURE_MESSAGE
@@ -18,6 +19,8 @@ from tests.e2e.utils.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.utils.inspection_assertions import (
     assert_inspection_outcome,
     assert_rejected_result_absent,
+    classifier_failures_since,
+    format_inspection_failure_diagnostics,
 )
 from tests.e2e.utils.mcp_setup import NAMESPACE
 
@@ -66,21 +69,74 @@ def _inspection_outcomes_since(previous: str, current: str) -> list[tuple[str, s
     )
 
 
+def _failure_diagnostics_since(
+    previous_logs: str, status_code: int | None, tool_name: str
+) -> str:
+    """Collect only allowlisted service and mock-server failure metadata."""
+    try:
+        current_logs = _service_logs()
+    except Exception:
+        outcomes = None
+        classifier_failures = None
+    else:
+        outcomes = _inspection_outcomes_since(previous_logs, current_logs)
+        classifier_failures = classifier_failures_since(previous_logs, current_logs)
+    try:
+        mock_logs = cluster.run_oc(
+            ["logs", "deployment/mcp-mock-server", "-n", NAMESPACE]
+        ).stdout
+        mock_tool_called = f"MCP tool called: {tool_name}" in mock_logs
+    except Exception:
+        mock_tool_called = None
+    return format_inspection_failure_diagnostics(
+        status_code, mock_tool_called, outcomes, classifier_failures
+    )
+
+
+def _post_with_inspection_diagnostics(
+    endpoint: str,
+    payload: dict[str, object],
+    previous_logs: str,
+    tool_name: str,
+) -> httpx.Response:
+    """Post an inspection query and report safe details on transport failure."""
+    response: httpx.Response | None = None
+    transport_failure: str | None = None
+    try:
+        response = pytest.client.post(
+            endpoint, json=payload, timeout=LLM_REST_API_TIMEOUT
+        )
+    except httpx.TransportError as error:
+        diagnostics = _failure_diagnostics_since(previous_logs, None, tool_name)
+        transport_failure = (
+            "The inspection query failed at the HTTP transport: "
+            f"exception_type={type(error).__name__}; {diagnostics}"
+        )
+    if transport_failure is not None:
+        pytest.fail(transport_failure)
+    assert response is not None
+    return response
+
+
 def test_benign_tool_result_passes_inspection() -> None:
     """Accept benign mock tool output and return a successful query response."""
     previous_logs = _service_logs()
-    response = pytest.client.post(
+    response = _post_with_inspection_diagnostics(
         "/v1/query",
-        json={
+        {
             "query": (
                 "Call the ols_inspection_benign tool and report its OpenShift status."
             ),
             "mcp_headers": INSPECTION_HEADERS,
         },
-        timeout=LLM_REST_API_TIMEOUT,
+        previous_logs,
+        BENIGN_TOOL_NAME,
     )
     if response.status_code != 200:
-        pytest.fail("The benign inspection query did not succeed")
+        diagnostics = _failure_diagnostics_since(
+            previous_logs, response.status_code, BENIGN_TOOL_NAME
+        )
+        pytest.fail(f"The benign inspection query did not succeed: {diagnostics}")
 
     data = response.json()
     tool_names = [tool.get("name") for tool in data.get("tool_calls", [])]
@@ -125,10 +181,8 @@ def test_malicious_tool_result_fails_closed_without_leaking_content(
         payload["media_type"] = "application/json"
 
     previous_logs = _service_logs()
-    response = pytest.client.post(
-        endpoint,
-        json=payload,
-        timeout=LLM_REST_API_TIMEOUT,
+    response = _post_with_inspection_diagnostics(
+        endpoint, payload, previous_logs, tool_name
     )
     if endpoint == "/v1/query":
         if response.status_code != 500:

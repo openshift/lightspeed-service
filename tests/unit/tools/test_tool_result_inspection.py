@@ -16,12 +16,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import ValidationError
 
+from ols.constants import PROVIDER_WATSONX
 from ols.src.tools.tool_result_inspection import (
     INJECTION_CATEGORIES,
     ToolResultClassifier,
     ToolResultInspectionDecision,
     ToolResultInspectionError,
     ToolResultRejectedError,
+    _log_temporary_classifier_failure,
     chunk_text,
 )
 from ols.utils.token_handler import TokenHandler
@@ -46,6 +48,57 @@ def test_malicious_decision_accepts_all_controlled_categories() -> None:
             category=category,
         )
         assert decision.category == category
+
+
+def test_watsonx_classifier_schema_encodes_category_by_detection_value() -> None:
+    """Give Watsonx only benign and malicious boolean/category combinations."""
+    llm = MagicMock()
+    ToolResultClassifier(llm, provider_type=PROVIDER_WATSONX)
+    schema = llm.with_structured_output.call_args.args[0].model_json_schema()
+
+    assert schema["oneOf"] == [
+        {
+            "properties": {
+                "injectionDetected": {"const": False},
+                "category": {"const": "none"},
+            },
+            "required": ["injectionDetected", "category"],
+        },
+        {
+            "properties": {
+                "injectionDetected": {"const": True},
+                "category": {
+                    "enum": [
+                        "instruction_override",
+                        "role_change",
+                        "prompt_extraction",
+                        "data_exfiltration",
+                        "tool_manipulation",
+                        "unknown",
+                    ]
+                },
+            },
+            "required": ["injectionDetected", "category"],
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "provider_type",
+    ["openai", "azure_openai", "bedrock", "google_vertex", "rhoai_vllm", "rhelai_vllm"],
+)
+def test_other_providers_use_original_schema(provider_type: str) -> None:
+    """Keep the previously compatible schema for all non-Watsonx providers."""
+    llm = MagicMock()
+    ToolResultClassifier(llm, provider_type=provider_type)
+    decision_model = llm.with_structured_output.call_args.args[0]
+
+    assert decision_model is ToolResultInspectionDecision
+    assert "oneOf" not in decision_model.model_json_schema()
+    with pytest.raises(ValidationError):
+        decision_model.model_validate(
+            {"injectionDetected": False, "category": "unknown"}
+        )
 
 
 @pytest.mark.parametrize(
@@ -267,6 +320,110 @@ async def test_classifier_logs_invalid_response_without_response_content(
     assert "failure_type=invalid_response attempt=1/3" in messages
     assert "private-output" not in messages
     assert tool_content not in messages
+
+
+@pytest.mark.asyncio
+async def test_classifier_logs_safe_metadata_for_provider_failures(caplog) -> None:
+    """Log failure type and status without logging exception details."""
+    llm = MagicMock()
+    llm.with_structured_output.return_value = llm
+    provider_error = RuntimeError("secret=credential and untrusted tool output")
+    provider_error.status_code = 503
+    llm.ainvoke = AsyncMock(side_effect=provider_error)
+    classifier = ToolResultClassifier(llm, sleep=AsyncMock())
+
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        with pytest.raises(ToolResultInspectionError):
+            await classifier.classify("get_pods", "result", 1, 1, "private tool output")
+
+    assert "stage=invoke attempt=1/3 error_type=RuntimeError" in caplog.text
+    assert "status_code=503" in caplog.text
+    assert "credential" not in caplog.text
+    assert "private tool output" not in caplog.text
+
+
+def test_classifier_failure_diagnostics_skip_suppressed_context(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Exclude exception metadata hidden by raise-from-None."""
+    hidden_error = RuntimeError("private provider failure")
+    hidden_error.status_code = 503
+    with pytest.raises(ValueError) as caught:
+        try:
+            raise hidden_error
+        except RuntimeError:
+            raise ValueError("outer failure") from None
+
+    assert caught.value.__context__ is hidden_error
+    assert caught.value.__suppress_context__ is True
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        _log_temporary_classifier_failure("invoke", 1, caught.value)
+
+    assert "error_type=ValueError cause_types=none status_code=unknown" in caplog.text
+    assert "RuntimeError" not in caplog.text
+    assert "503" not in caplog.text
+    assert "private provider failure" not in caplog.text
+
+
+def test_classifier_failure_diagnostics_keep_explicit_cause(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Retain cause metadata when a caller explicitly chains an error."""
+    cause = RuntimeError("private provider failure")
+    cause.status_code = 503
+    with pytest.raises(ValueError) as caught:
+        raise ValueError("outer failure") from cause
+
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        _log_temporary_classifier_failure("invoke", 1, caught.value)
+
+    assert (
+        "error_type=ValueError cause_types=RuntimeError status_code=503" in caplog.text
+    )
+    assert "private provider failure" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_classifier_logs_safe_metadata_for_invalid_decisions(caplog) -> None:
+    """Log response validation failure types without logging parsed content."""
+    llm = MagicMock()
+    llm.with_structured_output.return_value = llm
+    llm.ainvoke = AsyncMock(return_value={"parsed": {"credential": "must-not-log"}})
+    classifier = ToolResultClassifier(llm, sleep=AsyncMock())
+
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        with pytest.raises(ToolResultInspectionError):
+            await classifier.classify("get_pods", "result", 1, 1, "private result")
+
+    assert "stage=parse attempt=1/3 error_type=ValidationError" in caplog.text
+    assert "must-not-log" not in caplog.text
+    assert "private result" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_classifier_logs_safe_metadata_for_quota_failures(caplog) -> None:
+    """Log quota accounting failure types without logging provider details."""
+    llm = MagicMock()
+    llm.with_structured_output.return_value = llm
+    llm.ainvoke = AsyncMock(
+        return_value={
+            "parsed": {"injectionDetected": False, "category": "none"},
+            "raw": SimpleNamespace(
+                usage_metadata={"input_tokens": 12, "output_tokens": 4}
+            ),
+        }
+    )
+    quota = MagicMock()
+    quota.consume_tokens.side_effect = RuntimeError("secret quota backend detail")
+    classifier = ToolResultClassifier(llm, sleep=AsyncMock(), quota_limiters=[quota])
+
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        with pytest.raises(ToolResultInspectionError):
+            await classifier.classify("get_pods", "result", 1, 1, "private result")
+
+    assert "stage=quota attempt=1/3 error_type=RuntimeError" in caplog.text
+    assert "secret quota backend detail" not in caplog.text
+    assert "private result" not in caplog.text
 
 
 @pytest.mark.asyncio

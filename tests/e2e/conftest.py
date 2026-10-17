@@ -16,6 +16,7 @@ from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster, ols_installer
 from tests.e2e.utils.adapt_ols_config import adapt_ols_config
 from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster, teardown_mcp_on_cluster
+from tests.e2e.utils.olsconfig_cr import inspection_enabled_for_e2e
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
@@ -292,7 +293,7 @@ def pytest_collection_modifyitems(items: list) -> None:
     """
     ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
     mcp_enabled = "mcp" in ols_config_suffix
-    inspection_enabled = ols_config_suffix == "mcp_inspection"
+    inspection_enabled = inspection_enabled_for_e2e(ols_config_suffix)
 
     selected = []
     deselected = []
