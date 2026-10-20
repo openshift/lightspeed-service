@@ -5,7 +5,6 @@ set -euo pipefail
 
 SOURCE_HASH_FILE=".konflux/requirements.hashes.source.txt"
 WHEEL_HASH_FILE=".konflux/requirements.hashes.wheel.txt"
-WHEEL_PYPI_HASH_FILE=".konflux/requirements.hashes.wheel.pypi.txt"
 
 # Packages in uv.lock runtime that are legitimately absent from hash files.
 # Keep this list minimal — a growing allowlist is a red flag.
@@ -36,7 +35,7 @@ UV_RUNTIME=$(uv export --locked --no-dev --no-editable --no-header --no-annotate
 UV_COUNT=$(echo "$UV_RUNTIME" | wc -l | tr -d ' ')
 
 # --- Validate hash files exist ---
-for hash_file in "$SOURCE_HASH_FILE" "$WHEEL_HASH_FILE" "$WHEEL_PYPI_HASH_FILE"; do
+for hash_file in "$SOURCE_HASH_FILE" "$WHEEL_HASH_FILE"; do
     if [[ ! -r "$hash_file" ]]; then
         echo "ERROR: required hash file is missing or unreadable: $hash_file" >&2
         exit 1
@@ -54,18 +53,23 @@ if [[ -r "$BUILD_REQ_FILE" ]] && grep -qE '^--index-url ' "$BUILD_REQ_FILE"; the
     exit 1
 fi
 
-# --- Extract packages from all three hash files ---
+# --- Extract packages from hash files ---
 log "Parsing hash files"
 HASH_PKGS=$( {
     grep -E '^[a-zA-Z0-9]' "$SOURCE_HASH_FILE"
     grep -E '^[a-zA-Z0-9]' "$WHEEL_HASH_FILE"
-    grep -E '^[a-zA-Z0-9]' "$WHEEL_PYPI_HASH_FILE" || true
 } | normalize_names)
 HASH_COUNT=$(echo "$HASH_PKGS" | grep -c . || true)
 
 # Hermeto's binary.packages setting applies across *all* requirements files.
 # Listing a PyPI source package there makes Hermeto fetch its wheel instead,
 # even when it is listed in requirements.hashes.source.txt.
+# Some packages (e.g. pillow) need wheel hashes in source.txt (PyPI index)
+# AND must be listed in binary.packages so Cachi2 fetches wheels, not sdists.
+SOURCE_BINARY_ALLOWED=(
+    pillow
+)
+SOURCE_BINARY_ALLOW_SET=$(printf '%s\n' "${SOURCE_BINARY_ALLOWED[@]}" | normalize_names)
 SOURCE_PKGS=$(grep -E '^[a-zA-Z0-9]' "$SOURCE_HASH_FILE" | normalize_names)
 for tekton_file in .tekton/lightspeed-service-pull-request.yaml .tekton/lightspeed-service-push.yaml; do
     if [[ ! -r "$tekton_file" ]]; then
@@ -74,7 +78,8 @@ for tekton_file in .tekton/lightspeed-service-pull-request.yaml .tekton/lightspe
     fi
     BINARY_PKGS=$(grep -oE '"packages": "[^"]+"' "$tekton_file" \
         | sed -E 's/^"packages": "//; s/"$//' | tr ',' '\n' | normalize_names)
-    SOURCE_AS_BINARY=$(comm -12 <(echo "$SOURCE_PKGS") <(echo "$BINARY_PKGS"))
+    SOURCE_AS_BINARY=$(comm -12 <(echo "$SOURCE_PKGS") <(echo "$BINARY_PKGS") \
+        | comm -23 - <(echo "$SOURCE_BINARY_ALLOW_SET"))
     if [[ -n "$SOURCE_AS_BINARY" ]]; then
         echo "ERROR: $tekton_file requests PyPI source packages as binary wheels:" >&2
         echo "$SOURCE_AS_BINARY" | sed 's/^/  - /' >&2
