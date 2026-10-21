@@ -35,7 +35,7 @@ The query pipeline is the core request-processing path that transforms a user qu
   - `_iterate_with_tools()` -- Multi-round tool-calling loop. Each round: invoke LLM, collect chunks, process tool calls, feed results back. Exits on: LLM stop signal, final round reached, no tool calls emitted, or tool execution failure.
   - `_collect_round_llm_chunks()` -- Streams one LLM invocation, separates text/reasoning chunks from tool-call chunks. Text chunks are yielded immediately for streaming.
   - `_process_tool_calls_for_round()` -- Resolves tool calls against the tools map, executes them via MCP, emits `TOOL_CALL` and `TOOL_RESULT` streaming events. Enforces per-round token budget.
-  - `_invoke_llm()` -- Binds tools to the LLM (or unbinds on final round with `tool_choice="none"`) and streams via LangChain's `chain.astream()`. Handles provider-specific quirks (ChatOpenAI `strict=False`).
+  - `_invoke_llm()` -- Binds tools to the LLM; on the final round, sets `tool_choice="none"` (Anthropic providers use `{"type": "none"}`). Streams via LangChain's `chain.astream()` and handles provider-specific quirks (ChatOpenAI `strict=False`).
   - `_resolve_tool_call_definitions()` -- Validates LLM-emitted tool calls: skips duplicates, missing tools, and ambiguous names across MCP servers.
   - `_dedupe_tools_by_name()` -- Builds name-to-tool map and disables ambiguous duplicate tool names across servers.
 
@@ -239,7 +239,7 @@ During a multi-round tool call, the interleaving pattern is:
   TEXT/REASONING chunks (LLM incorporates tool results)
   ... more TOOL_CALL/TOOL_RESULT if needed ...
 [final round]
-  TEXT chunks (final answer, tools unbound or tool_choice="none")
+  TEXT chunks (final answer; tool calls disabled with provider-compatible choice or, for Vertex Gemini, tool-free synthesis)
 END chunk
 ```
 
@@ -301,7 +301,7 @@ In non-final rounds, `LLMExecutionAgent._invoke_llm()` binds tools to the LLM (n
 
 [PLANNED: OLS-3442] In `streaming_ols.py`, both `StreamChunkType.TEXT` and `StreamChunkType.REASONING` chunks will be accumulated into the `response` string. Currently only TEXT chunks are accumulated, causing reasoning to be lost from the stored conversation history.
 
-On the final round (round == max_rounds or no tools available), the LLM is invoked with `tool_choice="none"` and `strict=False` to force a text-only response. The Granite model family requires special handling: the first 6 chunks of a tool call (`"", "<", "tool", "_", "call", ">"`) are suppressed via `skip_special_chunk()` to avoid leaking tool-call markup to the user.
+On the final round (round == max_rounds or no tools available), the system prevents further tool calls and requires a text response. With tools configured, it sets `tool_choice="none"` (Anthropic providers use `{"type": "none"}`). Vertex Gemini makes a tool-free synthesis request with an explicit no-tools instruction at the iteration limit; see `what/query-processing.md` for fallback behavior. The Granite model family requires special handling: the first 6 chunks of a tool call (`"", "<", "tool", "_", "call", ">"`) are suppressed via `skip_special_chunk()` to avoid leaking tool-call markup to the user.
 
 ### History compression retry logic
 
@@ -321,4 +321,4 @@ The `round_cap_fraction` (default 0.6, range 0.3-0.8) limits how much of the rem
 
 ### Max iterations by mode
 
-The tool-calling loop cap depends on the query mode: ASK defaults to 5 rounds, TROUBLESHOOTING defaults to 35 rounds. An explicit `max_iterations` config value can raise but never lower the mode-specific default. The final round always forces `tool_choice="none"` to guarantee a text answer.
+The tool-calling loop cap depends on the query mode: ASK defaults to 5 rounds, TROUBLESHOOTING defaults to 35 rounds. An explicit `max_iterations` config value can raise but never lower the mode-specific default.

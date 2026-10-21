@@ -318,7 +318,7 @@ In `app/endpoints/ols.py` and `app/metrics/metrics.py`, `auth_dependency = get_a
 
 ### Tool calling uses a multi-round streaming loop
 
-`LLMExecutionAgent` implements the agentic tool-calling loop (`_iterate_with_tools()`, `_invoke_llm()`, `_collect_round_llm_chunks()`, `_process_tool_calls_for_round()`); `DocsSummarizer.generate_response()` delegates to `self._llm_agent.execute()`. It streams LLM chunks, detects tool call requests, executes them via MCP, appends results to the message history, and re-invokes the LLM -- up to `max_rounds` iterations. The final round binds tools with `tool_choice="none"` to force a text-only response. Tool outputs are truncated by `enforce_tool_token_budget()` when they exceed the remaining token budget.
+`LLMExecutionAgent` implements the agentic tool-calling loop (`_iterate_with_tools()`, `_invoke_llm()`, `_collect_round_llm_chunks()`, `_process_tool_calls_for_round()`); `DocsSummarizer.generate_response()` delegates to `self._llm_agent.execute()`. It streams LLM chunks, detects tool call requests, executes them via MCP, appends results to the message history, and re-invokes the LLM -- up to `max_rounds` iterations. On the final round with tools configured, it uses a provider-compatible `tool_choice="none"` setting (Anthropic providers use `{"type": "none"}`). Vertex Gemini instead uses a tool-free synthesis request with an explicit no-tools instruction at the iteration limit. Tool outputs are truncated by `enforce_tool_token_budget()` when they exceed the remaining token budget.
 
 ### Entry point and build system
 
