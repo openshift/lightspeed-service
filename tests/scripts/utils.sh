@@ -66,6 +66,13 @@ function run_suite() {
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
   fi
   local rc=$?
+  # Restore per-provider JUnit reports and app-server log slices for the
+  # consolidated inspection suite (single deployment, per-request provider).
+  if [ "$1" = "tool_result_inspection" ]; then
+    if ! uv run python tests/scripts/split_inspection_artifacts.py "$ARTIFACT_DIR" "$1"; then
+      echo "WARNING: splitting inspection artifacts for suite $1 failed"
+    fi
+  fi
   local duration_s=$(( SECONDS - saved_seconds ))
   echo "{\"suite\":\"$1\",\"rc\":$rc,\"duration_s\":$duration_s,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >> "${ARTIFACT_DIR}/suite_results.jsonl"
   return $rc
