@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify verify-hermetic-requirements get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
+.PHONY: test test-unit test-e2e test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify verify-hermetic-requirements get-embeddings get-embeddings-byok get-embeddings-okp tls-scan bump test-resolver-image
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -21,9 +21,11 @@ default: help
 images: ## Build container images
 	scripts/build-container.sh
 
-install-tools:	install-woke ## Install required utilities/tools
+install-uv: ## Install uv, required to resolve and lock dependencies
 	@command -v uv > /dev/null || { echo >&2 "uv is not installed. Installing..."; curl -LsSf https://astral.sh/uv/install.sh | sh; }
 	uv --version
+
+install-tools:	install-woke install-uv ## Install required utilities/tools
 	# install all dependencies, including devel ones
 	uv sync --group dev --extra evaluation
 	# check that correct mypy version is installed
@@ -69,6 +71,9 @@ test-unit: ## Run the unit tests
 	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" uv run --extra evaluation pytest tests/unit --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
 	uv run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
+
+test-resolver-image: ## Run resolver tests against the real forked-uv container image (requires Podman/Docker)
+	OLS_TEST_RESOLVER_IMAGE=1 $(MAKE) test-unit
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
@@ -200,8 +205,30 @@ shellcheck: ## Run shellcheck
 tls-scan: ## Run TLS profile compliance scan against OLS endpoints
 	ARTIFACT_DIR="$(ARTIFACT_DIR)" ./scripts/tls-scan.sh
 
-konflux-requirements:	## Generate hermetic requirements.*.txt file for konflux build
-	python3 scripts/konflux_resolve.py --profile cpu
+# Single entry point for dependency updates: refreshes the .konflux hermetic files,
+# uv.lock, and requirements.txt together. For a single package (e.g. a CVE bump):
+# make bump PKG=<name> VERSION=<minimum>. Dev-only tools: make update-deps.
+bump: install-uv ## Refresh dependencies, or target PKG=<name> VERSION=<minimum>
+	@if { [ -n "$(PKG)" ] && [ -z "$(VERSION)" ]; } || { [ -z "$(PKG)" ] && [ -n "$(VERSION)" ]; }; then \
+		echo 'Supply PKG and VERSION together: make bump PKG=<name> VERSION=<minimum>' >&2; exit 2; \
+	fi
+	env -u UV_CONFIG_FILE -u UV_INDEX_URL -u UV_DEFAULT_INDEX -u UV_INDEX \
+		-u UV_EXTRA_INDEX_URL -u PIP_INDEX_URL -u PIP_EXTRA_INDEX_URL \
+		UV_NO_CONFIG=1 PIP_CONFIG_FILE=/dev/null \
+		uv run --no-project --python 3.12 --with packaging --with tomlkit \
+		--with pybuild-deps --with pip-tools --with pip \
+		python scripts/konflux_resolve.py --profile cpu \
+		$(if $(PKG),--package "$(PKG)" --version "$(VERSION)")
+	env -u UV_CONFIG_FILE -u UV_INDEX_URL -u UV_DEFAULT_INDEX -u UV_INDEX \
+		-u UV_EXTRA_INDEX_URL -u PIP_INDEX_URL -u PIP_EXTRA_INDEX_URL \
+		UV_NO_CONFIG=1 PIP_CONFIG_FILE=/dev/null \
+		uv lock $(if $(PKG),-P "$(PKG)>=$(VERSION)",--upgrade)
+	env -u UV_CONFIG_FILE -u UV_INDEX_URL -u UV_DEFAULT_INDEX -u UV_INDEX \
+		-u UV_EXTRA_INDEX_URL -u PIP_INDEX_URL -u PIP_EXTRA_INDEX_URL \
+		UV_NO_CONFIG=1 PIP_CONFIG_FILE=/dev/null \
+		uv export --format requirements-txt --no-dev --no-extra evaluation --no-editable --no-emit-package ols --output-file requirements.txt
+
+konflux-requirements: bump ## Compatibility alias for make bump
 
 konflux-rpm-lock:	## Generate rpm.lock.yaml file for konflux build
 	./scripts/generate-rpm-lock.sh -a ${ACTIVATION_KEY} -g ${ORG_ID}

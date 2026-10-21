@@ -9,3 +9,11 @@ banks==2.5.1
 
 # CVE-2026-63374: RHOAI 3.5 ships 4.14.2 (fix is 4.15.1)
 anyio==4.15.1
+
+# anthropic: every sdist >=0.120.2 pins hatchling==1.26.3 exactly, which
+# conflicts with the hatchling>=1.27 required by other source builds (e.g.
+# urllib3), and EC rejects PyPI wheels. RHOAI 3.5 max is 0.117.0; drop these
+# pins once the RHOAI index ships a newer anthropic. langchain-anthropic
+# 1.5.1 is the newest release whose anthropic floor admits 0.117.0.
+anthropic==0.117.0
+langchain-anthropic==1.5.1

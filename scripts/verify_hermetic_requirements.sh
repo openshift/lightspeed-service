@@ -47,8 +47,8 @@ done
 BUILD_REQ_FILE=".konflux/requirements-build.txt"
 if [[ -r "$BUILD_REQ_FILE" ]] && grep -qE '^--index-url ' "$BUILD_REQ_FILE"; then
     echo "ERROR: $BUILD_REQ_FILE must not contain --index-url." >&2
-    echo "Build deps are fetched from public PyPI. A RHOAI/default uv index leaked into pybuild-deps." >&2
-    echo "Fix: unset UV_CONFIG_FILE and index env vars, set UV_NO_CONFIG=1, rerun 'make konflux-requirements'." >&2
+    echo "Build deps come from public PyPI; the resolver writes this file index-free." >&2
+    echo "Fix: rerun 'make bump' — it scrubs the uv index configuration itself." >&2
     echo "See docs/update-requirements.md." >&2
     grep -E '^--index-url ' "$BUILD_REQ_FILE" | sed 's/^/  /' >&2
     exit 1
@@ -78,7 +78,7 @@ for tekton_file in .tekton/lightspeed-service-pull-request.yaml .tekton/lightspe
     if [[ -n "$SOURCE_AS_BINARY" ]]; then
         echo "ERROR: $tekton_file requests PyPI source packages as binary wheels:" >&2
         echo "$SOURCE_AS_BINARY" | sed 's/^/  - /' >&2
-        echo "Remove these from binary.packages (or rerun 'make konflux-requirements')." >&2
+        echo "Remove these from binary.packages (or rerun 'make bump')." >&2
         exit 1
     fi
 done
@@ -112,7 +112,7 @@ if [[ $MISSING_COUNT -gt 0 ]]; then
     echo "ERROR: $MISSING_COUNT package(s) in uv.lock but NOT in any hash file or allowlist:"
     echo "$MISSING" | sed 's/^/  - /'
     echo ""
-    echo "Fix: run 'make konflux-requirements' or surgically add the missing packages."
+    echo "Fix: run 'make bump' or surgically add the missing packages."
     echo "See CLAUDE.md for the surgical approach."
     EXIT_CODE=1
 fi
