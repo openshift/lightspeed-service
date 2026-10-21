@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import yaml
 
@@ -483,8 +484,21 @@ def _run_bundle_with_retry(bundle_image: str) -> None:
             raise
 
 
+def _rhokp_warmup_marker() -> Path | None:
+    """Return the once-per-job RHOKP warm-up marker path, if recordable."""
+    artifact_dir = os.getenv("ARTIFACT_DIR")
+    if not artifact_dir:
+        return None
+    return Path(artifact_dir) / ".rhokp_image_warmed"
+
+
 def warm_up_rhokp_image() -> None:
-    """Pull the operator's RHOKP image onto every cluster node."""
+    """Pull the operator's RHOKP image onto every cluster node.
+
+    Runs at most once per CI job: ARTIFACT_DIR is shared by every suite in
+    a job, so a marker file records the warmed image and later suites skip
+    the pull (each pull spawns an ``oc debug`` pod on every node).
+    """
     operator_deployment = json.loads(
         cluster_utils.run_oc(
             [
@@ -513,6 +527,12 @@ def warm_up_rhokp_image() -> None:
         raise RuntimeError(
             "Could not find --rhokp-image in the operator controller Deployment"
         )
+
+    marker = _rhokp_warmup_marker()
+    if marker is not None and marker.is_file():
+        if marker.read_text(encoding="utf-8").strip() == rhokp_image:
+            print(f"RHOKP image already warmed in this job: {rhokp_image}")
+            return
 
     nodes = json.loads(cluster_utils.run_oc(["get", "nodes", "-o", "json"]).stdout)[
         "items"
@@ -543,6 +563,9 @@ def warm_up_rhokp_image() -> None:
             )
         for pull in pulls:
             pull.result()
+
+    if marker is not None:
+        marker.write_text(rhokp_image, encoding="utf-8")
 
 
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # noqa: C901
@@ -675,11 +698,6 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
         ]
     )
     _wait_for_operator_controller_ready()
-
-    print(
-        "Waiting for operator to reconcile OLSConfig before checking API deployment..."
-    )
-    time.sleep(30)
 
     # wait for the ols api server deployment to be created
     r = retry_until_timeout_or_success(
