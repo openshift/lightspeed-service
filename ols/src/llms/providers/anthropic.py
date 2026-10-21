@@ -37,15 +37,11 @@ class Anthropic(LLMProvider):
             "anthropic_api_key": self.credentials,
             "base_url": self.url,
             "max_tokens": constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE,
-            "temperature": 0.01,
-            "top_p": 0.95,
         }
 
         model_config = self.provider_config.models.get(self.model)
         if model_config and model_config.parameters.reasoning_config:
             default_parameters["thinking"] = model_config.parameters.reasoning_config
-            default_parameters.pop("temperature", None)
-            default_parameters.pop("top_p", None)
 
         return default_parameters
 
