@@ -78,6 +78,16 @@ dev = [
     "pybuild-deps>=0.5.0",
 ]
 
+[tool.uv]
+# CVE-2026-112390 / CVE-2026-112391 / CVE-2026-112392 / CVE-2026-112394
+# CVE-2026-112395 / CVE-2026-112397 / CVE-2026-112399 / CVE-2026-112400
+# CVE-2026-112402 / CVE-2026-112404 / CVE-2026-112405 / CVE-2026-112893
+# CVE-2026-112896 / CVE-2026-112897: Pillow >=13.0.0
+# gradio caps pillow<13.0; override until gradio lifts the constraint
+override-dependencies = [
+    "pillow>=13.0.0",
+]
+
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
