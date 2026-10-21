@@ -17,6 +17,10 @@ Required secrets (same names as the operator's service integration pipeline):
 - `insights-stage-upload-offline-token`
 - `ols-konflux-artifacts-bot`: requires `oci-storage-dockerconfigjson` for secure artifact publication **and** `.dockerconfigjson` for the catalog log-export task, with push permission to `quay.io/openshift-lightspeed/ols-service-artifacts`
 
+HyperShift rejects guest-side `ImageDigestMirrorSet` mutations. The provisioning task therefore passes the service mirror mappings through `IMAGE_CONTENT_SOURCES` to the HyperShift create workflow, which configures them on `HostedCluster`. Keep these mappings aligned with `tests/config/operator_install/imagedigestmirrorset.yaml`; the offline checks enforce parity. The workflow must support the `IMAGE_CONTENT_SOURCES` environment input.
+
+The test step sets `OLS_EXTERNAL_IMAGE_MIRRORS=true` so the installer and cleanup leave externally managed mirrors untouched. Outside this pipeline, the flag defaults to `false` and the harness continues to apply/delete its own `ImageDigestMirrorSet`. Only enable it when the required mirrors have already been configured externally.
+
 Provisioning supplies the cluster kubeconfig secret. The test step copies it to a writable location before invoking the harness. The test image requires permission to install RPMs and network access for Git, uv dependencies, the operator SDK, and provider APIs.
 
 Test artifacts are scanned and published from `/workspace/artifacts` to a per-run tag `<PipelineRun name>-<service commit>`. The source checkout and virtual environment are not published. Publication continues after a test failure, then `fail-if-any-step-failed` preserves failure status. Pipeline logs are exported in `finally`.

@@ -90,7 +90,28 @@ spec:
     - name: clusterProfile
       value: aws-konflux-prod
     - name: env
-      value: '{"COMPUTE_NODE_TYPE": "m5.2xlarge", "HYPERSHIFT_NODE_COUNT": "3", "HOSTED_MANAGEMENT_CLUSTER": "hosted-mgmt2"}'
+      # IMAGE_CONTENT_SOURCES is YAML consumed by the HyperShift create step.
+      # Keep these mappings aligned with tests/config/operator_install/imagedigestmirrorset.yaml.
+      value: >-
+        {"COMPUTE_NODE_TYPE": "m5.2xlarge", "HYPERSHIFT_NODE_COUNT": "3",
+        "HOSTED_MANAGEMENT_CLUSTER": "hosted-mgmt2",
+        "IMAGE_CONTENT_SOURCES": "[
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-rhel9-operator,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-operator]},
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-operator-bundle,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/bundle]},
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-service-api-rhel9,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service]},
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-console-plugin-rhel9,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console]},
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-console-plugin-pf5-rhel9,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-console-pf5]},
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-to-dataverse-exporter-rhel9,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-to-dataverse-exporter]},
+        {source: registry.redhat.io/openshift-lightspeed/openshift-mcp-server-rhel9,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/openshift-mcp-server]},
+        {source: registry.redhat.io/openshift-lightspeed/lightspeed-ocp-rag,
+        mirrors: [quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-ocp-rag]}]"}
     - name: releases
       value: '{"latest":{"release":{"channel":"stable","version":"$(params.openshift-version-prefix)","architecture":"multi"}}}'
     runAfter:
@@ -223,6 +244,8 @@ spec:
           value: /credentials/kubeconfig
         - name: ARTIFACT_DIR
           value: /workspace/artifacts
+        - name: OLS_EXTERNAL_IMAGE_MIRRORS
+          value: "true"
         - name: SUITE_ID
           value: nosuite
         - name: OLS_IMAGE

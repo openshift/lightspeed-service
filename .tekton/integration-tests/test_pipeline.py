@@ -28,7 +28,9 @@ class PipelineTests(unittest.TestCase):
         script = self.tasks["get-snapshot-component"]["taskSpec"]["steps"][0]["script"]
         with tempfile.TemporaryDirectory() as directory:
             for result in ("commit", "service-image"):
-                script = script.replace(f"$(step.results.{result}.path)", f"{directory}/{result}")
+                script = script.replace(
+                    f"$(step.results.{result}.path)", f"{directory}/{result}"
+                )
             env = dict(
                 os.environ,
                 SNAPSHOT=json.dumps({"components": components}),
@@ -83,16 +85,21 @@ class PipelineTests(unittest.TestCase):
         """Pass snapshot values into tests and preserve failures after publication."""
         task = self.tasks["ols-service-tests"]
         params = {param["name"]: param["value"] for param in task["params"]}
-        self.assertEqual(params["commit"], "$(tasks.get-snapshot-component.results.commit)")
         self.assertEqual(
-            params["service-image"], "$(tasks.get-snapshot-component.results.service-image)"
+            params["commit"], "$(tasks.get-snapshot-component.results.commit)"
+        )
+        self.assertEqual(
+            params["service-image"],
+            "$(tasks.get-snapshot-component.results.service-image)",
         )
         steps = task["taskSpec"]["steps"]
         self.assertNotIn("gather-cluster-resources", [step["name"] for step in steps])
         run = steps[0]
         env = {value["name"]: value.get("value") for value in run["env"]}
         self.assertEqual(env["OLS_IMAGE"], "$(params.service-image)")
-        self.assertIn('git fetch --depth=1 origin "${SERVICE_COMMIT_SHA}"', run["script"])
+        self.assertIn(
+            'git fetch --depth=1 origin "${SERVICE_COMMIT_SHA}"', run["script"]
+        )
         self.assertIn("tests/scripts/test-e2e-cluster.sh", run["script"])
         self.assertNotIn("related_images", PIPELINE.read_text())
         self.assertEqual(run["onError"], "continue")
@@ -101,13 +108,40 @@ class PipelineTests(unittest.TestCase):
         push_params = {param["name"]: param["value"] for param in push["params"]}
         self.assertEqual(push_params["workdir-path"], "/workspace/artifacts")
 
+    def test_hypershift_provisions_mirrors_and_disables_guest_mutations(self):
+        """Provision the canonical mirrors through HostedCluster, not the guest API."""
+        provision = self.tasks["provision-ephemeral-cluster"]
+        params = {p["name"]: p["value"] for p in provision["params"]}
+        provision_env = json.loads(params["env"])
+        manifest = yaml.safe_load(
+            (
+                ROOT.parent.parent
+                / "tests/config/operator_install/imagedigestmirrorset.yaml"
+            ).read_text()
+        )
+        self.assertEqual(
+            yaml.safe_load(provision_env.get("IMAGE_CONTENT_SOURCES", "")),
+            manifest["spec"]["imageDigestMirrors"],
+        )
+        run = self.tasks["ols-service-tests"]["taskSpec"]["steps"][0]
+        env = {e["name"]: e.get("value") for e in run["env"]}
+        self.assertEqual(env.get("OLS_EXTERNAL_IMAGE_MIRRORS"), "true")
+
     def test_scenario_targets_service_pipeline(self):
         """Trigger for service builds and resolve an existing pipeline path."""
         scenario = yaml.safe_load(SCENARIO.read_text())
-        self.assertEqual(scenario["spec"]["contexts"][0]["name"], "component_lightspeed-service")
-        params = {p["name"]: p["value"] for p in scenario["spec"]["resolverRef"]["params"]}
-        self.assertEqual(params["url"], "https://github.com/openshift/lightspeed-service")
-        self.assertEqual(params["pathInRepo"], str(PIPELINE.relative_to(ROOT.parent.parent)))
+        self.assertEqual(
+            scenario["spec"]["contexts"][0]["name"], "component_lightspeed-service"
+        )
+        params = {
+            p["name"]: p["value"] for p in scenario["spec"]["resolverRef"]["params"]
+        }
+        self.assertEqual(
+            params["url"], "https://github.com/openshift/lightspeed-service"
+        )
+        self.assertEqual(
+            params["pathInRepo"], str(PIPELINE.relative_to(ROOT.parent.parent))
+        )
 
 
 if __name__ == "__main__":
