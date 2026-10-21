@@ -164,9 +164,14 @@ post-processing across eight sequential stages.
     see `what/agent-modes.md`. For details on tool execution, approval,
     and filtering, see `what/tools.md`.
 
-33. On the final iteration, the system must invoke the LLM without tool
-    bindings (or with tool_choice=none) to force a text-only answer,
-    guaranteeing termination.
+33. On the final iteration, the system must prevent further tool calls and
+    require a text-only response, guaranteeing termination. With tools
+    configured, providers use a provider-compatible `tool_choice="none"` setting;
+    Anthropic providers use `{"type": "none"}`. When Vertex Gemini reaches the
+    iteration limit with tools configured, the system instead makes a tool-free
+    synthesis request with an explicit no-tools instruction. If the synthesis
+    instruction exceeds the remaining token budget or the request emits no
+    non-empty text, the system must emit a fallback response.
 
 34. Each LLM invocation round must be subject to a per-round timeout. If
     the timeout is reached, the system must return a user-facing error

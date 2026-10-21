@@ -88,9 +88,12 @@ behavior; other specs reference it rather than redefining mode rules.
       is used as-is.
 
 13. On the final iteration of the tool-calling loop (when the round index
-    equals the effective max), the LLM is invoked without tool bindings (or
-    with `tool_choice="none"`) to force a text-only answer. This guarantees
-    termination.
+    equals the effective max), the system must prevent further tool calls and
+    require a text response. With tools configured, providers use a
+    provider-compatible `tool_choice="none"` setting; Anthropic providers use
+    `{"type": "none"}`. Vertex Gemini instead makes a tool-free synthesis
+    request at the iteration limit, with an explicit instruction not to call
+    tools. This guarantees termination.
 
 ### Common Behavior
 
