@@ -86,7 +86,7 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	uv run pytest tests/e2e --ignore=tests/e2e/evaluation --durations=10 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
-	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR}
+	--eval_provider "${PROVIDER}" --eval_model "${MODEL}" --eval_out_dir ${ARTIFACT_DIR}
 
 test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question dataset) - requires running OLS server with OpenAI keys
 	@echo "Running LSEval periodic evaluation..."

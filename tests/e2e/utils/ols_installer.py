@@ -333,6 +333,20 @@ def ensure_bedrock_iam_secret(creds: str) -> None:
     cluster_utils.run_oc(oc_args, ignore_existing_resource=True)
 
 
+def _delete_secret(secret_name: str) -> None:
+    """Delete a secret, tolerating its absence."""
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "secret",
+                secret_name,
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print(f"secret {secret_name} does not yet exist. Creating it.")
+
+
 def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
     """Create Kubernetes secrets needed for an LLM provider (API creds).
 
@@ -347,20 +361,12 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
     Returns:
         Nothing.
     """
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "secret",
-                "llmcreds",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("llmcreds secret does not yet exist. Creating it.")
     if provider_name.startswith("bedrock"):
+        _delete_secret("llmcreds")
         ensure_bedrock_iam_secret(creds)
         return
     if creds == "empty":
+        _delete_secret("llmcreds")
         cluster_utils.run_oc(
             [
                 "create",
@@ -372,6 +378,7 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
             ignore_existing_resource=True,
         )
     elif provider_size == 1:
+        _delete_secret("llmcreds")
         cluster_utils.run_oc(
             [
                 "create",
@@ -383,12 +390,17 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
             ignore_existing_resource=True,
         )
     else:
+        # Only refresh this provider's own secret: other providers in the
+        # list own theirs (including llmcreds for bedrock), so deleting a
+        # foreign secret here would break a multi-provider deployment.
+        secret_name = provider_name.replace("_", "-") + "creds"
+        _delete_secret(secret_name)
         cluster_utils.run_oc(
             [
                 "create",
                 "secret",
                 "generic",
-                provider_name.replace("_", "-") + "creds",
+                secret_name,
                 f"--from-file=apitoken={creds}",
             ],
             ignore_existing_resource=True,

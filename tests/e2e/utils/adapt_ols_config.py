@@ -56,10 +56,21 @@ def apply_olsconfig(provider_list: list[str]) -> None:
             ignore_existing_resource=False,
         )
     else:
-        print("Applying evaluation olsconfig CR for multiple providers")
         ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+        if ols_config_suffix == "default":
+            print("Applying evaluation olsconfig CR for multiple providers")
+            crd_yml_file = "tests/config/operator_install/olsconfig.crd.evaluation.yaml"
+        else:
+            print(
+                "Applying multi-provider olsconfig CR for suffix "
+                f"{ols_config_suffix}"
+            )
+            crd_yml_file = (
+                "tests/config/operator_install/"
+                f"olsconfig.crd.{ols_config_suffix}.yaml"
+            )
         apply_e2e_olsconfig(
-            "tests/config/operator_install/olsconfig.crd.evaluation.yaml",
+            crd_yml_file,
             "apply",
             suffix=ols_config_suffix,
             substitute_environment=False,

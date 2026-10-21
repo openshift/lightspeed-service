@@ -78,6 +78,78 @@ def test_install_ols_creates_olsconfig_with_suffix_inspection_value(
         assert provider_config["url"] == expected_url
 
 
+class _SecretCallRecorder:
+    """Record oc secret commands and stand in for ensure_bedrock_iam_secret."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.calls: list[list[str]] = []
+        monkeypatch.setattr(
+            ols_installer.cluster_utils,
+            "run_oc",
+            lambda args, **_kwargs: self._oc(args),
+        )
+        monkeypatch.setattr(
+            ols_installer,
+            "ensure_bedrock_iam_secret",
+            lambda creds: self.calls.append(["ensure-bedrock-iam", creds]),
+        )
+
+    def _oc(self, args: list[str]) -> Any:
+        self.calls.append(args)
+        return type("Result", (), {"stdout": ""})()
+
+    def deleted_secrets(self) -> list[str]:
+        return [args[2] for args in self.calls if args[:2] == ["delete", "secret"]]
+
+    def created_secrets(self) -> list[str]:
+        return [
+            args[3]
+            for args in self.calls
+            if args[:3] == ["create", "secret", "generic"]
+        ]
+
+
+def test_create_secrets_multi_provider_preserves_bedrock_llmcreds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep the bedrock IAM secret when other providers add their own secrets."""
+    recorder = _SecretCallRecorder(monkeypatch)
+
+    ols_installer.create_secrets("bedrock", "iam", 3)
+    ols_installer.create_secrets("openai", "/keys/openai", 3)
+    ols_installer.create_secrets("watsonx", "/keys/watsonx", 3)
+
+    assert recorder.deleted_secrets() == ["llmcreds", "openaicreds", "watsonxcreds"]
+    assert recorder.created_secrets() == ["openaicreds", "watsonxcreds"]
+    assert ["ensure-bedrock-iam", "iam"] in recorder.calls
+
+
+def test_create_secrets_single_provider_refreshes_llmcreds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Recreate llmcreds from the key file for a single-provider deployment."""
+    recorder = _SecretCallRecorder(monkeypatch)
+
+    ols_installer.create_secrets("openai", "/keys/openai", 1)
+
+    assert recorder.deleted_secrets() == ["llmcreds"]
+    assert recorder.created_secrets() == ["llmcreds"]
+    assert "--from-file=apitoken=/keys/openai" in recorder.calls[-1]
+
+
+def test_create_secrets_empty_creds_recreates_llmcreds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Recreate llmcreds with a literal value when no key file is given."""
+    recorder = _SecretCallRecorder(monkeypatch)
+
+    ols_installer.create_secrets("openai", "empty", 1)
+
+    assert recorder.deleted_secrets() == ["llmcreds"]
+    assert recorder.created_secrets() == ["llmcreds"]
+    assert "--from-literal=apitoken=empty" in recorder.calls[-1]
+
+
 def test_warm_up_rhokp_image_pulls_operator_image_concurrently_on_each_node(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -130,6 +130,43 @@ def test_apply_olsconfig_uses_inspection_template_when_suffix_enabled(
     assert ols_spec["toolsApprovalConfig"]["approvalType"] == "never"
 
 
+def test_apply_olsconfig_uses_combined_inspection_cr_for_multi_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Load the combined inspection CR for the multi-provider inspection suite."""
+    applied: dict[str, Any] = {}
+
+    def fake_run_oc(
+        args: list[str],
+        command: str | None = None,
+        ignore_existing_resource: bool = False,
+    ) -> None:
+        applied["args"] = args
+        applied["config"] = yaml.safe_load(command)
+
+    monkeypatch.setenv("OLS_CONFIG_SUFFIX", "mcp_inspection_all")
+    monkeypatch.setattr(adapt_ols_config.cluster_utils, "run_oc", fake_run_oc)
+
+    adapt_ols_config.apply_olsconfig(
+        ["openai", "azure_openai", "bedrock", "google_vertex"]
+    )
+
+    spec = applied["config"]["spec"]
+    provider_names = [provider["name"] for provider in spec["llm"]["providers"]]
+    assert applied["args"] == ["apply", "-f", "-"]
+    assert provider_names == [
+        "openai",
+        "azure_openai",
+        "bedrock",
+        "google_vertex",
+        "google_vertex_anthropic",
+        "watsonx",
+        "rhoai_vllm",
+        "rhelai_vllm",
+    ]
+    assert spec["ols"]["guardrails"]["toolResultInspection"]["enabled"] is True
+
+
 def test_apply_olsconfig_substitutes_environment_for_lseval_template(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
