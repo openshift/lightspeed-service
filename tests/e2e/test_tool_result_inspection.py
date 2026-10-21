@@ -1,8 +1,14 @@
-"""Cluster tests for Classic tool-result inspection."""
+"""Cluster tests for Classic tool-result inspection.
+
+All providers in the matrix share one deployment: each query selects its
+provider and model per request, which also selects the LLM used by the
+tool-result inspection classifier.
+"""
 
 # pyright: reportAttributeAccessIssue=false
 
 import json
+import os
 import re
 
 import httpx
@@ -32,6 +38,47 @@ INSPECTION_HEADERS = {
 BENIGN_TOOL_NAME = "ols_inspection_benign"
 DIAGNOSTIC_TOOL_NAME = "ols_inspection_diagnostic"
 EVENTS_TOOL_NAME = "ols_inspection_events"
+
+# Mirrors the providers configured in olsconfig.crd.mcp_inspection_all.yaml.
+DEFAULT_INSPECTION_MATRIX: tuple[tuple[str, str], ...] = (
+    ("openai", "gpt-6-luna"),
+    ("azure_openai", "gpt-6-luna"),
+    ("bedrock", "anthropic.claude-sonnet-4-6"),
+    ("bedrock", "openai.gpt-6-luna"),
+    ("google_vertex", "gemini-3.1-flash-lite"),
+    ("google_vertex_anthropic", "claude-sonnet-4-6"),
+    ("watsonx", "ibm/granite-4-h-small"),
+    ("rhoai_vllm", "gpt-4.1-mini"),
+    ("rhelai_vllm", "gpt-4.1-mini"),
+)
+
+
+def _inspection_matrix() -> tuple[tuple[str, str], ...]:
+    """Resolve the provider/model matrix under test.
+
+    The default matrix covers every provider in the combined inspection
+    OLSConfig. Set ``INSPECTION_E2E_MATRIX="provider=model,..."`` to focus a
+    run on a subset of providers.
+    """
+    raw = os.getenv("INSPECTION_E2E_MATRIX", "")
+    if not raw:
+        return DEFAULT_INSPECTION_MATRIX
+    entries = []
+    for item in raw.split(","):
+        provider, separator, model = item.partition("=")
+        if not separator or not provider or not model:
+            raise ValueError(
+                f"Invalid INSPECTION_E2E_MATRIX entry {item!r}; "
+                "expected provider=model"
+            )
+        entries.append((provider, model))
+    return tuple(entries)
+
+
+INSPECTION_MATRIX = _inspection_matrix()
+PROVIDER_MODEL_IDS = [
+    f"{provider}--{model}".replace("/", "_") for provider, model in INSPECTION_MATRIX
+]
 
 
 def _read_sse_events(response_text: str) -> list[dict]:
@@ -118,7 +165,10 @@ def _post_with_inspection_diagnostics(
     return response
 
 
-def test_benign_tool_result_passes_inspection() -> None:
+@pytest.mark.parametrize(
+    ("provider", "model"), INSPECTION_MATRIX, ids=PROVIDER_MODEL_IDS
+)
+def test_benign_tool_result_passes_inspection(provider: str, model: str) -> None:
     """Accept benign mock tool output and return a successful query response."""
     previous_logs = _service_logs()
     response = _post_with_inspection_diagnostics(
@@ -128,6 +178,8 @@ def test_benign_tool_result_passes_inspection() -> None:
                 "Call the ols_inspection_benign tool and report its OpenShift status."
             ),
             "mcp_headers": INSPECTION_HEADERS,
+            "provider": provider,
+            "model": model,
         },
         previous_logs,
         BENIGN_TOOL_NAME,
@@ -151,6 +203,9 @@ def test_benign_tool_result_passes_inspection() -> None:
 
 
 @pytest.mark.parametrize(
+    ("provider", "model"), INSPECTION_MATRIX, ids=PROVIDER_MODEL_IDS
+)
+@pytest.mark.parametrize(
     ("endpoint", "tool_name"),
     [
         ("/v1/query", DIAGNOSTIC_TOOL_NAME),
@@ -162,6 +217,8 @@ def test_benign_tool_result_passes_inspection() -> None:
 def test_malicious_tool_result_fails_closed_without_leaking_content(
     endpoint: str,
     tool_name: str,
+    provider: str,
+    model: str,
 ) -> None:
     """Reject malicious output before the API, history, or logs expose it."""
     conversation_id = get_suid()
@@ -176,6 +233,8 @@ def test_malicious_tool_result_fails_closed_without_leaking_content(
         "conversation_id": conversation_id,
         "query": query,
         "mcp_headers": INSPECTION_HEADERS,
+        "provider": provider,
+        "model": model,
     }
     if endpoint == "/v1/streaming_query":
         payload["media_type"] = "application/json"

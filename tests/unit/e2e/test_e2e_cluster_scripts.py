@@ -15,67 +15,15 @@ INSPECTION_RUN_SUITE = re.compile(
 )
 PR_INSPECTION_TARGETS = {
     (
-        "openai_gpt6_tool_result_inspection",
-        "openai",
+        "tool_result_inspection",
+        "openai azure_openai bedrock google_vertex google_vertex_anthropic "
+        "watsonx rhoai_vllm rhelai_vllm",
+        "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam "
+        "$VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH "
+        "$WATSONX_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH "
         "$OPENAI_PROVIDER_KEY_PATH",
-        "gpt-6-luna",
-        "mcp_inspection_ci",
-    ),
-    (
-        "azure_openai_tool_result_inspection",
-        "azure_openai",
-        "$AZUREOPENAI_PROVIDER_KEY_PATH",
-        "gpt-6-luna",
-        "mcp_inspection_ci",
-    ),
-    (
-        "bedrock_anthropic_tool_result_inspection",
-        "bedrock_anthropic",
-        "iam",
-        "anthropic.claude-sonnet-4-6",
-        "mcp_inspection_ci",
-    ),
-    (
-        "bedrock_openai_tool_result_inspection",
-        "bedrock_openai",
-        "iam",
-        "openai.gpt-6-luna",
-        "mcp_inspection_ci",
-    ),
-    (
-        "google_vertex_tool_result_inspection",
-        "google_vertex",
-        "$VERTEX_PROVIDER_KEY_PATH",
-        "gemini-3.1-flash-lite",
-        "mcp_inspection_ci",
-    ),
-    (
-        "google_vertex_anthropic_tool_result_inspection",
-        "google_vertex_anthropic",
-        "$VERTEX_PROVIDER_KEY_PATH",
-        "claude-sonnet-4-6",
-        "mcp_inspection_ci",
-    ),
-    (
-        "watsonx_tool_result_inspection",
-        "watsonx",
-        "$WATSONX_PROVIDER_KEY_PATH",
-        "ibm/granite-4-h-small",
-        "mcp_inspection_ci",
-    ),
-    (
-        "rhoai_vllm_tool_result_inspection",
-        "rhoai_vllm",
-        "$OPENAI_PROVIDER_KEY_PATH",
-        "gpt-4.1-mini",
-        "mcp_inspection_ci",
-    ),
-    (
-        "rhelai_vllm_tool_result_inspection",
-        "rhelai_vllm",
-        "$OPENAI_PROVIDER_KEY_PATH",
-        "gpt-4.1-mini",
-        "mcp_inspection_ci",
+        "multi",
+        "mcp_inspection_all",
     ),
 }
 

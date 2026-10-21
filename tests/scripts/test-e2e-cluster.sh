@@ -56,25 +56,11 @@ function run_suites() {
   (( rc = rc || $? ))
 
   # Run inspection for the audited provider/model matrix in PR CI. Set the flag
-  # to 0 to skip these runs locally.
+  # to 0 to skip these runs locally. All providers share one deployment (the
+  # mcp_inspection_all OLSConfig) and the tests select provider/model per
+  # request, so the matrix runs without redeploying between providers.
   if [[ "${RUN_TOOL_RESULT_INSPECTION_E2E:-1}" == "1" ]]; then
-    run_suite "openai_gpt6_tool_result_inspection" "inspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "azure_openai_tool_result_inspection" "inspection" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "bedrock_anthropic_tool_result_inspection" "inspection" "bedrock_anthropic" "iam" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "bedrock_openai_tool_result_inspection" "inspection" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "google_vertex_tool_result_inspection" "inspection" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "google_vertex_anthropic_tool_result_inspection" "inspection" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "watsonx_tool_result_inspection" "inspection" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "rhoai_vllm_tool_result_inspection" "inspection" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp_inspection_ci"
-    (( rc = rc || $? ))
-    run_suite "rhelai_vllm_tool_result_inspection" "inspection" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp_inspection_ci"
+    run_suite "tool_result_inspection" "inspection" "openai azure_openai bedrock google_vertex google_vertex_anthropic watsonx rhoai_vllm rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH $WATSONX_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "mcp_inspection_all"
     (( rc = rc || $? ))
   fi
 
