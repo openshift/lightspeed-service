@@ -5,7 +5,7 @@ The periodic suite uses the full 797-question dataset; this suite is a lightweig
 smoke test intended for presubmit CI.
 
 Each provider uses the judge LLM defined in ``eval/system_<provider>_lseval.yaml``
-(OpenAI ``gpt-5-mini`` for scoring).
+(OpenAI gpt-6-luna for scoring).
 
 Local usage
 -----------

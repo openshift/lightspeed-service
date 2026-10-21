@@ -1,6 +1,6 @@
 #!/bin/bash
 # CI job: run the LSEval periodic suite only — full 797-question QnA dataset (eval/eval_data.yaml).
-# Six providers run sequentially; judge model is gpt-5-mini (from eval YAML).
+# Six providers run sequentially; judge model is OpenAI gpt-6-luna (from eval YAML).
 # Troubleshooting evals are not run from this entrypoint (run them separately if needed).
 #
 # When RHOAI_PROVISION=true, the script provisions RHOAI operators, GPU infra,
