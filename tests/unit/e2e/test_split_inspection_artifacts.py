@@ -73,7 +73,7 @@ def test_suite_ids_cover_the_full_matrix() -> None:
         ),
         (
             "test_malicious_tool_result_fails_closed_without_leaking_content"
-            "[tool-error-bedrock--anthropic.claude-sonnet-4-6]",
+            "[tool-error-bedrock--anthropic.claude-haiku-5-5]",
             "bedrock_anthropic_tool_result_inspection",
         ),
         (

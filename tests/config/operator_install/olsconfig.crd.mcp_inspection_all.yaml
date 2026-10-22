@@ -31,7 +31,7 @@ spec:
       credentialsSecretRef:
         name: llmcreds
       models:
-      - name: anthropic.claude-sonnet-4-6
+      - name: anthropic.claude-haiku-5-5
       - name: openai.gpt-6-luna
     - name: google_vertex
       type: google_vertex
