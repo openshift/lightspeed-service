@@ -24,6 +24,7 @@ from ols.utils.config import AppConfig
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.models.models import CacheEntry  # noqa: E402
+from ols.src.llms.llm_loader import load_llm  # noqa: E402
 from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
@@ -214,6 +215,43 @@ def test_tool_result_classifier_uses_configured_provider_type(
 
     assert len(schemas) == 1
     assert ("oneOf" in schemas[0]) is expect_one_of
+
+
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+def test_tool_result_classifier_uses_configured_temperature(
+    temperature: float | None,
+) -> None:
+    """Honor model temperature without injecting a classifier-specific default."""
+    provider_config = config.llm_config.providers["p1"]
+    provider_config.type = "anthropic"
+    provider_config.models["m1"].parameters.temperature = temperature
+    with (
+        patch.object(
+            config.ols_config.guardrails.tool_result_inspection,
+            "enabled",
+            True,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value={"test_server": {}},
+        ),
+        patch(
+            "ols.src.llms.providers.anthropic.ChatAnthropic",
+            return_value=mock_llm_loader(None)(),
+        ) as mock_chat_anthropic,
+    ):
+        summarizer = DocsSummarizer(llm_loader=load_llm)
+
+    assert summarizer._tool_result_classifier is not None
+    assert mock_chat_anthropic.call_count == 2
+    assert mock_chat_anthropic.call_args.kwargs["max_tokens"] == 128
+    for call in mock_chat_anthropic.call_args_list:
+        kwargs = call.kwargs
+        if temperature is None:
+            assert "temperature" not in kwargs
+        else:
+            assert kwargs["temperature"] == temperature
+        assert "top_p" not in kwargs
 
 
 def test_tool_result_inspection_fails_closed_without_structured_output():

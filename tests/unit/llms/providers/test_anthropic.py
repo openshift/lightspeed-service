@@ -1,6 +1,6 @@
 """Unit tests for Anthropic provider."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -94,6 +94,43 @@ def test_basic_interface(mock_chat_anthropic, provider_config):
     assert "model" in anthropic.default_params
     assert "max_tokens" in anthropic.default_params
     assert "anthropic_api_key" in anthropic.default_params
+
+
+@pytest.mark.parametrize(
+    "model", ["claude-haiku-4-5", "claude-sonnet-4-6", "custom-model"]
+)
+@patch("ols.src.llms.providers.anthropic.ChatAnthropic", autospec=True)
+def test_load_omits_default_sampling_parameters(
+    mock_chat_anthropic: MagicMock, provider_config: ProviderConfig, model: str
+) -> None:
+    """Omit sampling defaults independently of the model name."""
+    anthropic = Anthropic(model=model, provider_config=provider_config)
+    anthropic.load()
+
+    kwargs = mock_chat_anthropic.call_args.kwargs
+    assert kwargs["model"] == model
+    assert "temperature" not in kwargs
+    assert "top_p" not in kwargs
+
+
+@pytest.mark.parametrize("temperature", [None, 0.0, 0.7])
+@patch("ols.src.llms.providers.anthropic.ChatAnthropic", autospec=True)
+def test_load_uses_configured_model_temperature(
+    mock_chat_anthropic: MagicMock,
+    provider_config: ProviderConfig,
+    temperature: float | None,
+) -> None:
+    """Pass only explicitly configured model temperatures to Anthropic."""
+    provider_config.models["claude-sonnet-4-6"].parameters.temperature = temperature
+    anthropic = Anthropic(model="claude-sonnet-4-6", provider_config=provider_config)
+    anthropic.load()
+
+    kwargs = mock_chat_anthropic.call_args.kwargs
+    if temperature is None:
+        assert "temperature" not in kwargs
+    else:
+        assert kwargs["temperature"] == temperature
+    assert "top_p" not in kwargs
 
 
 @patch(
@@ -250,9 +287,9 @@ def test_thinking_config(mock_chat_anthropic, provider_config_with_thinking):
     assert anthropic.default_params["thinking"]["type"] == "enabled"
     assert anthropic.default_params["thinking"]["budget_tokens"] == 10000
 
-    # temperature and top_p should be removed when thinking is enabled
-    assert "temperature" not in anthropic.default_params
-    assert "top_p" not in anthropic.default_params
+    kwargs = mock_chat_anthropic.call_args.kwargs
+    assert "temperature" not in kwargs
+    assert "top_p" not in kwargs
 
     # core parameters should still be present
     assert "model" in anthropic.default_params
