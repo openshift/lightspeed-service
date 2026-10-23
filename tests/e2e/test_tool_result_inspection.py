@@ -43,7 +43,7 @@ EVENTS_TOOL_NAME = "ols_inspection_events"
 DEFAULT_INSPECTION_MATRIX: tuple[tuple[str, str], ...] = (
     ("openai", "gpt-6-luna"),
     ("azure_openai", "gpt-6-luna"),
-    ("bedrock", "anthropic.claude-sonnet-4-6"),
+    ("bedrock", "anthropic.claude-haiku-5-5"),
     ("bedrock", "openai.gpt-6-luna"),
     ("google_vertex", "gemini-3.1-flash-lite"),
     ("google_vertex_anthropic", "claude-sonnet-4-6"),

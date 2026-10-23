@@ -30,7 +30,7 @@ from defusedxml.ElementTree import parse as parse_xml
 SUITE_IDS: dict[tuple[str, str], str] = {
     ("openai", "gpt-6-luna"): "openai_gpt6_tool_result_inspection",
     ("azure_openai", "gpt-6-luna"): "azure_openai_tool_result_inspection",
-    ("bedrock", "anthropic.claude-sonnet-4-6"): (
+    ("bedrock", "anthropic.claude-haiku-5-5"): (
         "bedrock_anthropic_tool_result_inspection"
     ),
     ("bedrock", "openai.gpt-6-luna"): "bedrock_openai_tool_result_inspection",

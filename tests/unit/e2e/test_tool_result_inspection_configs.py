@@ -28,7 +28,7 @@ EXPECTED_PROVIDERS: dict[str, dict[str, Any]] = {
     },
     "bedrock": {
         "type": "bedrock",
-        "models": ["anthropic.claude-sonnet-4-6", "openai.gpt-6-luna"],
+        "models": ["anthropic.claude-haiku-5-5", "openai.gpt-6-luna"],
         "secret": "llmcreds",
     },
     "google_vertex": {

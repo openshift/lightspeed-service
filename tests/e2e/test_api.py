@@ -107,7 +107,7 @@ def test_model_provider():
         ("gpt-6-luna", "openai"),
         ("gpt-6-luna", "azure_openai"),
         ("ibm/granite-4-h-small", "watsonx"),
-        ("anthropic.claude-sonnet-4-6", "bedrock"),
+        ("anthropic.claude-haiku-5-5", "bedrock"),
         ("openai.gpt-6-luna", "bedrock"),
         ("gemini-3.1-flash-lite", "google_vertex"),
         ("claude-sonnet-4-6", "google_vertex_anthropic"),
