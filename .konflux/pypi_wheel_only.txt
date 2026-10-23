@@ -1,3 +1,5 @@
 # Packages that must be fetched as wheels from PyPI, not built from source.
 # The script auto-detects and warns about such packages, but listing
 # them here suppresses the warning and classifies them explicitly.
+# C/Rust extensions that cannot be compiled in the hermetic build environment.
+pillow
