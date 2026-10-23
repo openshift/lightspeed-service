@@ -7,6 +7,32 @@ from pathlib import Path
 
 import pytest
 
+
+@pytest.mark.parametrize("external_mirrors", [None, "false", "true"])
+def test_operator_cleanup_respects_external_mirrors(external_mirrors):
+    """Do not delete mirrors owned by the HyperShift management cluster."""
+    env = os.environ.copy()
+    env.pop("OLS_EXTERNAL_IMAGE_MIRRORS", None)
+    if external_mirrors is not None:
+        env["OLS_EXTERNAL_IMAGE_MIRRORS"] = external_mirrors
+    shell = (
+        'oc() { printf "oc %s\\n" "$*"; }\n'
+        "operator-sdk() { :; }\n"
+        "source tests/scripts/utils.sh\n"
+        "cleanup_ols_operator\n"
+    )
+    result = subprocess.run(  # noqa: S603
+        ["bash", "-c", shell],  # noqa: S607
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert ("imagedigestmirrorset/" in result.stdout) == (external_mirrors != "true")
+    assert "ns openshift-lightspeed" in result.stdout
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 INSPECTION_RUN_SUITE = re.compile(
     r'^\s*run_suite "(?P<name>[^"]+)" "inspection" '

@@ -11,6 +11,42 @@ import yaml
 from tests.e2e.utils import cluster, ols_installer
 
 
+@pytest.mark.parametrize("external_mirrors", [None, "false", "true"])
+def test_install_ols_mirror_management(monkeypatch, external_mirrors):
+    """Only mutate guest mirrors when they are not externally managed."""
+
+    class BundleReachedError(Exception):
+        """Stop before installing the bundle on a real cluster."""
+
+    calls = []
+
+    def run_oc(args, **_kwargs):
+        calls.append(args)
+
+    def run_bundle(_image):
+        raise BundleReachedError
+
+    monkeypatch.setattr(ols_installer, "disconnected", False)
+    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", run_oc)
+    monkeypatch.setattr(ols_installer, "_run_bundle_with_retry", run_bundle)
+    monkeypatch.delenv("OLS_EXTERNAL_IMAGE_MIRRORS", raising=False)
+    if external_mirrors is not None:
+        monkeypatch.setenv("OLS_EXTERNAL_IMAGE_MIRRORS", external_mirrors)
+    with pytest.raises(BundleReachedError):
+        ols_installer.install_ols()
+    mirror_calls = [
+        args
+        for args in calls
+        if "tests/config/operator_install/imagedigestmirrorset.yaml" in args
+    ]
+    if external_mirrors == "true":
+        assert mirror_calls == []
+    else:
+        assert mirror_calls == [
+            ["apply", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"]
+        ]
+
+
 @pytest.mark.parametrize(
     "provider, suffix, inspection_enabled, expected_url",
     [

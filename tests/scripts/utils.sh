@@ -37,8 +37,10 @@ function cleanup_ols_operator() {
     # delete the OLS namespace
     oc delete --wait --ignore-not-found ns openshift-lightspeed
 
-    # delete the ImageDigestMirrorSet
-    oc delete --wait --ignore-not-found imagedigestmirrorset/openshift-lightspeed-prod-to-ci
+    # Externally managed mirrors belong to HostedCluster, not this test suite.
+    if [[ "${OLS_EXTERNAL_IMAGE_MIRRORS:-false}" != "true" ]]; then
+        oc delete --wait --ignore-not-found imagedigestmirrorset/openshift-lightspeed-prod-to-ci
+    fi
 }
 
 # $1 suite id

@@ -562,24 +562,20 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
         )
         print("created OLS project")
 
-        # install the ImageDigestMirrorSet to mirror images
-        # from "registry.redhat.io/openshift-lightspeed-beta"
-        # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
-        cluster_utils.run_oc(
-            ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
-            ignore_existing_resource=True,
-        )
+        # HyperShift mirrors are provisioned through HostedCluster; guest-side
+        # ImageDigestMirrorSet mutations are rejected by admission policy.
+        if os.getenv("OLS_EXTERNAL_IMAGE_MIRRORS", "false") != "true":
+            cluster_utils.run_oc(
+                [
+                    "apply",
+                    "-f",
+                    "tests/config/operator_install/imagedigestmirrorset.yaml",
+                ],
+                ignore_existing_resource=True,
+            )
 
         # install the operator from bundle
         print("Installing OLS operator from bundle")
-        cluster_utils.run_oc(
-            [
-                "apply",
-                "-f",
-                "tests/config/operator_install/imagedigestmirrorset.yaml",
-            ],
-            ignore_existing_resource=True,
-        )
         _run_bundle_with_retry(bundle_image)
     cluster_utils.run_oc(
         ["project", "openshift-lightspeed"], ignore_existing_resource=True
