@@ -99,23 +99,12 @@ function run_suites() {
     run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-    # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
-    # Run tool calling - Enable tool_calling
-    run_suite "bedrock_openai_tool_calling" "tool_calling" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "tool_calling"
+    # Tool-calling matrix: all providers share one deployment per OLSConfig
+    # (see the matrix mode in run_suite). The first entry's provider must
+    # match the CR default. The periodic job covers every provider.
+    run_suite "tool_calling_matrix" "tool_calling" "openai_tool_calling:openai:gpt-6-luna azure_openai_tool_calling:azure_openai:gpt-6-luna bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-sonnet-4-6 watsonx_tool_calling:watsonx:ibm/granite-4-h-small google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $WATSONX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "tool_calling_all"
     (( rc = rc || $? ))
-    run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
-    (( rc = rc || $? ))
-    run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
-    (( rc = rc || $? ))
-    run_suite "openai_gpt6_tool_calling" "gpt6_tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
-    (( rc = rc || $? ))
-    run_suite "azure_openai_gpt6_tool_calling" "gpt6_tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
-    (( rc = rc || $? ))
-    run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "tool_calling"
-    (( rc = rc || $? ))
-    run_suite "google_vertex_tool_calling" "tool_calling" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "tool_calling"
-    (( rc = rc || $? ))
-    run_suite "google_vertex_anthropic_tool_calling" "tool_calling" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "tool_calling"
+    run_suite "gpt6_tool_calling_matrix" "gpt6_tool_calling" "openai_gpt6_tool_calling:openai:gpt-6-luna azure_openai_gpt6_tool_calling:azure_openai:gpt-6-luna" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "gpt6_tool_calling_all"
     (( rc = rc || $? ))
 
     # BYOK Test cases

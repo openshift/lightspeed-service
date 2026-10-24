@@ -14,7 +14,7 @@ from pytest import TestReport
 
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster, ols_installer
-from tests.e2e.utils.adapt_ols_config import adapt_ols_config
+from tests.e2e.utils.adapt_ols_config import adapt_ols_config, switch_default_provider
 from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster, teardown_mcp_on_cluster
 from tests.e2e.utils.olsconfig_cr import inspection_enabled_for_e2e
 from tests.e2e.utils.retry import retry_until_timeout_or_success
@@ -121,6 +121,14 @@ def pytest_sessionstart():
                 ols_url, token, metrics_token, provider = (
                     _cluster_ols_install_or_adapt()
                 )
+
+            # Provider matrix runs reuse one deployment and switch the
+            # default provider/model per iteration (configmap patch +
+            # app-server restart) instead of a full OLSConfig reconcile.
+            provider_override = os.getenv("SWITCH_DEFAULT_PROVIDER", "")
+            if provider_override:
+                provider_name, _, model_name = provider_override.partition(" ")
+                switch_default_provider(provider_name, model_name)
 
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
@@ -320,12 +328,29 @@ def pytest_collection_modifyitems(items: list) -> None:
     items[:] = rest + deferred
 
 
-def pytest_sessionfinish():
+def _should_gather_artifacts(session: object, exitstatus: object) -> bool:
+    """Decide whether cluster artifacts must be collected after a session.
+
+    Artifacts are collected when the session failed or when the suite
+    requires them on success (the consolidated inspection suite splits its
+    per-provider log slices from the gathered podlogs).
+    """
+    if os.getenv("MUST_GATHER_ON_SUCCESS", "").lower() == "true":
+        return True
+    if exitstatus not in (None, 0):
+        return True
+    return bool(getattr(session, "testsfailed", 0))
+
+
+def pytest_sessionfinish(session, exitstatus):
     """Gather OLS artifacts and clean up test resources after session finishes."""
     if on_cluster:
         ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
         try:
-            must_gather()
+            if _should_gather_artifacts(session, exitstatus):
+                must_gather()
+            else:
+                print("Skipping must-gather for a passing suite")
         finally:
             if "mcp" in ols_config_suffix:
                 teardown_mcp_on_cluster()

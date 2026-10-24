@@ -11,16 +11,24 @@ metadata:
 spec:
   llm:
     providers:
-      - credentialsSecretRef:
-          name: llmcreds
-        projectID: ad629765-c373-4731-9d69-dc701724c081
-        models:
-          - name: ibm/granite-4-h-small
-        name: watsonx
-        type: watsonx
+    - name: openai
+      type: openai
+      credentialsSecretRef:
+        name: openaicreds
+      models:
+      - name: gpt-6-luna
+    - name: azure_openai
+      type: azure_openai
+      credentialsSecretRef:
+        name: azure-openaicreds
+      apiVersion: "2025-04-01-preview"
+      deploymentName: gpt-6-luna
+      models:
+      - name: gpt-6-luna
+      url: https://ols-test.openai.azure.com/
   ols:
-    defaultModel: ibm/granite-4-h-small
-    defaultProvider: watsonx
+    defaultModel: gpt-6-luna
+    defaultProvider: openai
     deployment:
       replicas: 1
     disableAuth: false

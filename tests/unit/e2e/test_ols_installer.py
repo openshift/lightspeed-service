@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+from pathlib import Path
 from threading import Barrier
 from typing import Any
 
@@ -231,6 +232,7 @@ def test_warm_up_rhokp_image_pulls_operator_image_concurrently_on_each_node(
         return subprocess.CompletedProcess(args, 0, stdout, "")
 
     monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+    monkeypatch.delenv("ARTIFACT_DIR", raising=False)
 
     ols_installer.warm_up_rhokp_image()
 
@@ -262,6 +264,103 @@ def test_warm_up_rhokp_image_pulls_operator_image_concurrently_on_each_node(
     assert [timeout for args, timeout in calls if args[0] == "debug"] == [600, 600]
 
 
+def _warmup_run_oc_stub(
+    deployment: dict[str, Any], nodes: dict[str, Any], calls: list[list[str]]
+) -> Any:
+    """Build a run_oc stub serving the deployment and node listings."""
+
+    def fake_run_oc(
+        args: list[str],
+        command: str | None = None,
+        ignore_existing_resource: bool = False,
+        timeout: int = cluster.OC_SUBPROCESS_TIMEOUT,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        if args[:2] == ["get", "deployment"]:
+            stdout = json.dumps(deployment)
+        elif args[:2] == ["get", "nodes"]:
+            stdout = json.dumps(nodes)
+        else:
+            stdout = ""
+        return subprocess.CompletedProcess(args, 0, stdout, "")
+
+    return fake_run_oc
+
+
+def test_warm_up_rhokp_image_runs_once_per_job(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Skip the pull when the job marker already recorded the image."""
+    image = "registry.example.com/rhokp@sha256:abc123"
+    deployment = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {"name": "manager", "args": [f"--rhokp-image={image}"]}
+                    ]
+                }
+            }
+        }
+    }
+    nodes = {"items": [{"metadata": {"name": "worker-a"}}]}
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        ols_installer.cluster_utils,
+        "run_oc",
+        _warmup_run_oc_stub(deployment, nodes, calls),
+    )
+    monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
+    marker = tmp_path / ".rhokp_image_warmed"
+
+    ols_installer.warm_up_rhokp_image()
+    assert marker.read_text(encoding="utf-8") == image
+    assert [args for args in calls if args[0] == "debug"]
+
+    calls.clear()
+    ols_installer.warm_up_rhokp_image()
+    assert not [args for args in calls if args[0] == "debug"]
+
+
+def test_warm_up_rhokp_image_rewarms_for_a_different_image(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Pull again when the operator image changed within one job."""
+    deployment = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "manager",
+                            "args": [
+                                "--rhokp-image=registry.example.com/rhokp@sha256:new"
+                            ],
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    nodes = {"items": [{"metadata": {"name": "worker-a"}}]}
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        ols_installer.cluster_utils,
+        "run_oc",
+        _warmup_run_oc_stub(deployment, nodes, calls),
+    )
+    monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
+    (tmp_path / ".rhokp_image_warmed").write_text(
+        "registry.example.com/rhokp@sha256:old", encoding="utf-8"
+    )
+
+    ols_installer.warm_up_rhokp_image()
+
+    pull_calls = [args for args in calls if args[0] == "debug"]
+    assert len(pull_calls) == 1
+    assert pull_calls[0][-1] == "registry.example.com/rhokp@sha256:new"
+
+
 def test_warm_up_rhokp_image_raises_when_deployment_has_no_image(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -284,6 +383,7 @@ def test_warm_up_rhokp_image_raises_when_deployment_has_no_image(
         )
 
     monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+    monkeypatch.delenv("ARTIFACT_DIR", raising=False)
 
     with pytest.raises(RuntimeError, match="--rhokp-image"):
         ols_installer.warm_up_rhokp_image()
@@ -332,6 +432,7 @@ def test_warm_up_rhokp_image_raises_when_cluster_has_no_nodes(
         return subprocess.CompletedProcess(args, 0, next(outputs), "")
 
     monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+    monkeypatch.delenv("ARTIFACT_DIR", raising=False)
 
     with pytest.raises(RuntimeError, match="cluster nodes"):
         ols_installer.warm_up_rhokp_image()
