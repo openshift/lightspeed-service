@@ -15,8 +15,8 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 ### Python Version & Dependencies
 - **Python 3.12** - Target version py312 in all code
 - **uv** - Package manager (not pip/poetry/pdm)
-- **Dependencies** - Always check existing imports before adding new ones. Bump procedure: `CONTRIBUTING.md` and `docs/ai/dependencies.md`. Never `make update-deps` for a single package.
-- **Konflux hermetic build** - Konflux installs from `.konflux/requirements.hashes.source.txt`, `.konflux/requirements.hashes.wheel.txt`, and `.konflux/requirements.hashes.wheel.pypi.txt`, **not** from `uv.lock`. After every lock change: `make konflux-requirements` (`scripts/konflux_resolve.py --profile cpu`) with a **clean uv config** (see `docs/update-requirements.md`). `.konflux/requirements-build.txt` is PyPI-only and must not contain `--index-url`. Config: `.konflux/profiles.toml`.
+- **Dependencies** - Always check existing imports before adding new ones. Bump procedure: `CONTRIBUTING.md` and `docs/ai/dependencies.md`. Single package/CVE: `make bump PKG=<name> VERSION=<minimum>`. Never `make update-deps` for a single package.
+- **Konflux hermetic build** - Konflux installs from `.konflux/requirements.hashes.source.txt`, `.konflux/requirements.hashes.wheel.txt`, and `.konflux/requirements.hashes.wheel.pypi.txt`, **not** from `uv.lock`. `make bump` regenerates those plus `uv.lock` and `requirements.txt` together (`scripts/konflux_resolve.py --profile cpu` + `uv lock` + `uv export`), with a clean uv config built into the target. `.konflux/requirements-build.txt` is PyPI-only and must not contain `--index-url`. Config: `.konflux/profiles.toml`.
 
 ### Code Quality Tools
 - **Ruff** - Linting (Google docstring convention)

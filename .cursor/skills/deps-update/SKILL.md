@@ -32,47 +32,40 @@ Before changing anything:
 If a specific package was requested, bump only that package:
 
 ```bash
-uv lock --upgrade-package {package}
+make bump PKG={package} VERSION={minimum-version}
+```
+
+`VERSION` is a minimum, not an exact pin. `make bump`
+regenerates `uv.lock`, `requirements.txt`, and the Konflux
+hermetic files together, preferring the currently locked
+versions of every other package.
+
+Otherwise refresh everything:
+
+```bash
+make bump
 uv sync --group dev --extra evaluation
 ```
 
-Otherwise bump everything:
+Capture the output — the version changes it reports are
+needed for the commit message and report.
 
-```bash
-uv lock --upgrade
-uv sync --group dev --extra evaluation
-```
+Check the output for warnings. If a warning indicates a
+missing extra or incompatible constraint, investigate
+whether it affects this project. Note any benign warnings
+in the final report.
 
-Capture the output of `uv lock --upgrade` — it lists all
-version changes and is needed for the commit message and
-report.
+## Step 3: Verify the Konflux Hermetic Regen
 
-After running `uv lock --upgrade`, check the output for
-warnings. If a warning indicates a missing extra or
-incompatible constraint, investigate whether it affects
-this project. Note any benign warnings in the final report.
-
-Then regenerate the pinned requirements file:
-
-```bash
-make requirements.txt
-```
-
-This runs `uv export` under the hood and produces a
-`requirements.txt` with hashes for production packages.
-
-## Step 3: Regenerate Konflux Hermetic Requirements
-
-After updating the lock and requirements, regenerate the
-Konflux hermetic build requirements. Follow the procedure
-in [`docs/update-requirements.md`](../../docs/update-requirements.md)
-— it covers environment cleanup (`UV_NO_CONFIG=1`, unsetting
-index variables), the `make konflux-requirements` command,
-and verification of the generated `.konflux/` files.
+`make bump` already regenerated the Konflux hermetic
+requirements as part of the bump. Check the procedure in
+[`docs/update-requirements.md`](../../../docs/update-requirements.md)
+for how to review the generated `.konflux/` files
+(`requirements-build.txt` must not contain `--index-url`).
 
 Do **not** hand-edit the generated `.konflux/requirements.hashes.*`
 or `.konflux/requirements-build.txt` files — always regenerate
-via `make konflux-requirements`.
+via `make bump`.
 
 ## Step 4: Verify — Lint and Type Checks
 
@@ -183,8 +176,8 @@ before committing. Then commit all changes and follow the
   to the bump, say so. Let the user decide whether to
   investigate separately.
 - **No manual requirements.txt edits** — always regenerate
-  via `make requirements.txt`, never hand-edit.
+  via `make bump`, never hand-edit.
 - **No manual Konflux file edits** — always regenerate
-  via `make konflux-requirements`, never hand-edit the
+  via `make bump`, never hand-edit the
   `.konflux/requirements.hashes.*` or
   `.konflux/requirements-build.txt` files.
