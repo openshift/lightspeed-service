@@ -85,6 +85,32 @@ function run_suite() {
       all_providers="$all_providers $entry_provider"
     done
     all_providers=${all_providers# }
+    # E2E_MATRIX_FILTER: space-separated suite ids to rerun a subset of the
+    # matrix, e.g. E2E_MATRIX_FILTER="azure_openai_tool_calling" after a
+    # single provider failed. The first selected entry performs the full
+    # setup (CR apply with every provider) and then switches to its provider,
+    # so any subset is valid.
+    if [ -n "${E2E_MATRIX_FILTER:-}" ]; then
+      local filtered_entries=()
+      local filtered_keypaths=()
+      index=0
+      for entry in "${entries[@]}"; do
+        IFS=':' read -r suite_id _ _ <<< "$entry"
+        if [[ " $E2E_MATRIX_FILTER " == *" $suite_id "* ]]; then
+          filtered_entries+=("$entry")
+          filtered_keypaths+=("${keypaths[$index]}")
+        fi
+        index=$((index + 1))
+      done
+      if [ "${#filtered_entries[@]}" -eq 0 ]; then
+        echo "ERROR: E2E_MATRIX_FILTER='$E2E_MATRIX_FILTER' matched no entries of suite $1"
+        return 2
+      fi
+      echo "E2E_MATRIX_FILTER active: running ${#filtered_entries[@]} of ${#entries[@]} entries for suite $1"
+      entries=("${filtered_entries[@]}")
+      keypaths=("${filtered_keypaths[@]}")
+    fi
+    index=0
     for entry in "${entries[@]}"; do
       local iteration_start=$SECONDS
       local skip_setup=false

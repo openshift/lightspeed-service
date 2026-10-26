@@ -355,3 +355,50 @@ def test_run_suite_gathers_on_success_for_inspection_suite(tmp_path: Path) -> No
         "tool_result_inspection|true",
         "openai|false",
     ]
+
+
+def test_run_suite_matrix_filter_reruns_selected_provider(tmp_path: Path) -> None:
+    """Rerun a single provider's matrix entry with the full setup intact."""
+    calls = tmp_path / "calls"
+    script = f"""
+    source '{SCRIPTS / "utils.sh"}'
+    make() {{
+      printf '%s|%s|%s|%s\\n' "$SUITE_ID" "$PROVIDER" "$PROVIDER_KEY_PATH" \
+        "$SWITCH_DEFAULT_PROVIDER" >> '{calls}'
+    }}
+    export E2E_MATRIX_FILTER="azure_tc"
+    run_suite tool_calling_matrix "tool_calling" \\
+      "openai_tc:openai:gpt-6-luna azure_tc:azure_openai:gpt-6-luna bedrock_tc:bedrock:m" \\
+      "/keys/openai /keys/azure iam" multi image tool_calling_all
+    """
+    env = {**os.environ, "ARTIFACT_DIR": str(tmp_path)}
+    subprocess.run(["/bin/bash", "-c", script], env=env, check=True)  # noqa: S603
+
+    lines = calls.read_text().splitlines()
+    assert lines == [
+        # single filtered entry: full provider list for secrets/CR apply,
+        # switch to the selected provider, its own key path
+        "azure_tc|openai azure_openai bedrock|/keys/openai /keys/azure iam|azure_openai gpt-6-luna",
+    ]
+
+
+def test_run_suite_matrix_filter_rejects_unknown_suite(tmp_path: Path) -> None:
+    """Fail fast when the filter matches no matrix entry."""
+    script = f"""
+    source '{SCRIPTS / "utils.sh"}'
+    make() {{ :; }}
+    export E2E_MATRIX_FILTER="no_such_suite"
+    run_suite tool_calling_matrix "tool_calling" "a-suite:a:m b-suite:b:m" \\
+      "/k1 /k2" multi image tool_calling_all
+    echo "matrix-rc=$?"
+    """
+    env = {**os.environ, "ARTIFACT_DIR": str(tmp_path)}
+    result = subprocess.run(  # noqa: S603
+        ["bash", "-c", script],  # noqa: S607
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "matched no entries" in result.stdout
+    assert "matrix-rc=2" in result.stdout
