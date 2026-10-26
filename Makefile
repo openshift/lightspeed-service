@@ -66,16 +66,14 @@ benchmarks: ## Run benchmarks
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" uv run --extra evaluation pytest tests/unit --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
-	uv run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
-	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" uv run --extra evaluation pytest tests/unit --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --cov-report "xml:${ARTIFACT_DIR}/coverage_unit.xml" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
+	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.xml" unit
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" uv run pytest tests/integration --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
-	uv run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
-	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.out"
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" uv run pytest tests/integration --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --cov-report "xml:${ARTIFACT_DIR}/coverage_integration.xml" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
+	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.xml" integration
 
 check-coverage: test-unit test-integration  ## Unit tests and integration tests overall code coverage check
 	uv run coverage combine --keep "${ARTIFACT_DIR}/.coverage.unit" "${ARTIFACT_DIR}/.coverage.integration"
