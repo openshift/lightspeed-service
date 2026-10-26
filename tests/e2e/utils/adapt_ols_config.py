@@ -232,14 +232,22 @@ def switch_default_provider(provider: str, model: str) -> None:
     cluster_utils.run_oc(
         ["scale", "deployment/lightspeed-app-server", "--replicas", "0"]
     )
-    if not retry_until_timeout_or_success(
-        30,
-        3,
-        lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
-        "Waiting for app server pod to terminate before provider switch",
-    ):
-        raise RuntimeError("App server pod did not terminate for provider switch")
-    cluster_utils.run_oc(["apply", "-f", "-"], command=yaml.dump(configmap))
+    try:
+        if not retry_until_timeout_or_success(
+            30,
+            3,
+            lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
+            "Waiting for app server pod to terminate before provider switch",
+        ):
+            raise RuntimeError("App server pod did not terminate for provider switch")
+        cluster_utils.run_oc(["apply", "-f", "-"], command=yaml.dump(configmap))
+    except Exception:
+        # restore the deployment so later matrix iterations are not left
+        # without an app-server, then surface the original failure
+        cluster_utils.run_oc(
+            ["scale", "deployment/lightspeed-app-server", "--replicas", "1"]
+        )
+        raise
     cluster_utils.run_oc(
         ["scale", "deployment/lightspeed-app-server", "--replicas", "1"]
     )

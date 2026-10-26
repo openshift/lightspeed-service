@@ -110,6 +110,12 @@ function run_suites() {
   # (see the matrix mode in run_suite). The first entry's provider must match
   # the CR default. google_vertex runs here too (enabled for PR CI in #3148);
   # watsonx runs in the periodic job only.
+  # Credentials are provisioned for every provider configured in the combined
+  # CR — including watsonx, whose tool-calling tests are periodic-only —
+  # because the CR cannot reconcile when a configured provider lacks its
+  # secret. The tested entries stay limited to the PR-CI matrix.
+  E2E_MATRIX_CREDENTIAL_PROVIDERS="openai azure_openai bedrock google_vertex_anthropic google_vertex watsonx"
+  E2E_MATRIX_CREDENTIAL_KEY_PATHS="$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH $WATSONX_PROVIDER_KEY_PATH"
   run_suite "tool_calling_matrix" "tool_calling" "openai_tool_calling:openai:gpt-6-luna azure_openai_tool_calling:azure_openai:gpt-6-luna bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-sonnet-4-6 google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "tool_calling_all"
   (( rc = rc || $? ))
 
@@ -128,6 +134,9 @@ function run_suites() {
 
   # exporter test
   run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "data_export"
+  (( rc = rc || $? ))
+
+  check_matrix_filter_matches
   (( rc = rc || $? ))
 
   cleanup_ols_operator 

@@ -283,3 +283,27 @@ def test_apply_olsconfig_substitutes_environment_for_lseval_template(
         ]
         is False
     )
+
+
+def test_switch_default_provider_restores_deployment_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scale the app-server back up when a provider switch fails midway."""
+    calls: list[tuple[list[str], str | None]] = []
+    monkeypatch.setattr(
+        adapt_ols_config.cluster_utils,
+        "run_oc",
+        _configmap_run_oc_stub(_olsconfig_configmap("openai", "gpt-6-luna"), calls),
+    )
+    monkeypatch.setattr(
+        adapt_ols_config, "retry_until_timeout_or_success", lambda *_a, **_k: False
+    )
+
+    with pytest.raises(RuntimeError, match="did not terminate"):
+        adapt_ols_config.switch_default_provider("bedrock", "openai.gpt-6-luna")
+
+    scale_calls = [args for args, _ in calls if args[0] == "scale"]
+    assert scale_calls == [
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "0"],
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "1"],
+    ]

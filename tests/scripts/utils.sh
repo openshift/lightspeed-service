@@ -69,6 +69,11 @@ function run_suite() {
   # provider must match the CR default so no switch restart is needed); later
   # entries set SKIP_CLUSTER_SETUP and only switch default_provider/model,
   # which patches the configmap and restarts the app-server.
+  # E2E_MATRIX_CREDENTIAL_PROVIDERS/E2E_MATRIX_CREDENTIAL_KEY_PATHS override
+  # the bootstrap lists for the first iteration: credentials must exist for
+  # every provider configured in the combined CR, including providers whose
+  # tests run only in the periodic job — the CR cannot reconcile when a
+  # configured provider lacks its secret.
     local matrix_rc=0
     local entries keypaths
     read -r -a entries <<< "$3"
@@ -89,7 +94,11 @@ function run_suite() {
     # matrix, e.g. E2E_MATRIX_FILTER="azure_openai_tool_calling" after a
     # single provider failed. The first selected entry performs the full
     # setup (CR apply with every provider) and then switches to its provider,
-    # so any subset is valid.
+    # so any subset is valid. A matrix whose entries are all filtered out is
+    # skipped (the filter may target the other tool-calling matrix); the
+    # filter is validated against the union of all matrices at the end of
+    # run_suites via check_matrix_filter_matches. The filter narrows only
+    # the tool-calling matrices — all other suites still run.
     if [ -n "${E2E_MATRIX_FILTER:-}" ]; then
       local filtered_entries=()
       local filtered_keypaths=()
@@ -103,10 +112,11 @@ function run_suite() {
         index=$((index + 1))
       done
       if [ "${#filtered_entries[@]}" -eq 0 ]; then
-        echo "ERROR: E2E_MATRIX_FILTER='$E2E_MATRIX_FILTER' matched no entries of suite $1"
-        return 2
+        echo "E2E_MATRIX_FILTER='$E2E_MATRIX_FILTER' matched no entries of suite $1 - skipping" >&2
+        return 0
       fi
       echo "E2E_MATRIX_FILTER active: running ${#filtered_entries[@]} of ${#entries[@]} entries for suite $1"
+      printf '%s\n' "${filtered_entries[@]%%:*}" >> "${ARTIFACT_DIR}/.matrix_filter_matched" 2>/dev/null || true
       entries=("${filtered_entries[@]}")
       keypaths=("${filtered_keypaths[@]}")
     fi
@@ -119,8 +129,11 @@ function run_suite() {
       index=$((index + 1))
       if [ $index -eq 1 ]; then
         # the first iteration creates every provider's credentials and
-        # applies the combined OLSConfig, so it needs the full lists
-        SUITE_ID=$suite_id TEST_TAGS=$2 PROVIDER=$all_providers PROVIDER_KEY_PATH=$4 MODEL=$entry_model OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR SKIP_CLUSTER_SETUP=$skip_setup MUST_GATHER_ON_SUCCESS=false SWITCH_DEFAULT_PROVIDER="$entry_provider $entry_model" make test-e2e
+        # applies the combined OLSConfig. Credentials must cover every
+        # provider configured in the CR (E2E_MATRIX_CREDENTIAL_* override the
+        # tested entries for exactly that); the key paths pair with the
+        # bootstrap provider list.
+        SUITE_ID=$suite_id TEST_TAGS=$2 PROVIDER=${E2E_MATRIX_CREDENTIAL_PROVIDERS:-$all_providers} PROVIDER_KEY_PATH=${E2E_MATRIX_CREDENTIAL_KEY_PATHS:-$4} MODEL=$entry_model OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR SKIP_CLUSTER_SETUP=$skip_setup MUST_GATHER_ON_SUCCESS=false SWITCH_DEFAULT_PROVIDER="$entry_provider $entry_model" make test-e2e
       else
         skip_setup=true
         SUITE_ID=$suite_id TEST_TAGS=$2 PROVIDER=$entry_provider PROVIDER_KEY_PATH=$keypath MODEL=$entry_model OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR SKIP_CLUSTER_SETUP=$skip_setup MUST_GATHER_ON_SUCCESS=false SWITCH_DEFAULT_PROVIDER="$entry_provider $entry_model" make test-e2e
@@ -155,4 +168,22 @@ function run_suite() {
   local duration_s=$(( SECONDS - saved_seconds ))
   echo "{\"suite\":\"$1\",\"rc\":$rc,\"duration_s\":$duration_s,\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >> "${ARTIFACT_DIR}/suite_results.jsonl"
   return $rc
+}
+
+# Validate E2E_MATRIX_FILTER against the union of all provider matrices that
+# ran in this job. Call once at the end of run_suites: a matrix with no
+# selected entries skips silently by design (the filter may target the other
+# tool-calling matrix), so an ID that matched nowhere can only be detected
+# after every matrix had its chance.
+function check_matrix_filter_matches() {
+  if [ -z "${E2E_MATRIX_FILTER:-}" ]; then
+    return 0
+  fi
+  local matches
+  matches=$(cat "${ARTIFACT_DIR}/.matrix_filter_matched" 2>/dev/null || true)
+  if [ -z "$matches" ]; then
+    echo "ERROR: E2E_MATRIX_FILTER='$E2E_MATRIX_FILTER' matched no matrix entry in any suite" >&2
+    return 1
+  fi
+  echo "E2E_MATRIX_FILTER matched: $(echo $matches | tr '\n' ' ')"
 }

@@ -138,3 +138,38 @@ def test_tool_calling_configs_enable_introspection_and_filters() -> None:
         }
         assert ols_config["userDataCollection"]["feedbackDisabled"] is True
         assert ols_config["userDataCollection"]["transcriptsDisabled"] is True
+
+
+def test_pr_ci_bootstrap_covers_combined_cr_providers() -> None:
+    """Provision credentials for every provider the combined CR configures.
+
+    The PR-CI matrix tests fewer providers than the combined CR configures
+    (watsonx tool-calling is periodic-only), but the CR cannot reconcile when
+    a configured provider lacks its secret, so the bootstrap list must cover
+    the whole CR regardless of the tested entries.
+    """
+    script = (REPO_ROOT / "tests" / "scripts" / "test-e2e-cluster.sh").read_text(
+        encoding="utf-8"
+    )
+    providers_match = re.search(r'E2E_MATRIX_CREDENTIAL_PROVIDERS="([^"]+)"', script)
+    key_paths_match = re.search(r'E2E_MATRIX_CREDENTIAL_KEY_PATHS="([^"]+)"', script)
+    assert providers_match is not None, "bootstrap provider list is missing"
+    assert key_paths_match is not None, "bootstrap key path list is missing"
+
+    bootstrap_providers = providers_match.group(1).split()
+    bootstrap_key_paths = key_paths_match.group(1).split()
+    assert len(bootstrap_providers) == len(
+        bootstrap_key_paths
+    ), "bootstrap providers and key paths are unaligned"
+
+    config = _load_config("tool_calling_all")
+    cr_providers = {provider["name"] for provider in config["spec"]["llm"]["providers"]}
+    assert cr_providers <= set(bootstrap_providers), (
+        f"providers configured in the CR but not bootstrapped: "
+        f"{cr_providers - set(bootstrap_providers)}"
+    )
+
+    tested_entries = _matrix_entries("test-e2e-cluster.sh", "tool_calling")
+    assert {provider for provider, _model in tested_entries} <= set(
+        bootstrap_providers
+    ), "tested matrix entries must be covered by the bootstrap credentials"

@@ -128,6 +128,9 @@ function run_suites() {
     run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "data_export"
     (( rc = rc || $? ))
 
+    check_matrix_filter_matches
+    (( rc = rc || $? ))
+
   else
     # Tests for disconnected environments
     # smoke tests for RHOAI VLLM-compatible provider

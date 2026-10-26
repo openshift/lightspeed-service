@@ -163,6 +163,7 @@ def test_cluster_script_selects_inspection_matrix(
     shell = (
         'run_suite() { printf "%s:%s:%s:%s\\n" "$1" "$3" "$5" "$7"; }\n'
         "cleanup_ols_operator() { :; }\n"
+        "check_matrix_filter_matches() { :; }\n"
         f"function run_suites() {{{body}\n"
         "run_suites\n"
     )
@@ -372,6 +373,7 @@ def test_run_suite_matrix_filter_reruns_selected_provider(tmp_path: Path) -> Non
       "/keys/openai /keys/azure iam" multi image tool_calling_all
     """
     env = {**os.environ, "ARTIFACT_DIR": str(tmp_path)}
+    env.pop("E2E_MATRIX_FILTER", None)
     subprocess.run(["/bin/bash", "-c", script], env=env, check=True)  # noqa: S603
 
     lines = calls.read_text().splitlines()
@@ -380,14 +382,22 @@ def test_run_suite_matrix_filter_reruns_selected_provider(tmp_path: Path) -> Non
         # switch to the selected provider, its own key path
         "azure_tc|openai azure_openai bedrock|/keys/openai /keys/azure iam|azure_openai gpt-6-luna",
     ]
+    assert (tmp_path / ".matrix_filter_matched").read_text() == "azure_tc\n"
 
 
-def test_run_suite_matrix_filter_rejects_unknown_suite(tmp_path: Path) -> None:
-    """Fail fast when the filter matches no matrix entry."""
+def test_run_suite_matrix_filter_skips_matrix_without_matches(
+    tmp_path: Path,
+) -> None:
+    """Skip a matrix whose entries are all filtered out.
+
+    The other matrix may still match; the union is validated by
+    check_matrix_filter_matches.
+    """
+    calls = tmp_path / "calls"
     script = f"""
     source '{SCRIPTS / "utils.sh"}'
-    make() {{ :; }}
-    export E2E_MATRIX_FILTER="no_such_suite"
+    make() {{ printf '%s\\n' "$SUITE_ID" >> '{calls}'; }}
+    export E2E_MATRIX_FILTER="azure_openai_gpt6_tool_calling"
     run_suite tool_calling_matrix "tool_calling" "a-suite:a:m b-suite:b:m" \\
       "/k1 /k2" multi image tool_calling_all
     echo "matrix-rc=$?"
@@ -400,8 +410,41 @@ def test_run_suite_matrix_filter_rejects_unknown_suite(tmp_path: Path) -> None:
         text=True,
         check=True,
     )
-    assert "matched no entries" in result.stdout
-    assert "matrix-rc=2" in result.stdout
+    assert "matched no entries of suite tool_calling_matrix - skipping" in (
+        result.stderr
+    )
+    assert "matrix-rc=0" in result.stdout
+    assert not calls.exists() or calls.read_text() == ""
+
+
+def test_check_matrix_filter_matches_validates_the_union(tmp_path: Path) -> None:
+    """Reject a filter that matched no entry in any matrix; accept matches."""
+    script = f"""
+    source '{SCRIPTS / "utils.sh"}'
+    unset E2E_MATRIX_FILTER
+    check_matrix_filter_matches
+    echo "nofilter-rc=$?"
+    export E2E_MATRIX_FILTER="no_such_suite"
+    check_matrix_filter_matches
+    echo "unknown-rc=$?"
+    export E2E_MATRIX_FILTER="azure_openai_tool_calling"
+    printf '%s\\n' "azure_openai_tool_calling" >> '{tmp_path}/.matrix_filter_matched'
+    check_matrix_filter_matches
+    echo "matched-rc=$?"
+    """
+    env = {**os.environ, "ARTIFACT_DIR": str(tmp_path)}
+    result = subprocess.run(  # noqa: S603
+        ["bash", "-c", script],  # noqa: S607
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "nofilter-rc=0" in result.stdout
+    assert "unknown-rc=1" in result.stdout
+    assert "matched no matrix entry in any suite" in result.stderr
+    assert "matched-rc=0" in result.stdout
+    assert "E2E_MATRIX_FILTER matched: azure_openai_tool_calling" in (result.stdout)
 
 
 @pytest.mark.parametrize(
@@ -439,3 +482,88 @@ def test_cluster_script_gates_anthropic_suite_on_credentials(
         if "anthropic" in line or "google" in line
     ]
     assert suites == ["google_vertex_anthropic", *expected]
+
+
+def _run_cluster_script_body(
+    script_name: str, tmp_path: Path
+) -> subprocess.CompletedProcess:
+    """Execute run_suites from a cluster script with make stubbed out."""
+    script = (REPO_ROOT / "tests" / "scripts" / script_name).read_text(encoding="utf-8")
+    body = script.split("function run_suites() {", 1)[1].split(
+        "\nfunction finish()", 1
+    )[0]
+    calls = tmp_path / "calls"
+    shell = (
+        f"source '{SCRIPTS / 'utils.sh'}'\n"
+        f"make() {{ printf '%s\\n' \"$SUITE_ID\" >> '{calls}'; return 0; }}\n"
+        "cleanup_ols_operator() { :; }\n"
+        f"function run_suites() {{{body}\n"
+        "run_suites\n"
+        'echo "suites-rc=$?"\n'
+    )
+    env = {
+        **os.environ,
+        "ARTIFACT_DIR": str(tmp_path),
+        "DISCONNECTED": "",
+        "OLS_IMAGE": "image",
+    }
+    env.update(
+        dict.fromkeys(
+            (
+                "AZUREOPENAI_PROVIDER_KEY_PATH",
+                "OPENAI_PROVIDER_KEY_PATH",
+                "VERTEX_PROVIDER_KEY_PATH",
+                "WATSONX_PROVIDER_KEY_PATH",
+            ),
+            "unused",
+        )
+    )
+    return subprocess.run(  # noqa: S603
+        ["bash", "-c", shell],  # noqa: S607
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_cluster_script_matrix_filter_narrows_only_matrices(
+    tmp_path: Path,
+) -> None:
+    """Run one matrix entry, skip the other matrix, keep other suites.
+
+    A filter naming one matrix's entry must succeed across both matrices.
+    """
+    calls = tmp_path / "calls"
+    os.environ["E2E_MATRIX_FILTER"] = "azure_openai_tool_calling"
+    try:
+        result = _run_cluster_script_body("test-e2e-cluster.sh", tmp_path)
+    finally:
+        os.environ.pop("E2E_MATRIX_FILTER", None)
+
+    assert "suites-rc=0" in result.stdout
+    lines = calls.read_text().splitlines()
+    assert "azure_openai_tool_calling" in lines
+    assert "openai_tool_calling" not in lines
+    assert "bedrock_openai_tool_calling" not in lines
+    # the gpt6 matrix has no matching entry and must skip, not fail
+    assert "openai_gpt6_tool_calling" not in lines
+    assert "azure_openai_gpt6_tool_calling" not in lines
+    # the filter narrows only the tool-calling matrices
+    assert "azure_openai" in lines
+    assert "watsonx" in lines
+    assert "data_export" in lines
+
+
+def test_cluster_script_matrix_filter_rejects_unknown_id(tmp_path: Path) -> None:
+    """A filter matching no entry in any matrix fails the script."""
+    os.environ["E2E_MATRIX_FILTER"] = "no_such_suite_anywhere"
+    try:
+        result = _run_cluster_script_body("test-e2e-cluster.sh", tmp_path)
+    finally:
+        os.environ.pop("E2E_MATRIX_FILTER", None)
+
+    # run_suites re-enables set -e before returning, so a failing run makes
+    # the shell exit before the trailing echo
+    assert result.returncode == 1
+    assert "matched no matrix entry in any suite" in result.stderr
