@@ -1,53 +1,130 @@
 #!/usr/bin/env bash
+# Upload a coverage report to codecov.io from prow CI.
+#
+# Usage: scripts/codecov.sh <report-file> [flag]
+#
+# The upload SOFT-FAILS by design: codecov problems must never block CI, so
+# this script always exits 0. The upload state is always clearly logged:
+#   - "[codecov] upload succeeded"              report is on codecov.io
+#   - "[codecov] CODECOV UPLOAD FAILED ..."     upload was attempted and failed
+#   - "[codecov] upload skipped: <reason>"      upload was not attempted
+#
+# Environment (set by prow):
+#   JOB_TYPE                    presubmit | postsubmit | batch | local
+#   PULL_NUMBER                 PR number (presubmit only)
+#   PULL_PULL_SHA               PR head commit SHA (presubmit only)
+#   PULL_BASE_SHA / PULL_BASE_REF  base commit SHA and branch
+#   REPO_OWNER / REPO_NAME      repository slug parts
+#   CODECOV_TOKEN               repository upload token (prow secret)
+#   ARTIFACT_DIR                writable directory for the upload log
 
 set -o nounset
 set -o pipefail
-set -x
 
-CI_SERVER_URL=https://prow.svc.ci.openshift.org/view/gcs/origin-ci-test
-COVER_PROFILE=${COVER_PROFILE:-"$1"}
-JOB_TYPE=${JOB_TYPE:-"local"}
+CODECOV_CLI_VERSION="11.3.1"
+MAX_ATTEMPTS="${CODECOV_MAX_ATTEMPTS:-2}"
+RETRY_SLEEP_SECONDS="${CODECOV_RETRY_SLEEP_SECONDS:-15}"
+UPLOAD_TIMEOUT_SECONDS="${CODECOV_TIMEOUT_SECONDS:-300}"
 
-# Configure the git refs and job link based on how the job was triggered via prow
-if [[ "${JOB_TYPE}" == "presubmit" ]]; then
-       echo "detected PR code coverage job for #${PULL_NUMBER}"
-       REF_FLAGS="-P ${PULL_NUMBER} -C ${PULL_PULL_SHA}"
-       JOB_LINK="${CI_SERVER_URL}/pr-logs/pull/${REPO_OWNER}_${REPO_NAME}/${PULL_NUMBER}/${JOB_NAME}/${BUILD_ID}"
-elif [[ "${JOB_TYPE}" == "batch" ]] || [[ "${JOB_TYPE}" == "postsubmit" ]]; then
-       echo "detected branch code coverage job for ${PULL_BASE_REF}"
-       REF_FLAGS="-B ${PULL_BASE_REF} -C ${PULL_BASE_SHA}"
-       JOB_LINK="${CI_SERVER_URL}/logs/${JOB_NAME}/${BUILD_ID}"
-elif [[ "${JOB_TYPE}" == "local" ]]; then
-       echo "coverage report available at ${COVER_PROFILE}"
-       exit 0
-else
-       echo "${JOB_TYPE} jobs not supported" >&2
-       exit 1
+log() {
+    echo "[codecov] $*"
+}
+
+report_not_uploaded() {
+    log "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    log "!! CODECOV UPLOAD FAILED - coverage was NOT uploaded to codecov.io"
+    log "!! CI is not blocked (soft-fail by design), but coverage data is"
+    log "!! missing and codecov.io / dashboards will not update."
+    log "!! Reason: $*"
+    log "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    exit 0
+}
+
+skip_upload() {
+    log "upload skipped: $* (coverage was NOT uploaded to codecov.io)"
+    exit 0
+}
+
+report_file="${1:-}"
+flag="${2:-}"
+
+if [ -z "$report_file" ]; then
+    skip_upload "no report file given (usage: codecov.sh <report-file> [flag])"
+fi
+if [ ! -f "$report_file" ]; then
+    report_not_uploaded "report file '$report_file' does not exist"
 fi
 
-# Configure certain internal codecov variables with values from prow.
-export CI_BUILD_URL="${JOB_LINK}"
-export CI_BUILD_ID="${JOB_NAME}"
-export CI_JOB_ID="${BUILD_ID}"
+case "${JOB_TYPE:-local}" in
+    presubmit)
+        sha="${PULL_PULL_SHA:-}"
+        branch="${PULL_BASE_REF:-}"
+        pr="${PULL_NUMBER:-}"
+        ;;
+    postsubmit | batch)
+        sha="${PULL_BASE_SHA:-}"
+        branch="${PULL_BASE_REF:-}"
+        pr=""
+        ;;
+    *)
+        skip_upload "JOB_TYPE '${JOB_TYPE:-local}' does not upload (local run)"
+        ;;
+esac
 
-if [[ "${JOB_TYPE}" != "local" ]]; then
-       if [[ -z "${ARTIFACT_DIR:-}" ]] || [[ ! -d "${ARTIFACT_DIR}" ]] || [[ ! -w "${ARTIFACT_DIR}" ]]; then
-              # shellcheck disable=SC2016
-              echo '${ARTIFACT_DIR} must be set for non-local jobs, and must point to a writable directory' >&2
-              exit 1
-       fi
-       curl -sS https://codecov.io/bash -o "${ARTIFACT_DIR}/codecov.sh"
-       bash <(cat "${ARTIFACT_DIR}/codecov.sh") -Z -K -f "${COVER_PROFILE}" -r "${REPO_OWNER}/${REPO_NAME}" "${REF_FLAGS}"
-       # shellcheck disable=SC2181
-       if [ $? -ne 0 ]; then
-              echo "Failed uploading coverage report from a non local environment. Exiting gracefully with status code 0."
-              exit 0
-       fi
-else
-       bash <(curl -s https://codecov.io/bash) -Z -K -f "${COVER_PROFILE}" -r "${REPO_OWNER}/${REPO_NAME}" "${REF_FLAGS}"
-       # shellcheck disable=SC2181
-       if [ $? -ne 0 ]; then
-              echo "Failed uploading coverage report from local environment. Exiting gracefully with status code 0."
-              exit 0
-       fi
+if [ -z "${CODECOV_TOKEN:-}" ]; then
+    report_not_uploaded "CODECOV_TOKEN is not set (check the CI secret)"
 fi
+if [ -z "$sha" ]; then
+    report_not_uploaded "commit SHA is not set"
+fi
+if [ -z "$branch" ]; then
+    report_not_uploaded "branch is not set"
+fi
+
+cli_args=(
+    upload-process
+    --git-service github
+    --slug "${REPO_OWNER:-openshift}/${REPO_NAME:-lightspeed-service}"
+    --token "$CODECOV_TOKEN"
+    --file "$report_file"
+    --sha "$sha"
+    --branch "$branch"
+    --fail-on-error
+)
+if [ -n "$flag" ]; then
+    cli_args+=(--flag "$flag")
+fi
+if [ -n "$pr" ]; then
+    cli_args+=(--pr "$pr")
+fi
+
+if command -v codecovcli > /dev/null 2>&1; then
+    cli=(codecovcli)
+else
+    cli=(uv tool run --from "codecov-cli==${CODECOV_CLI_VERSION}" codecovcli)
+    log "codecovcli not found on PATH, using uv (codecov-cli==${CODECOV_CLI_VERSION})"
+fi
+
+upload_log="${ARTIFACT_DIR:-.}/codecov_upload.log"
+pr_note=""
+if [ -n "$pr" ]; then
+    pr_note=", pr: ${pr}"
+fi
+
+attempt=1
+while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
+    log "upload attempt ${attempt}/${MAX_ATTEMPTS} (flag: ${flag:-none}, branch: ${branch}${pr_note})"
+    if timeout "$UPLOAD_TIMEOUT_SECONDS" "${cli[@]}" "${cli_args[@]}" > "$upload_log" 2>&1; then
+        cat "$upload_log"
+        log "upload succeeded - report available on codecov.io"
+        exit 0
+    fi
+    cat "$upload_log"
+    log "upload attempt ${attempt}/${MAX_ATTEMPTS} failed"
+    attempt=$((attempt + 1))
+    if [ "$attempt" -le "$MAX_ATTEMPTS" ]; then
+        sleep "$RETRY_SLEEP_SECONDS"
+    fi
+done
+
+report_not_uploaded "codecov CLI exited non-zero after ${MAX_ATTEMPTS} attempt(s), see ${upload_log} above"
