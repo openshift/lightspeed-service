@@ -70,8 +70,15 @@ function run_suites() {
   run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" "claude-haiku-4-5" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # The anthropic suite needs a credential the Konflux integration-test
+  # pipeline does not provide; skip it there instead of failing on the
+  # unbound variable under set -u.
+  if [ -n "${ANTHROPIC_PROVIDER_KEY_PATH:-}" ]; then
+    run_suite "anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" "claude-haiku-4-5" "$OLS_IMAGE" "default"
+    (( rc = rc || $? ))
+  else
+    echo "Skipping anthropic suite: ANTHROPIC_PROVIDER_KEY_PATH is not set" >&2
+  fi
 
   run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))

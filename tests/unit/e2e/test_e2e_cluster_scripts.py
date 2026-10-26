@@ -402,3 +402,40 @@ def test_run_suite_matrix_filter_rejects_unknown_suite(tmp_path: Path) -> None:
     )
     assert "matched no entries" in result.stdout
     assert "matrix-rc=2" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("anthropic_key", "expected"),
+    [
+        ("/keys/anthropic", ["anthropic"]),
+        (None, []),
+    ],
+    ids=["key-present", "key-missing"],
+)
+def test_cluster_script_gates_anthropic_suite_on_credentials(
+    tmp_path: Path, anthropic_key: str | None, expected: list[str]
+) -> None:
+    """Skip the anthropic suite when its credential is not provided."""
+    calls = tmp_path / "calls"
+    script = f"""
+    source '{SCRIPTS / "utils.sh"}'
+    run_suite() {{ printf '%s\\n' "$1" >> '{calls}'; }}
+    ANTHROPIC_PROVIDER_KEY_PATH="{anthropic_key or ""}"
+    run_suite google_vertex_anthropic "tags" "google_vertex_anthropic" "/keys/vertex" \\
+      "claude-sonnet-4-6" image default
+    if [ -n "${{ANTHROPIC_PROVIDER_KEY_PATH:-}}" ]; then
+      run_suite anthropic "tags" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" \\
+        "claude-haiku-4-5" image default
+    else
+      echo "Skipping anthropic suite: ANTHROPIC_PROVIDER_KEY_PATH is not set"
+    fi
+    """
+    env = {**os.environ, "ARTIFACT_DIR": str(tmp_path)}
+    subprocess.run(["/bin/bash", "-c", script], env=env, check=True)  # noqa: S603
+
+    suites = [
+        line
+        for line in calls.read_text().splitlines()
+        if "anthropic" in line or "google" in line
+    ]
+    assert suites == ["google_vertex_anthropic", *expected]
