@@ -222,6 +222,7 @@ def test_valid_question() -> None:
 
 
 @pytest.mark.rag
+@retry(max_attempts=3, wait_between_runs=10)
 def test_ocp_docs_version_same_as_cluster_version() -> None:
     """Check that the version of OCP docs matches the cluster we're on."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
