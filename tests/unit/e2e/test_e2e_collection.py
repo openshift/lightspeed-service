@@ -32,7 +32,7 @@ def test_cluster_session_gathers_before_mock_server_teardown(
         conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
     )
 
-    conftest.pytest_sessionfinish()
+    conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=1), 1)
 
     assert events == ["gather", "teardown"]
 
@@ -55,9 +55,63 @@ def test_cluster_session_tears_down_mock_server_when_gather_fails(
     )
 
     with pytest.raises(RuntimeError, match="artifact collection failed"):
-        conftest.pytest_sessionfinish()
+        conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=1), 1)
 
     assert events == ["gather", "teardown"]
+
+
+def test_sessionfinish_skips_must_gather_for_passing_suite(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Collect artifacts only for failing sessions by default."""
+    events: list[str] = []
+    monkeypatch.setattr(conftest, "on_cluster", True)
+    monkeypatch.setenv("OLS_CONFIG_SUFFIX", "default")
+    monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
+    monkeypatch.setattr(
+        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+    )
+    monkeypatch.delenv("MUST_GATHER_ON_SUCCESS", raising=False)
+
+    conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=0), 0)
+
+    assert events == []
+
+
+def test_sessionfinish_gathers_for_passing_suite_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Honor MUST_GATHER_ON_SUCCESS for suites that need the artifacts."""
+    events: list[str] = []
+    monkeypatch.setattr(conftest, "on_cluster", True)
+    monkeypatch.setenv("OLS_CONFIG_SUFFIX", "mcp_inspection_all")
+    monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
+    monkeypatch.setattr(
+        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+    )
+    monkeypatch.setenv("MUST_GATHER_ON_SUCCESS", "true")
+
+    conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=0), 0)
+
+    assert events == ["gather", "teardown"]
+
+
+def test_sessionfinish_gathers_on_nonzero_exit_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Collect artifacts when the session exits nonzero without failures."""
+    events: list[str] = []
+    monkeypatch.setattr(conftest, "on_cluster", True)
+    monkeypatch.setenv("OLS_CONFIG_SUFFIX", "default")
+    monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
+    monkeypatch.setattr(
+        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+    )
+    monkeypatch.delenv("MUST_GATHER_ON_SUCCESS", raising=False)
+
+    conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=0), 5)
+
+    assert events == ["gather"]
 
 
 def test_inspection_marker_runs_only_with_dedicated_suffix(

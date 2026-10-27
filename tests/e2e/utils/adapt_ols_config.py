@@ -5,7 +5,6 @@ Handles multi-provider test scenarios dynamically.
 
 import json
 import os
-import time
 
 import yaml
 
@@ -204,6 +203,56 @@ def wait_for_deployment() -> None:
     cluster_utils.wait_for_running_pod(wait_http_ready=False)
 
 
+def switch_default_provider(provider: str, model: str) -> None:
+    """Point the running deployment at a different default provider.
+
+    Patches ``default_provider``/``default_model`` in the olsconfig
+    configmap and restarts the app-server so the service reloads them,
+    avoiding a full OLSConfig reconcile. The operator must stay scaled
+    down and the provider must already be configured in the configmap.
+    Does nothing when the requested pair is already the default.
+    """
+    configmap = yaml.safe_load(
+        cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
+    )
+    olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+    llm_config = olsconfig.setdefault("llm_config", {})
+    if (
+        llm_config.get("default_provider") == provider
+        and llm_config.get("default_model") == model
+    ):
+        print(f"Default provider is already {provider}/{model}")
+        return
+
+    print(f"Switching default provider to {provider}/{model}")
+    llm_config["default_provider"] = provider
+    llm_config["default_model"] = model
+    configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
+
+    cluster_utils.run_oc(
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "0"]
+    )
+    try:
+        if not retry_until_timeout_or_success(
+            30,
+            3,
+            lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
+            "Waiting for app server pod to terminate before provider switch",
+        ):
+            raise RuntimeError("App server pod did not terminate for provider switch")
+        cluster_utils.run_oc(["apply", "-f", "-"], command=yaml.dump(configmap))
+    except Exception:
+        # restore the deployment so later matrix iterations are not left
+        # without an app-server, then surface the original failure
+        cluster_utils.run_oc(
+            ["scale", "deployment/lightspeed-app-server", "--replicas", "1"]
+        )
+        raise
+    cluster_utils.run_oc(
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "1"]
+    )
+
+
 def setup_route() -> str:
     """Set up route and return OLS URL.
 
@@ -348,8 +397,7 @@ def _reconcile_olsconfig_with_operator(provider_list: list[str]) -> None:
     except Exception as e:
         raise RuntimeError(f"Failed to apply OLSConfig CR: {e}") from e
 
-    print("Waiting for operator to reconcile OLSConfig CR (30 seconds)...")
-    time.sleep(30)  # Let operator reconcile CR → deployment + configmap
+    print("Waiting for operator to reconcile the OLSConfig CR...")
 
     print("Verifying operator reconciliation completed...")
     if not retry_until_timeout_or_success(

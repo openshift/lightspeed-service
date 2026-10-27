@@ -1,5 +1,7 @@
 """Unit tests for e2e OLS configuration adaptation."""
 
+import json
+import subprocess
 from io import StringIO
 from typing import Any
 from unittest.mock import Mock
@@ -7,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
+from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e import conftest as e2e_conftest
 from tests.e2e.utils import adapt_ols_config, olsconfig_cr
 
@@ -130,6 +133,90 @@ def test_apply_olsconfig_uses_inspection_template_when_suffix_enabled(
     assert ols_spec["toolsApprovalConfig"]["approvalType"] == "never"
 
 
+def _configmap_run_oc_stub(
+    config: dict[str, Any], calls: list[tuple[list[str], str | None]]
+) -> Any:
+    """Build a run_oc stub serving the olsconfig configmap and pod list."""
+
+    def fake_run_oc(
+        args: list[str],
+        command: str | None = None,
+        ignore_existing_resource: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append((args, command))
+        if args[0] == "get" and args[1].startswith("cm"):
+            stdout = yaml.safe_dump(config)
+        elif args[:2] == ["get", "pods"]:
+            stdout = json.dumps({"items": []})
+        else:
+            stdout = ""
+        return subprocess.CompletedProcess(args, 0, stdout, "")
+
+    return fake_run_oc
+
+
+def _olsconfig_configmap(default_provider: str, default_model: str) -> dict[str, Any]:
+    """Build an olsconfig configmap with the given defaults."""
+    service_config = {
+        "llm_config": {
+            "default_provider": default_provider,
+            "default_model": default_model,
+        },
+        "ols_config": {},
+    }
+    return {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "metadata": {"name": "olsconfig", "namespace": "openshift-lightspeed"},
+        "data": {DEFAULT_CONFIGURATION_FILE: yaml.safe_dump(service_config)},
+    }
+
+
+def test_switch_default_provider_is_noop_when_already_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Avoid a restart when the requested pair is already the default."""
+    calls: list[tuple[list[str], str | None]] = []
+    monkeypatch.setattr(
+        adapt_ols_config.cluster_utils,
+        "run_oc",
+        _configmap_run_oc_stub(_olsconfig_configmap("openai", "gpt-6-luna"), calls),
+    )
+
+    adapt_ols_config.switch_default_provider("openai", "gpt-6-luna")
+
+    assert [args for args, _ in calls] == [["get", "cm/olsconfig", "-o", "yaml"]]
+
+
+def test_switch_default_provider_patches_configmap_and_restarts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Patch the defaults in the configmap and bounce the app-server."""
+    calls: list[tuple[list[str], str | None]] = []
+    monkeypatch.setattr(
+        adapt_ols_config.cluster_utils,
+        "run_oc",
+        _configmap_run_oc_stub(_olsconfig_configmap("openai", "gpt-6-luna"), calls),
+    )
+
+    adapt_ols_config.switch_default_provider("bedrock", "openai.gpt-6-luna")
+
+    assert calls[0][0] == ["get", "cm/olsconfig", "-o", "yaml"]
+    scale_calls = [args for args, _ in calls if args[0] == "scale"]
+    assert scale_calls == [
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "0"],
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "1"],
+    ]
+    apply_calls = [args for args, _ in calls if args[:2] == ["apply", "-f"]]
+    assert len(apply_calls) == 1
+    applied_configmap = yaml.safe_load(
+        next(command for args, command in calls if args[:2] == ["apply", "-f"])
+    )
+    applied = yaml.safe_load(applied_configmap["data"][DEFAULT_CONFIGURATION_FILE])
+    assert applied["llm_config"]["default_provider"] == "bedrock"
+    assert applied["llm_config"]["default_model"] == "openai.gpt-6-luna"
+
+
 def test_apply_olsconfig_uses_combined_inspection_cr_for_multi_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -196,3 +283,27 @@ def test_apply_olsconfig_substitutes_environment_for_lseval_template(
         ]
         is False
     )
+
+
+def test_switch_default_provider_restores_deployment_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scale the app-server back up when a provider switch fails midway."""
+    calls: list[tuple[list[str], str | None]] = []
+    monkeypatch.setattr(
+        adapt_ols_config.cluster_utils,
+        "run_oc",
+        _configmap_run_oc_stub(_olsconfig_configmap("openai", "gpt-6-luna"), calls),
+    )
+    monkeypatch.setattr(
+        adapt_ols_config, "retry_until_timeout_or_success", lambda *_a, **_k: False
+    )
+
+    with pytest.raises(RuntimeError, match="did not terminate"):
+        adapt_ols_config.switch_default_provider("bedrock", "openai.gpt-6-luna")
+
+    scale_calls = [args for args, _ in calls if args[0] == "scale"]
+    assert scale_calls == [
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "0"],
+        ["scale", "deployment/lightspeed-app-server", "--replicas", "1"],
+    ]

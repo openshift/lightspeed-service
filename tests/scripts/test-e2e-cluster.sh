@@ -70,8 +70,15 @@ function run_suites() {
   run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" "claude-haiku-4-5" "$OLS_IMAGE" "default"
-  (( rc = rc || $? ))
+  # The anthropic suite needs a credential the Konflux integration-test
+  # pipeline does not provide; skip it there instead of failing on the
+  # unbound variable under set -u.
+  if [ -n "${ANTHROPIC_PROVIDER_KEY_PATH:-}" ]; then
+    run_suite "anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" "claude-haiku-4-5" "$OLS_IMAGE" "default"
+    (( rc = rc || $? ))
+  else
+    echo "Skipping anthropic suite: ANTHROPIC_PROVIDER_KEY_PATH is not set" >&2
+  fi
 
   run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
@@ -99,24 +106,21 @@ function run_suites() {
   run_suite "bedrock_openai_iam_role" "smoketest" "bedrock_openai" "iam_role" "openai.gpt-6-luna" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
-  # Run tool calling - Enable tool_calling
-  run_suite "bedrock_openai_tool_calling" "tool_calling" "bedrock_openai" "iam" "openai.gpt-6-luna" "$OLS_IMAGE" "tool_calling"
+  # Tool-calling matrix: all providers share one deployment per OLSConfig
+  # (see the matrix mode in run_suite). The first entry's provider must match
+  # the CR default. google_vertex runs here too (enabled for PR CI in #3148);
+  # watsonx runs in the periodic job only.
+  # Credentials are provisioned for every provider configured in the combined
+  # CR — including watsonx, whose tool-calling tests are periodic-only —
+  # because the CR cannot reconcile when a configured provider lacks its
+  # secret. The tested entries stay limited to the PR-CI matrix.
+  E2E_MATRIX_CREDENTIAL_PROVIDERS="openai azure_openai bedrock google_vertex_anthropic google_vertex watsonx"
+  E2E_MATRIX_CREDENTIAL_KEY_PATHS="$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH $WATSONX_PROVIDER_KEY_PATH"
+  run_suite "tool_calling_matrix" "tool_calling" "openai_tool_calling:openai:gpt-6-luna azure_openai_tool_calling:azure_openai:gpt-6-luna bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-sonnet-4-6 google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "tool_calling_all"
   (( rc = rc || $? ))
-  run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
+
+  run_suite "gpt6_tool_calling_matrix" "gpt6_tool_calling" "openai_gpt6_tool_calling:openai:gpt-6-luna azure_openai_gpt6_tool_calling:azure_openai:gpt-6-luna" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "gpt6_tool_calling_all"
   (( rc = rc || $? ))
-  run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
-  run_suite "openai_gpt6_tool_calling" "gpt6_tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
-  (( rc = rc || $? ))
-  run_suite "azure_openai_gpt6_tool_calling" "gpt6_tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "gpt6_tool_calling"
-  (( rc = rc || $? ))
-  run_suite "google_vertex_tool_calling" "tool_calling" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
-  run_suite "google_vertex_anthropic_tool_calling" "tool_calling" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "tool_calling"
-  (( rc = rc || $? ))
-  # run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "tool_calling"
-  # (( rc = rc || $? ))
 
   # BYOK Test cases
   run_suite "watsonx_byok1" "byok1" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "byok1"
@@ -130,6 +134,9 @@ function run_suites() {
 
   # exporter test
   run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "data_export"
+  (( rc = rc || $? ))
+
+  check_matrix_filter_matches
   (( rc = rc || $? ))
 
   cleanup_ols_operator 
