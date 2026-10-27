@@ -16,7 +16,6 @@ from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
     DEFAULT_MAX_TOKENS_FOR_RESPONSE,
-    GenericLLMParameters,
     QueryMode,
 )
 from ols.utils.config import AppConfig
@@ -177,7 +176,7 @@ def test_tool_result_classifier_does_not_force_temperature() -> None:
     assert summarizer._tool_result_classifier is not None
     # The classifier LLM must not carry a classifier-specific token cap:
     # a small max_output_tokens truncates thinking models' decisions (OLS-4653).
-    loader.assert_called_with(summarizer.provider, summarizer.model)
+    loader.assert_called_with(summarizer.provider, summarizer.model, {})
 
 
 @pytest.mark.parametrize(

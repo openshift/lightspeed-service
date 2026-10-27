@@ -17,7 +17,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
-from ols.constants import PROVIDER_WATSONX
+from ols.constants import DEFAULT_MAX_TOKENS_FOR_RESPONSE, PROVIDER_WATSONX
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.utils.token_handler import TokenHandler
 
@@ -113,7 +113,12 @@ class WatsonxToolResultInspectionDecision(ToolResultInspectionDecision):
     )
 
 
-CLASSIFIER_OUTPUT_TOKEN_LIMIT = 128
+# Reservation for the classifier's structured output when sizing input
+# chunks (spec rule 48). The classifier LLM carries no classifier-specific
+# output cap (OLS-4653), so the provider/model default response budget
+# applies; reserve the largest default any OLS provider sets so a chunk plus
+# the full possible output always fits the context window.
+CLASSIFIER_OUTPUT_TOKEN_LIMIT = DEFAULT_MAX_TOKENS_FOR_RESPONSE
 
 
 def _log_temporary_classifier_failure(

@@ -135,7 +135,7 @@ class DocsSummarizer(QueryHelper):
             # reasoning tokens against max_output_tokens, so a small cap can
             # truncate the structured decision before it is produced (OLS-4653).
             # The classifier uses the provider/model default response budget.
-            classifier_llm = self.llm_loader(self.provider, self.model)
+            classifier_llm = self.llm_loader(self.provider, self.model, {})
             if not hasattr(classifier_llm, "with_structured_output"):
                 raise ToolResultInspectionError(
                     "tool-result classifier requires structured output support"

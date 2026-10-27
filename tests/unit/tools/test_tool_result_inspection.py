@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from ols.constants import PROVIDER_WATSONX
 from ols.src.tools.tool_result_inspection import (
+    CLASSIFIER_OUTPUT_TOKEN_LIMIT,
     INJECTION_CATEGORIES,
     ToolResultClassifier,
     ToolResultInspectionDecision,
@@ -172,7 +173,8 @@ async def test_inspect_accounts_for_json_serialization_when_chunking() -> None:
     classifier = ToolResultClassifier(llm, sleep=AsyncMock())
     token_handler = TokenHandler()
     content = '"\\\\\n' * 80
-    max_tokens = 300
+    # Budget must exceed the classifier output reservation plus the request.
+    max_tokens = CLASSIFIER_OUTPUT_TOKEN_LIMIT + 512
 
     await classifier.inspect(
         "get_pods",
@@ -191,7 +193,9 @@ async def test_inspect_accounts_for_json_serialization_when_chunking() -> None:
         system_tokens = TokenHandler._get_token_count(
             token_handler.text_to_tokens(messages[0].content)
         )
-        assert request_tokens + system_tokens + 128 <= max_tokens
+        assert (
+            request_tokens + system_tokens + CLASSIFIER_OUTPUT_TOKEN_LIMIT <= max_tokens
+        )
 
 
 @pytest.mark.asyncio
@@ -572,7 +576,8 @@ async def test_inspect_rejects_a_malicious_edge_chunk(position: str) -> None:
             "get_pods",
             "result",
             content,
-            max_tokens=400,
+            # Budget leaves room for multiple chunks after the output reservation.
+            max_tokens=CLASSIFIER_OUTPUT_TOKEN_LIMIT + 512,
             token_handler=TokenHandler(),
             overlap_tokens=20,
         )
@@ -635,8 +640,9 @@ async def test_inspect_rejects_a_malicious_middle_chunk() -> None:
         await classifier.inspect(
             "get_pods",
             "result",
-            " ".join(str(index) for index in range(100)),
-            max_tokens=300,
+            " ".join(str(index) for index in range(1000)),
+            # Budget leaves room for multiple chunks after the output reservation.
+            max_tokens=CLASSIFIER_OUTPUT_TOKEN_LIMIT + 512,
             token_handler=TokenHandler(),
             overlap_tokens=3,
         )
