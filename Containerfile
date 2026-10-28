@@ -78,7 +78,7 @@ RUN echo "Verifying dependencies installation..." && \
 
 # Step 5: Reassemble embedding model safetensors from compressed chunks and validate.
 COPY --chmod=775 embeddings_model ./embeddings_model
-RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
+RUN for model_dir in all-mpnet-base-v2 granite-embedding-small-english-r2; do \
       cat "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* | \
         tar xzf - --no-same-owner -C "embeddings_model/${model_dir}" || \
       { echo "ERROR: failed to extract embeddings_model/${model_dir}/model.safetensors from chunks" ; exit 1 ; } && \
@@ -122,10 +122,10 @@ COPY --chmod=775 --from=builder /app-root/embeddings_model ./embeddings_model
 # Two cache trees are needed: the standard HF hub cache (used by huggingface_hub and
 # transformers when no cache_dir override is given) and the llama_index cache (passed as
 # cache_folder to SentenceTransformer by llama_index's HuggingFaceEmbedding wrapper).
-RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
+RUN for model_dir in all-mpnet-base-v2 granite-embedding-small-english-r2; do \
     case "$model_dir" in \
       all-mpnet-base-v2) hf_id="sentence-transformers--all-mpnet-base-v2" ;; \
-      granite-embedding-30m-english) hf_id="ibm-granite--granite-embedding-30m-english" ;; \
+      granite-embedding-small-english-r2) hf_id="ibm-granite--granite-embedding-small-english-r2" ;; \
     esac && \
     for cache_root in /app-root/.cache/huggingface/hub /app-root/.cache/llama_index; do \
       repo_dir="${cache_root}/models--${hf_id}" && \

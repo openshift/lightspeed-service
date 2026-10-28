@@ -1,4 +1,4 @@
 {
-  "max_seq_length": 512,
+  "max_seq_length": 8192,
   "do_lower_case": false
 }
