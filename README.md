@@ -1185,12 +1185,13 @@ Update these files when you:
 
 **Quick command:**
 ```shell
-make konflux-requirements
+make bump                                  # refresh all dependencies
+make bump PKG=<package> VERSION=<minimum>  # single package (e.g. a CVE bump)
 ```
 
-This compiles Python dependencies from `pyproject.toml` using `uv`, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
+This compiles Python dependencies from `pyproject.toml` using `uv`, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds. It also refreshes `uv.lock` and `requirements.txt`, with a clean uv config built into the target.
 
-Run this **after** `uv lock` / `uv lock --upgrade-package`. See [CONTRIBUTING.md](CONTRIBUTING.md#updating-dependencies) for the bump sequence and [docs/update-requirements.md](docs/update-requirements.md) for a clean uv config. `.konflux/requirements-build.txt` must not contain `--index-url` (PyPI-only); Hermeto prefetch fails if a RHOAI default index leaked into that file.
+`VERSION` is a minimum, not an exact pin; other packages move only when compatibility requires it. See [CONTRIBUTING.md](CONTRIBUTING.md#updating-dependencies) for the bump semantics and [docs/update-requirements.md](docs/update-requirements.md) for the details. `.konflux/requirements-build.txt` must not contain `--index-url` (PyPI-only); Hermeto prefetch fails if a RHOAI default index leaked into that file.
 
 **Files produced:**
 - `requirements.hashes.source.txt` – PyPI packages with hashes
@@ -1198,7 +1199,7 @@ Run this **after** `uv lock` / `uv lock --upgrade-package`. See [CONTRIBUTING.md
 - `requirements.hashes.wheel.pypi.txt` – PyPI wheel packages with hashes (no sdist)
 - `requirements-build.txt` – Build-time dependencies for source packages (PyPI; no `--index-url`)
 
-The script also updates the Tekton pipeline configurations (`.tekton/lightspeed-stack-*.yaml`) with the list of pre-built wheel packages.
+The script also updates the Tekton pipeline configurations (`.tekton/lightspeed-service-*.yaml`) with the list of pre-built wheel packages.
 
 ### Updating RPM Dependencies
 

@@ -2,7 +2,7 @@
 """Policy-driven dependency resolver for Hermeto/Cachi2 hermetic builds.
 
 Enforces: RHOAI wheel > PyPI sdist > PyPI wheel (last resort).
-Usage: python3 scripts/konflux_resolve.py --profile cpu|cuda [--verbose | --quiet]
+Usage: make bump [PKG=<name> VERSION=<minimum>]
 """
 
 from __future__ import annotations
@@ -15,14 +15,19 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 import urllib.parse
 import urllib.request
 from collections import deque
+from functools import cache
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import tomlkit
+from packaging.requirements import Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
@@ -91,6 +96,81 @@ def _parse_dep_string(dep: str) -> tuple[str, str, str]:
     version_spec = dep[match.end() :].strip()
 
     return name, version_spec, marker
+
+
+def bump_requirement(value: str, version: str) -> str:
+    """Raise a requirement floor without discarding compatibility restrictions."""
+    requirement = Requirement(value)
+    requested = Version(version)
+    if requirement.url:
+        raise ValueError(f"Cannot update direct-URL requirement: {requirement.name}")
+    for specifier in requirement.specifier:
+        candidate = (
+            max(requested, Version(specifier.version.removesuffix(".*")))
+            if specifier.operator in ("~=", "==", "===")
+            else requested
+        )
+        if specifier.operator in (
+            "<",
+            "<=",
+            "~=",
+            "==",
+            "===",
+        ) and not specifier.contains(candidate, prereleases=True):
+            raise ValueError(
+                f"Requested {version} conflicts with compatibility restriction {value}"
+            )
+    match = re.match(r"\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\s*\[[^\]]*\])?", value)
+    assert match is not None
+    tail, separator, marker = value[match.end() :].partition(";")
+    constraints = [
+        part.strip() for part in tail.strip().strip("()").split(",") if part.strip()
+    ]
+    floor = requested
+    remaining = []
+    for constraint in constraints:
+        if constraint.startswith(">="):
+            floor = max(floor, Version(constraint[2:].strip()))
+        else:
+            remaining.append(constraint)
+    specifiers = ",".join([f">={floor}", *remaining])
+    return f"{value[:match.end()]}{specifiers}{separator}{marker}"
+
+
+def update_dependency(project_path: Path, package: str, version: str) -> None:
+    """Raise declared dependency floors; transitive minimums are run-local."""
+    if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?", package):
+        raise ValueError(f"Invalid package name: {package}")
+    Version(version)
+    target = normalize_name(package)
+    text = project_path.read_text(encoding="utf-8")
+    document = tomlkit.parse(text)
+    project = document.get("project", {})
+    groups = [
+        project.get("dependencies", []),
+        *project.get("optional-dependencies", {}).values(),
+    ]
+    for group in groups:
+        for index, value in enumerate(group):
+            if normalize_name(Requirement(value).name) == target:
+                group[index] = bump_requirement(value, version)
+    updated_project = tomlkit.dumps(document)
+    if updated_project != text:
+        project_path.write_text(updated_project, encoding="utf-8")
+
+
+def read_pins(paths: Sequence[str]) -> dict[str, str]:
+    """Read existing exact versions as preferences, ignoring options and hashes."""
+    pins = {}
+    for path in paths:
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as stream:
+            for line in stream:
+                match = re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s\\;]+)", line)
+                if match:
+                    pins[normalize_name(match[1])] = match[2]
+    return pins
 
 
 def parse_direct_deps(pyproject_path: str) -> list[tuple[str, str]]:
@@ -669,7 +749,7 @@ class Resolver:
         self.fallback_reasons: dict[str, str] = {}
 
     # pylint: disable-next=too-many-branches
-    def resolve(  # noqa: C901
+    def resolve(  # noqa: C901 -- legacy BFS resolver; CLI uses the forked uv
         self, direct_deps: list[tuple[str, str]]
     ) -> dict[str, dict[str, Any]]:
         """Resolve all transitive dependencies via BFS.
@@ -828,15 +908,20 @@ def classify_packages(
 def write_hashed_requirements(
     packages: dict[str, dict[str, Any]],
     output_path: str,
-    index_url: str,
+    index_url: str | None,
 ) -> None:
     """Write a pip-compatible hashed requirements file.
 
     *packages* maps ``{name: info}`` where *info* has the fields produced by
     the resolver (``version``, and either ``platforms`` for RHOAI or
     ``sdist_hashes`` / ``wheel_hashes`` / ``wheel_files`` for PyPI).
+
+    A ``None`` *index_url* omits the header line: Hermeto-consumed build
+    dependency files must stay index-free (public PyPI only).
     """
-    lines: list[str] = [f"--index-url {index_url}\n"]
+    lines: list[str] = []
+    if index_url is not None:
+        lines.append(f"--index-url {index_url}\n")
 
     for name in sorted(packages):
         info = packages[name]
@@ -953,13 +1038,32 @@ def _container_runtime() -> str:
     raise RuntimeError("Neither podman nor docker is installed")
 
 
-def uv_resolve(  # noqa: C901
+class ResolutionConflictError(RuntimeError):
+    """The compiler proved the supplied requirements incompatible."""
+
+
+class BuildConflictError(ResolutionConflictError):
+    """An incompatible solve with version-specific source-build requirements."""
+
+    def __init__(self, message: str, origins: set[tuple[str, str]]) -> None:
+        """Keep source versions that can be reconsidered by the search."""
+        super().__init__(message)
+        self.origins = origins
+
+
+def uv_resolve(
     python_version: str,
     rhoai_index_url: str,
     suffix: str,
     extras: Sequence[str] = (),
+    upgrade_package: str | None = None,
+    *,
+    requirements: Sequence[str] = (),
+    preferences: dict[str, str] | None = None,
+    constraints: dict[str, str] | None = None,
+    minimums: Sequence[str] = (),
 ) -> dict[str, dict[str, Any]]:
-    """Run ``uv pip compile --index-strategy prefer-index`` to resolve deps.
+    """Run the forked uv, reusing compatible output pins for a targeted update.
 
     Returns ``{normalized_name: {"version": str, "index": str}}``
     where *index* is the URL of the index the package was resolved from.
@@ -999,20 +1103,80 @@ def uv_resolve(  # noqa: C901
     for extra in extras:
         cmd += ["--extra", extra]
 
-    logger.debug("Running: %s", " ".join(cmd))
-    try:
-        result = subprocess.run(  # noqa: S603
-            cmd, capture_output=True, text=True, check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print("Failed:")
-        print(e.stderr)
-        sys.exit(1)
+    with tempfile.TemporaryDirectory(prefix="ols-resolution-") as scratch:
+        output = Path(scratch) / "resolved.txt"
+        if upgrade_package or preferences is not None:
+            pins = (
+                preferences
+                if preferences is not None
+                else read_pins(
+                    [
+                        os.path.join(
+                            KONFLUX_DIR, f"requirements.hashes.{kind}{suffix}.txt"
+                        )
+                        for kind in ("wheel", "source", "wheel.pypi")
+                    ]
+                )
+            )
+            output.write_text(
+                "".join(
+                    f"{name}=={version}\n" for name, version in sorted(pins.items())
+                ),
+                encoding="utf-8",
+            )
+            if upgrade_package:
+                cmd += ["--upgrade-package", upgrade_package]
+        if requirements:
+            (Path(scratch) / "requirements.in").write_text(
+                "\n".join(requirements) + "\n", encoding="utf-8"
+            )
+            cmd += ["/resolution/requirements.in"]
+        if minimums:
+            (Path(scratch) / "minimums.txt").write_text(
+                "\n".join(minimums) + "\n", encoding="utf-8"
+            )
+            cmd += ["--constraints", "/resolution/minimums.txt"]
+        if constraints:
+            (Path(scratch) / "constraints.txt").write_text(
+                "".join(
+                    f"{name}=={version}\n"
+                    for name, version in sorted(constraints.items())
+                ),
+                encoding="utf-8",
+            )
+            cmd += ["--constraints", "/resolution/constraints.txt"]
+        cmd[cmd.index("--workdir") : cmd.index("--workdir")] = [
+            "--volume",
+            f"{scratch}:/resolution:Z",
+        ]
+        cmd += ["--output-file", "/resolution/resolved.txt"]
+        logger.debug("Running: %s", " ".join(cmd))
+        try:
+            # Fixed container executable and argument list; no shell evaluation.
+            subprocess.run(  # noqa: S603
+                cmd, capture_output=True, text=True, check=True
+            )
+        except subprocess.CalledProcessError as error:
+            error_type = (
+                ResolutionConflictError
+                if "No solution found" in error.stderr
+                else RuntimeError
+            )
+            raise error_type(
+                f"Dependency resolution failed:\n{error.stderr}"
+            ) from error
+        compiled = output.read_text(encoding="utf-8")
 
+    return _parse_uv_output(compiled)
+
+
+def _parse_uv_output(compiled: str) -> dict[str, dict[str, Any]]:
+    """Read the fork's exact pins and index annotations."""
     resolved: dict[str, dict[str, Any]] = {}
     current_package: str | None = None
+    in_via = False
 
-    for raw_line in result.stdout.splitlines():
+    for raw_line in compiled.splitlines():
         line = raw_line.strip()
         if not line or line.startswith("-"):
             continue
@@ -1020,20 +1184,228 @@ def uv_resolve(  # noqa: C901
         m = _UV_COMPILED_RE.match(line)
         if m and not line.startswith("#"):
             name = normalize_name(m.group(1))
-            version_spec = (m.group(2) or "").strip()
-            if version_spec.startswith("=="):
-                version = version_spec[2:]
-            else:
-                version = version_spec.lstrip("=")
+            version = (m.group(2) or "").strip().lstrip("=")
             if version:
                 current_package = name
-                resolved[name] = {"version": version, "index": ""}
+                in_via = False
+                resolved[name] = {"version": version, "index": "", "parents": []}
         elif "# from " in line and current_package:
             index_url = line.split("# from ", 1)[1].strip()
             resolved[current_package]["index"] = index_url
+            in_via = False
+        elif current_package and line.startswith("# via"):
+            in_via = True
+            parent = line[len("# via") :].strip()
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:\[.*\])?", parent):
+                resolved[current_package]["parents"].append(
+                    normalize_name(parent.split("[")[0])
+                )
+        elif current_package and in_via and line.startswith("#   "):
+            parent = line[1:].strip()
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:\[.*\])?", parent):
+                resolved[current_package]["parents"].append(
+                    normalize_name(parent.split("[")[0])
+                )
 
     logger.info("uv resolved %d packages", len(resolved))
     return resolved
+
+
+@cache
+def discover_build_requirements(name: str, version: str) -> tuple[str, ...]:
+    """Read source build requirements under the target interpreter."""
+    # pylint: disable=import-outside-toplevel
+    from pybuild_deps.finder import find_build_dependencies
+
+    return tuple(find_build_dependencies(name, version))
+
+
+def _collect_build_requirements(
+    runtime: dict[str, dict[str, Any]],
+    combined: dict[str, dict[str, Any]],
+    bootstrap: Sequence[str],
+    rhoai_index_url: str,
+    wheel_only: set[str],
+    pypi: PypiClient,
+    origins: set[tuple[str, str]] | None = None,
+) -> list[str]:
+    """Discover build roots reachable from runtime and bootstrap packages."""
+    children: dict[str, set[str]] = {}
+    for name, info in combined.items():
+        for parent in info.get("parents", []):
+            children.setdefault(parent, set()).add(name)
+    queue = deque([*runtime, *(normalize_name(name) for name in bootstrap)])
+    seen: set[str] = set()
+    requirements: set[str] = set(bootstrap)
+    while queue:
+        name = queue.popleft()
+        if name in seen or name not in combined:
+            continue
+        seen.add(name)
+        info = combined[name]
+        queue.extend(children.get(name, set()))
+        if (
+            info["index"].rstrip("/") == rhoai_index_url.rstrip("/")
+            or name in wheel_only
+        ):
+            continue
+        version = info["version"]
+        metadata = pypi.get_package_info(name).get(version, {})
+        if not metadata.get("has_sdist"):
+            continue
+        discovered = discover_build_requirements(name, version)
+        if discovered and origins is not None:
+            origins.add((name, version))
+        for requirement in discovered:
+            requirements.add(requirement)
+            queue.append(normalize_name(Requirement(requirement).name))
+    return sorted(requirements)
+
+
+def resolve_environment(
+    python_version: str,
+    rhoai_index_url: str,
+    suffix: str,
+    extras: Sequence[str],
+    bootstrap: Sequence[str],
+    wheel_only: set[str],
+    pypi: PypiClient,
+    upgrade_package: str | None = None,
+    *,
+    minimums: Sequence[str] = (),
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Resolve runtime and recursively discovered build requirements together.
+
+    Exact constraints are used only to project a validated joint solution back
+    onto the runtime graph, never to freeze previous committed versions.
+    """
+    preferences = None
+    if upgrade_package:
+        preferences = read_pins(
+            [
+                os.path.join(KONFLUX_DIR, f"requirements.hashes.{kind}{suffix}.txt")
+                for kind in ("wheel", "source", "wheel.pypi")
+            ]
+            + [
+                os.path.join(KONFLUX_DIR, f"requirements-build{suffix}.txt"),
+                os.path.join(KONFLUX_DIR, f"requirements.hermetic{suffix}.txt"),
+            ]
+        )
+    # Search fewest source-version exclusions first. Never refresh all pins to
+    # escape a build conflict: unrelated packages retain their soft preferences.
+    pending: deque[frozenset[tuple[str, str]]] = deque([frozenset()])
+    visited: set[frozenset[tuple[str, str]]] = {frozenset()}
+    original_error: BuildConflictError | None = None
+    attempts = 0
+    while pending:
+        excluded = pending.popleft()
+        attempts += 1
+        if attempts > 64:
+            raise RuntimeError(
+                f"Build dependency search exceeded 64 alternatives; {original_error}"
+            )
+        try:
+            return _resolve_environment_candidate(
+                python_version,
+                rhoai_index_url,
+                suffix,
+                extras,
+                bootstrap,
+                wheel_only,
+                pypi,
+                upgrade_package,
+                preferences,
+                (
+                    *minimums,
+                    *(f"{name}!={version}" for name, version in sorted(excluded)),
+                ),
+            )
+        except BuildConflictError as error:
+            if original_error is None:
+                original_error = error
+            for origin in sorted(error.origins):
+                alternative = excluded | {origin}
+                if alternative not in visited:
+                    visited.add(alternative)
+                    pending.append(alternative)
+        except ResolutionConflictError:
+            # An exclusion can exhaust versions permitted by project policy.
+            if not excluded:
+                raise
+    assert original_error is not None
+    raise original_error
+
+
+def _resolve_environment_candidate(
+    python_version: str,
+    rhoai_index_url: str,
+    suffix: str,
+    extras: Sequence[str],
+    bootstrap: Sequence[str],
+    wheel_only: set[str],
+    pypi: PypiClient,
+    upgrade_package: str | None,
+    preferences: dict[str, str] | None,
+    minimums: Sequence[str],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Discover a joint solution for one branch of the source-version search."""
+    runtime = uv_resolve(
+        python_version,
+        rhoai_index_url,
+        suffix,
+        extras,
+        upgrade_package,
+        preferences=preferences,
+        minimums=minimums,
+    )
+    combined = runtime
+    previous = None
+    seen = set()
+    for _iteration in range(12):
+        origins: set[tuple[str, str]] = set()
+        requirements = _collect_build_requirements(
+            runtime, combined, bootstrap, rhoai_index_url, wheel_only, pypi, origins
+        )
+        try:
+            combined = uv_resolve(
+                python_version,
+                rhoai_index_url,
+                suffix,
+                extras,
+                upgrade_package,
+                requirements=requirements,
+                preferences=preferences,
+                minimums=minimums,
+            )
+        except ResolutionConflictError as error:
+            providers = ", ".join(
+                f"{name}=={version}" for name, version in sorted(origins)
+            )
+            raise BuildConflictError(
+                f"{error}\nSource-build requirement providers: {providers}", origins
+            ) from error
+        pins = {name: info["version"] for name, info in combined.items()}
+        runtime = uv_resolve(
+            python_version,
+            rhoai_index_url,
+            suffix,
+            extras,
+            preferences=pins,
+            constraints=pins,
+            minimums=minimums,
+        )
+        state = (
+            tuple(requirements),
+            tuple(sorted(pins.items())),
+            tuple(sorted(runtime)),
+        )
+        if state == previous:
+            return runtime, combined
+        if state in seen:
+            raise RuntimeError("Build dependency discovery did not converge")
+        seen.add(state)
+        previous = state
+    raise RuntimeError("Build dependency discovery exceeded 12 resolution rounds")
 
 
 def reclassify_with_rhoai(
@@ -1109,249 +1481,239 @@ def _fetch_hashes_for_pypi_packages(
 # ---------------------------------------------------------------------------
 
 
-def _strip_rhoai_duplicates_from_build_deps(
-    build_file: str,
-    rhoai_names: set[str],
-) -> None:
-    """Remove packages from build deps file that are already provided elsewhere.
-
-    Strips packages that already exist as RHOAI wheels or bootstrap packages
-    to prevent hermeto from fetching PyPI wheels for them, which would cause
-    EC policy violations (binary=true on PyPI-sourced packages).
-    """
-    with open(build_file, encoding="utf-8") as f:
-        lines = f.readlines()
-
-    output: list[str] = []
-    skip = False
-    for line in lines:
-        if line and line[0].isalpha():
-            pkg_name = normalize_name(line.split("==")[0].strip())
-            skip = pkg_name in rhoai_names
-        elif line.startswith("#") and not skip:
-            skip = False
-
-        if not skip:
-            output.append(line)
-
-    with open(build_file, "w", encoding="utf-8") as f:
-        f.writelines(output)
-
-
-def _generate_hermetic_requirements(
+def _hydrate_packages(
+    selected: dict[str, dict[str, Any]],
     rhoai: RhoaiIndex,
-    bootstrap_packages: Sequence[str],
+    pypi: PypiClient,
+    rhoai_index_url: str,
     platforms: Sequence[str],
+) -> dict[str, dict[str, Any]]:
+    """Collect artifacts for the exact versions and sources chosen by uv."""
+    packages: dict[str, dict[str, Any]] = {}
+    for name, info in selected.items():
+        version = info["version"]
+        if info["index"].rstrip("/") == rhoai_index_url.rstrip("/"):
+            match = rhoai.find_best(name, f"=={version}")
+            if match is None:
+                raise RuntimeError(
+                    f"No compatible RHOAI artifact for {name}=={version}"
+                )
+            available = match["platforms"]
+            if any(
+                "any" not in available and f"linux_{platform}" not in available
+                for platform in platforms
+            ):
+                raise RuntimeError(
+                    f"Missing target-platform RHOAI artifact for {name}=={version}"
+                )
+            packages[name] = {**match, "source": "rhoai"}
+        else:
+            metadata = pypi.get_package_info(name).get(version)
+            if metadata is None:
+                raise RuntimeError(f"No PyPI artifacts for {name}=={version}")
+            packages[name] = {**metadata, "version": version, "source": "pypi"}
+    return packages
+
+
+def _source_artifacts(packages: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Restrict source requirements to source hashes, not alternative wheels."""
+    return {name: {**info, "wheel_hashes": []} for name, info in packages.items()}
+
+
+def publish_environment(
+    runtime: dict[str, dict[str, Any]],
+    combined: dict[str, dict[str, Any]],
+    wheel_only: set[str],
+    tekton_files: Sequence[str],
     rhoai_index_url: str,
     suffix: str,
 ) -> None:
-    """Generate pinned, hashed build tools from the RHOAI index."""
-    hermetic_file = os.path.join(KONFLUX_DIR, f"requirements.hermetic{suffix}.txt")
-    packages: dict[str, dict[str, Any]] = {}
-
-    for package in bootstrap_packages:
-        name = normalize_name(package)
-        match = rhoai.find_best(name, ">=0")
-        if match is None:
-            raise RuntimeError(f"No RHOAI wheel for bootstrap package {name}")
-        version = match["version"]
-        available = match["platforms"]
-        missing = [
-            platform
-            for platform in platforms
-            if "any" not in available and f"linux_{platform}" not in available
-        ]
-        if missing:
-            raise RuntimeError(
-                f"No RHOAI wheel for {name}=={version} on {', '.join(missing)}; "
-                f"update {hermetic_file}"
-            )
-        packages[name] = match
-
-    write_hashed_requirements(packages, hermetic_file, rhoai_index_url)
-    logger.info("Wrote %s (%d bootstrap packages)", hermetic_file, len(packages))
-
-
-# pylint: disable-next=too-many-branches,too-many-statements
-def main() -> None:  # noqa: C901
-    """Resolve dependencies with RHOAI-first policy and write Hermeto output files."""
-    parser = argparse.ArgumentParser(
-        description="Policy-driven dependency resolver for Hermeto/Cachi2 builds."
+    """Generate all files before publishing a validated dependency solution."""
+    runtime_buckets = classify_packages(runtime, wheel_only)
+    build = {name: info for name, info in combined.items() if name not in runtime}
+    build_buckets = classify_packages(build, wheel_only)
+    binary_names = sorted(
+        set(runtime_buckets["rhoai_wheel"])
+        | set(runtime_buckets["pypi_wheel"])
+        | set(build_buckets["rhoai_wheel"])
+        | set(build_buckets["pypi_wheel"])
     )
-    parser.add_argument("--profile", required=True, help="Build profile (cpu|cuda)")
+    with tempfile.TemporaryDirectory(prefix="ols-outputs-", dir=KONFLUX_DIR) as scratch:
+        outputs = {
+            f"requirements.hashes.wheel{suffix}.txt": (
+                runtime_buckets["rhoai_wheel"],
+                rhoai_index_url,
+            ),
+            f"requirements.hashes.source{suffix}.txt": (
+                _source_artifacts(runtime_buckets["pypi_sdist"]),
+                "https://pypi.org/simple",
+            ),
+            f"requirements.hashes.wheel.pypi{suffix}.txt": (
+                runtime_buckets["pypi_wheel"],
+                "https://pypi.org/simple",
+            ),
+            f"requirements.hermetic{suffix}.txt": (
+                build_buckets["rhoai_wheel"],
+                rhoai_index_url,
+            ),
+            f"requirements-build{suffix}.txt": (
+                {
+                    **_source_artifacts(build_buckets["pypi_sdist"]),
+                    **build_buckets["pypi_wheel"],
+                },
+                None,  # index-free: Hermeto fetches build deps from public PyPI
+            ),
+        }
+        staged = []
+        for filename, (packages, index) in outputs.items():
+            # Keep generated outputs inside the scratch and output
+            # directories: a profile suffix carrying path separators must
+            # not redirect writes elsewhere (Snyk python/PT).
+            name = os.path.basename(filename)
+            if name != filename:
+                raise RuntimeError(
+                    f"Output file {filename!r} must not contain path separators"
+                )
+            generated = os.path.join(scratch, name)
+            write_hashed_requirements(packages, generated, index)
+            staged.append((generated, os.path.join(KONFLUX_DIR, name)))
+        for number, target in enumerate(tekton_files):
+            generated = os.path.join(scratch, f"pipeline-{number}.yaml")
+            shutil.copyfile(target, generated)
+            patch_tekton_packages(generated, binary_names)
+            content = Path(generated).read_text(encoding="utf-8")
+            wheel_file = f"requirements.hashes.wheel.pypi{suffix}.txt"
+            source_file = f"requirements.hashes.source{suffix}.txt"
+            if f'"{wheel_file}"' not in content:
+                content = content.replace(
+                    f'"{source_file}",',
+                    f'"{source_file}",\n            "{wheel_file}",',
+                )
+            Path(generated).write_text(content, encoding="utf-8")
+            staged.append((generated, target))
+        for generated, target in staged:
+            os.replace(generated, target)
+
+
+def _prepare_environment() -> None:
+    """Ignore machine-specific index settings for dependency discovery."""
+    for name in (
+        "UV_CONFIG_FILE",
+        "UV_INDEX_URL",
+        "UV_DEFAULT_INDEX",
+        "UV_INDEX",
+        "UV_EXTRA_INDEX_URL",
+        "PIP_INDEX_URL",
+        "PIP_EXTRA_INDEX_URL",
+        "PIP_CONSTRAINT",
+        "PIP_BUILD_CONSTRAINT",
+        "UV_CONSTRAINT",
+        "UV_OVERRIDE",
+    ):
+        os.environ.pop(name, None)
+    os.environ["UV_NO_CONFIG"] = "1"
+    os.environ["PIP_CONFIG_FILE"] = os.devnull
+
+
+def main() -> None:
+    """Resolve the CPU image environment and publish Konflux lockfiles."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", required=True, help="Build profile (cpu)")
+    parser.add_argument(
+        "--package", help="Package whose minimum version is being raised"
+    )
+    parser.add_argument("--version", help="Requested minimum version")
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument("--verbose", action="store_true", help="Verbose logging")
     verbosity.add_argument("--quiet", action="store_true", help="Errors only")
     args = parser.parse_args()
+    if bool(args.package) != bool(args.version):
+        parser.error("--package and --version must be supplied together")
+    logging.basicConfig(
+        level=(
+            logging.DEBUG
+            if args.verbose
+            else logging.ERROR if args.quiet else logging.INFO
+        )
+    )
+    _prepare_environment()
+    try:
+        _run_update(args)
+    except (OSError, ValueError, RuntimeError) as error:
+        parser.exit(1, f"Error: {error}\n")
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    elif args.quiet:
-        logging.basicConfig(level=logging.ERROR)
-    else:
-        logging.basicConfig(level=logging.INFO)
 
-    profiles_path = os.path.join(KONFLUX_DIR, "profiles.toml")
-    config = load_config(profiles_path, args.profile)
-
-    wheel_only_path = os.path.join(KONFLUX_DIR, "pypi_wheel_only.txt")
-    wheel_only = load_wheel_only(wheel_only_path)
-
+def _run_update(args: argparse.Namespace) -> None:
+    """Run discovery and resolution under the profile's target interpreter."""
+    config = load_config(os.path.join(KONFLUX_DIR, "profiles.toml"), args.profile)
     python_version = config["python_version"]
-    platforms = config["platforms"]
-    rhoai_index_url = config["rhoai_index_url"]
+    if f"{sys.version_info.major}.{sys.version_info.minor}" != python_version:
+        raise RuntimeError(
+            f"Run dependency discovery under Python {python_version}; use make bump"
+        )
     suffix = config.get("output_suffix", "")
-    tekton_files = config.get("tekton_files", [])
-    bootstrap_packages = config.get("bootstrap_packages", [])
+    project_path = Path("pyproject.toml")
+    original_project = project_path.read_bytes() if args.package else None
+    if args.package:
+        update_dependency(
+            project_path,
+            args.package,
+            args.version,
+        )
+    try:
+        _resolve_and_publish(args, config, python_version, suffix)
+    except BaseException:
+        if original_project is not None:
+            project_path.write_bytes(original_project)
+        raise
 
-    # Step 1: Resolve via uv with prefer-index strategy
-    logger.info("Running uv pip compile --index-strategy prefer-index …")
-    uv_resolved = uv_resolve(
+
+def _resolve_and_publish(
+    args: argparse.Namespace,
+    config: dict[str, Any],
+    python_version: str,
+    suffix: str,
+) -> None:
+    """Resolve the target environment and publish the staged output files."""
+    rhoai_index_url = config["rhoai_index_url"]
+    wheel_only = load_wheel_only(os.path.join(KONFLUX_DIR, "pypi_wheel_only.txt"))
+    pypi = PypiClient(python_version, config["platforms"])
+    runtime, combined = resolve_environment(
         python_version,
         rhoai_index_url,
         suffix,
         config.get("extras", []),
+        config.get("bootstrap_packages", []),
+        wheel_only,
+        pypi,
+        args.package,
+        minimums=(
+            (f"{normalize_name(args.package)}>={args.version}",) if args.package else ()
+        ),
     )
-
-    # Step 2: Build resolved dict from uv output + index annotations
-    resolved: dict[str, dict[str, Any]] = {}
-    for name, info in uv_resolved.items():
-        index = info["index"]
-        is_rhoai = "packages.redhat.com" in index if index else False
-        if is_rhoai:
-            resolved[name] = {
-                "version": info["version"],
-                "source": "rhoai",
-                "platforms": {},
-            }
-        else:
-            resolved[name] = {
-                "version": info["version"],
-                "source": "pypi",
-                "has_sdist": True,
-                "sdist_hashes": [],
-                "wheel_hashes": [],
-                "wheel_files": [],
-            }
-
-    rhoai_count = sum(1 for v in resolved.values() if v["source"] == "rhoai")
-    pypi_count = len(resolved) - rhoai_count
-    logger.info("Classified: %d RHOAI, %d PyPI", rhoai_count, pypi_count)
-
-    # Step 3: Fetch hashes — RHOAI from the RHOAI index, PyPI from PyPI
-    logger.info("Fetching hashes …")
-    rhoai = RhoaiIndex(rhoai_index_url, python_version, platforms)
+    if args.package:
+        selected = combined.get(normalize_name(args.package))
+        if selected is None or Version(selected["version"]) < Version(args.version):
+            raise RuntimeError(
+                f"Requested {args.package}>={args.version} is not in the resolved image environment"
+            )
+    rhoai = RhoaiIndex(rhoai_index_url, python_version, config["platforms"])
     rhoai.load()
-    _generate_hermetic_requirements(
-        rhoai,
-        bootstrap_packages,
-        platforms,
+    packages = _hydrate_packages(
+        combined, rhoai, pypi, rhoai_index_url, config["platforms"]
+    )
+    for name in config.get("bootstrap_packages", []):
+        if packages[normalize_name(name)]["source"] != "rhoai":
+            raise RuntimeError(f"Bootstrap package {name} must be available from RHOAI")
+    publish_environment(
+        {name: packages[name] for name in runtime},
+        packages,
+        wheel_only,
+        config.get("tekton_files", []),
         rhoai_index_url,
         suffix,
     )
-    for name, info in resolved.items():
-        if info["source"] == "rhoai":
-            match = rhoai.find_best(name, f"=={info['version']}")
-            if match:
-                info["platforms"] = match["platforms"]
-
-    pypi = PypiClient(python_version, platforms)
-    _fetch_hashes_for_pypi_packages(resolved, pypi)
-
-    # Step 5: Classify into buckets
-    buckets = classify_packages(resolved, wheel_only)
-
-    # Step 6: Write hashed requirements files
-    write_hashed_requirements(
-        buckets["rhoai_wheel"],
-        os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel{suffix}.txt"),
-        rhoai_index_url,
-    )
-    write_hashed_requirements(
-        buckets["pypi_sdist"],
-        os.path.join(KONFLUX_DIR, f"requirements.hashes.source{suffix}.txt"),
-        "https://pypi.org/simple",
-    )
-    write_hashed_requirements(
-        buckets["pypi_wheel"],
-        os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel.pypi{suffix}.txt"),
-        "https://pypi.org/simple",
-    )
-
-    # Step 7: Build dependencies via pybuild-deps
-    sdist_names = list(buckets["pypi_sdist"].keys())
-    build_output = os.path.join(KONFLUX_DIR, f"requirements-build{suffix}.txt")
-    if sdist_names:
-        tmp_sdist_file = os.path.join(KONFLUX_DIR, f"_tmp_sdist_list{suffix}.txt")
-        try:
-            with open(tmp_sdist_file, "w", encoding="utf-8") as f:
-                for name in sorted(sdist_names):
-                    info = buckets["pypi_sdist"][name]
-                    f.write(f"{name}=={info['version']}\n")
-            build_deps_executable = shutil.which("pybuild-deps")
-            if build_deps_executable is None:
-                raise RuntimeError("pybuild-deps is not installed")
-            try:
-                subprocess.run(  # noqa: S603
-                    [
-                        build_deps_executable,
-                        "compile",
-                        f"--output-file={build_output}",
-                        tmp_sdist_file,
-                    ],
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                print("Failed:")
-                print(e.stderr)
-                sys.exit(1)
-        finally:
-            if os.path.exists(tmp_sdist_file):
-                os.remove(tmp_sdist_file)
-
-        # Strip build deps that duplicate RHOAI wheel packages or bootstrap
-        # packages to avoid hermeto fetching them as binary from PyPI
-        # (EC policy violation).
-        rhoai_names = set(buckets["rhoai_wheel"].keys())
-        bootstrap_names = {normalize_name(p) for p in bootstrap_packages}
-        _strip_rhoai_duplicates_from_build_deps(
-            build_output,
-            rhoai_names | bootstrap_names,
-        )
-    else:
-        with open(build_output, "w", encoding="utf-8") as f:
-            f.write("# No sdist packages — no build dependencies needed.\n")
-
-    # Step 9: Patch Tekton pipelines
-    wheel_package_names = sorted(
-        set(buckets["rhoai_wheel"])
-        | set(buckets["pypi_wheel"])
-        | {normalize_name(p) for p in bootstrap_packages}
-    )
-    for tekton_file in tekton_files:
-        if os.path.exists(tekton_file):
-            patch_tekton_packages(tekton_file, wheel_package_names)
-            logger.info("Patched %s", tekton_file)
-        else:
-            logger.warning("Tekton file not found: %s", tekton_file)
-
-    # Summary
-    total = len(resolved)
-    print(f"\n{'=' * 60}")
-    print(f"Resolution complete ({args.profile} profile)")
-    print(f"{'=' * 60}")
-    print(f"  RHOAI wheels:          {len(buckets['rhoai_wheel']):>4} packages")
-    print(f"  PyPI sdist:            {len(buckets['pypi_sdist']):>4} packages")
-    print(f"  PyPI wheel (last resort): {len(buckets['pypi_wheel']):>4} packages")
-    print(f"  Total:                 {total:>4} packages")
-    print()
-    print(f"  Hashed wheel (RHOAI):  .konflux/requirements.hashes.wheel{suffix}.txt")
-    print(f"  Hashed source (PyPI):  .konflux/requirements.hashes.source{suffix}.txt")
-    pypi_wheel_file = f".konflux/requirements.hashes.wheel.pypi{suffix}.txt"
-    print(f"  Hashed wheel (PyPI):   {pypi_wheel_file}")
-    print(f"  Build deps:            {build_output}")
-    print()
-    print("Remember to commit output files and push the changes.")
+    logger.info("Published compatible runtime/build requirements for %s", args.profile)
 
 
 if __name__ == "__main__":

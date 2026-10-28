@@ -420,36 +420,29 @@ Legend:
 
 ## Updating Dependencies
 
-We use [uv](https://docs.astral.sh/uv/). Konflux does **not** install from `uv.lock`; it prefetches `.konflux/requirements.hashes.*.txt`. A complete bump is **lock and hermetic regen**. Stopping after `uv lock` leaves Konflux on the old pins (or a dirty regen fails prefetch).
+We use [uv](https://docs.astral.sh/uv/). Konflux does **not** install from `uv.lock`; it prefetches `.konflux/requirements.hashes.*.txt`. A complete bump is **lock and hermetic regen**: `make bump` refreshes the `.konflux/` files, `uv.lock`, and `requirements.txt` together. Stopping after a manual `uv lock` leaves Konflux on the old pins (or a dirty regen fails prefetch).
 
-Do **not** use `make update-deps` for a single package or CVE. That target runs `uv lock --upgrade` and bumps everything.
-
-Do not edit `uv.lock` by hand.
+`make bump` runs every step with a clean uv config — the target scrubs `UV_CONFIG_FILE` and the index variables itself. Do not edit `uv.lock` by hand. Do **not** use `make update-deps` for a single package or CVE: it runs `uv lock --upgrade` (bumps everything) and does not regenerate the hermetic files.
 
 ### Add a new dependency
 
-1. `uv add mystery-package` — uv updates `pyproject.toml`.
-2. `uv lock` if the lock is not already current.
-3. Keep a lower bound in `pyproject.toml` (`>=x.y.z` from the lock), matching existing entries. Use exact `==` only when the version must not float.
-4. `make konflux-requirements` (see [docs/update-requirements.md](docs/update-requirements.md) — regen needs a clean uv config).
+1. `uv add mystery-package` — uv updates `pyproject.toml` and `uv.lock`.
+2. Keep a lower bound in `pyproject.toml` (`>=x.y.z` from the lock), matching existing entries. Use exact `==` only when the version must not float.
+3. `make bump PKG=mystery-package VERSION=x.y.z` (the version `uv add` locked) — regenerates `uv.lock`, `requirements.txt`, and the `.konflux/` hermetic files, preferring the currently locked versions of every other package.
 
 ### Update an existing package (including CVE bumps)
 
-If it is already a direct dependency, raise the floor in `pyproject.toml` (`>=fixed.version`), then:
-
 ```bash
-uv lock --upgrade-package package_to_be_updated
-make konflux-requirements
+make bump PKG=package_to_be_updated VERSION=minimum_fixed_version
 ```
 
-If it is **transitive** (not listed under `[project].dependencies`):
+`VERSION` is a minimum, not an exact pin. For a direct dependency the floor in `pyproject.toml` is raised automatically; a **transitive** package (not listed under `[project].dependencies`) gets a lock-only bump. Other packages move only when compatibility requires it — unrelated packages are not refreshed just because newer versions exist.
 
-1. Prefer only `uv lock --upgrade-package PACKAGE` so the lock moves to a version that satisfies the CVE.
-2. Add it to `pyproject.toml` only when you need a floor uv will not keep otherwise. Use `>=VERSION`, like the existing CVE comments in that file. Do **not** add `PACKAGE==VERSION` — an exact pin can force Konflux to **downgrade** a newer wheel already on the RHOAI index.
-3. Always run `make konflux-requirements` after the lock changes.
+Do **not** add `PACKAGE==VERSION` to `pyproject.toml` for a transitive package — an exact pin can force Konflux to **downgrade** a newer wheel already on the RHOAI index. If a floor is needed that uv will not keep otherwise, use `>=VERSION`, like the existing CVE comments in that file.
 
-Hermetic regen details (clean uv config, `requirements-build.txt` must stay PyPI-only): [docs/update-requirements.md](docs/update-requirements.md).
+If the fixed version is missing from the RHOAI index (PyPI fallback needed), first add the constraint to `.konflux/requirements.overrides.txt` and `[tool.uv] override-dependencies` in `pyproject.toml`, and list a wheel-only package in `.konflux/pypi_wheel_only.txt` — those are deliberate policy inputs that `make bump` never modifies.
 
+Hermetic regen details (`requirements-build.txt` must stay PyPI-only): [docs/update-requirements.md](docs/update-requirements.md).
 
 ## Code style
 

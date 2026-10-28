@@ -145,8 +145,9 @@ Based on the verdict and user acknowledgment:
 ### Path B: Dependency Bump
 
 Follow the `deps-update` skill with the specific package
-name. It will bump only that package, run all verification
-gates, and raise a PR.
+name and the fixed version as `VERSION` (a minimum, not an
+exact pin). It will bump only that package, run all
+verification gates, and raise a PR.
 
 After the bump, verify the new version in `uv.lock` is
 outside the vulnerable range. If the latest release is
@@ -213,8 +214,8 @@ fix: resolve {CVE-ID} — {brief description}
   automatically to Done/Closed with resolution "Won't Do".
   For Paths B and C, ask the user which transition to use.
 - **Minimal changes** — bump only the affected package,
-  not all dependencies. Use `--upgrade-package`, not
-  `--upgrade`.
+  not all dependencies. Use `make bump PKG=<package>
+  VERSION=<fixed version>`, not a full refresh.
 - **Verify after every change** — lint, types, and unit
   tests must pass before declaring done.
 - **Do not downplay severity** — if the project is
