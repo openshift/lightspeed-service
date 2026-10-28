@@ -15,7 +15,7 @@ from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
-    GenericLLMParameters,
+    DEFAULT_MAX_TOKENS_FOR_RESPONSE,
     QueryMode,
 )
 from ols.utils.config import AppConfig
@@ -174,11 +174,9 @@ def test_tool_result_classifier_does_not_force_temperature() -> None:
         summarizer = DocsSummarizer(llm_loader=loader)
 
     assert summarizer._tool_result_classifier is not None
-    loader.assert_called_with(
-        summarizer.provider,
-        summarizer.model,
-        {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 128},
-    )
+    # The classifier LLM must not carry a classifier-specific token cap:
+    # a small max_output_tokens truncates thinking models' decisions (OLS-4653).
+    loader.assert_called_with(summarizer.provider, summarizer.model, {})
 
 
 @pytest.mark.parametrize(
@@ -244,7 +242,12 @@ def test_tool_result_classifier_uses_configured_temperature(
 
     assert summarizer._tool_result_classifier is not None
     assert mock_chat_anthropic.call_count == 2
-    assert mock_chat_anthropic.call_args.kwargs["max_tokens"] == 128
+    # No classifier-specific cap: the provider default response budget applies
+    # to the classifier like any other LLM (OLS-4653).
+    assert (
+        mock_chat_anthropic.call_args.kwargs["max_tokens"]
+        == DEFAULT_MAX_TOKENS_FOR_RESPONSE
+    )
     for call in mock_chat_anthropic.call_args_list:
         kwargs = call.kwargs
         if temperature is None:
