@@ -1,29 +1,45 @@
 # LightSpeed Evaluation Framework Configuration
 
-# LLM Configuration
-llm:
-  provider: "openai"          # Judge LLM Provider (openai, gemini etc..)
-  model: "gpt-6-luna"         # Judge model for scoring responses
-  temperature: 1              # Generation temperature
-  max_tokens: 1024             # Maximum tokens in response
-  timeout: 300                # Request timeout in seconds
-  num_retries: 3              # Retry attempts
+# Judge uses OpenAI gpt-6-luna; set OPENAI_API_KEY for judge requests.
+# OLS query endpoint is supported; streaming is not supported by the evaluation tool.
+# API_KEY is used for MCP server authentication.
+# Configure `system_prompt` or request options under the named HTTP API agent when needed.
+core:
+  max_threads: 5
+  cache_enabled: false
 
-# API Configuration
-# Only query endpoint is supported
-api:
-  enabled: true                        # Enable API calls instead of using pre-filled data
-  api_base: http://localhost:8080      # Base API URL
-  endpoint_type: query                 # Use "streaming" or "query" endpoint
-  timeout: 300                         # API request timeout in seconds
+llm_pool:
+  defaults:
+    timeout: 300
+    num_retries: 3
+    parameters:
+      temperature: 1
+      max_completion_tokens: 1024
+  models:
+    judge:
+      provider: openai
+      model: gpt-6-luna
 
-  # API input configuration
-  provider: "openai"                   # LLM provider for queries
-  model: "gpt-6-luna"                     # Model to use for queries
-  no_tools: null                       # Whether to bypass tools and MCP servers (optional)
-  system_prompt: null                  # System prompt (default None)
+judge_panel:
+  judges:
+    - judge
 
-  # Authentication via API_KEY environment variable only for MCP server
+agents:
+  enabled: true
+  default:
+    agent: [ols_conversational]
+    agent_config:
+      timeout: 300
+      num_retries: 3
+  ols_conversational:
+    type: http_api
+    api_base: http://localhost:8080
+    version: v1
+    endpoint_type: query
+    provider: "openai"
+    model: "gpt-6-luna"
+    system_prompt: null
+    extra_request_params: null        # Set mode here for OLS request modes such as troubleshooting.
 
 # Default metrics metadata
 metrics_metadata:
@@ -82,26 +98,14 @@ metrics_metadata:
       description: "How well the model retains information from previous turns"
 
 # Output Configuration
-output:
-  output_dir: "./eval_output"
-  base_filename: "evaluation"
-  enabled_outputs:          # Enable specific output types
-    - csv                   # Detailed results CSV
-    - json                  # Summary JSON with statistics
-    # - txt                   # Human-readable summary
-
-  # CSV columns to include
-  csv_columns:
-    - "conversation_group_id"
-    - "turn_id"
-    - "metric_identifier"
-    - "score"
-    - "threshold"
-    - "result"
-    - "reason"
-    - "query"
-    - "response"
-    - "execution_time"
+storage:
+  - type: file
+    output_dir: "./eval_output"
+    base_filename: "evaluation"
+    enabled_outputs:          # Enable specific output types
+      - csv                   # Detailed results CSV
+      - json                  # Summary JSON with statistics
+      # - txt                   # Human-readable summary
 
 # Visualization settings
 visualization:
