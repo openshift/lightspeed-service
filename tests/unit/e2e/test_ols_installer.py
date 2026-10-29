@@ -290,7 +290,7 @@ def _warmup_run_oc_stub(
 def test_warm_up_rhokp_image_runs_once_per_job(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Skip the pull when the job marker already recorded the image."""
+    """Create the artifact directory, then skip pulls when already warmed."""
     image = "registry.example.com/rhokp@sha256:abc123"
     deployment = {
         "spec": {
@@ -310,8 +310,10 @@ def test_warm_up_rhokp_image_runs_once_per_job(
         "run_oc",
         _warmup_run_oc_stub(deployment, nodes, calls),
     )
-    monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
-    marker = tmp_path / ".rhokp_image_warmed"
+    artifact_dir = tmp_path / "artifacts"
+    monkeypatch.setenv("ARTIFACT_DIR", str(artifact_dir))
+    marker = artifact_dir / ".rhokp_image_warmed"
+    assert not artifact_dir.exists()
 
     ols_installer.warm_up_rhokp_image()
     assert marker.read_text(encoding="utf-8") == image

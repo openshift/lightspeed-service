@@ -565,6 +565,7 @@ def warm_up_rhokp_image() -> None:
             pull.result()
 
     if marker is not None:
+        marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text(rhokp_image, encoding="utf-8")
 
 
