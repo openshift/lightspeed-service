@@ -984,3 +984,27 @@ async def test_generate_response_creates_and_cleans_offload_manager():
         assert any(
             c.type == StreamChunkType.END for c in chunks
         ), f"Expected END chunk (streaming={streaming})"
+
+
+def test_classifier_reasoning_configuration_is_stripped() -> None:
+    """The classifier model must not carry the main request's reasoning config."""
+    from types import SimpleNamespace
+
+    from ols.src.query_helpers.docs_summarizer import _disable_classifier_reasoning
+
+    direct_model = SimpleNamespace(thinking={"type": "enabled"})
+    vertex_model = SimpleNamespace(model_kwargs={"thinking": {"type": "enabled"}})
+    bedrock_model = SimpleNamespace(
+        additional_model_request_fields={"thinking": {"type": "enabled"}}
+    )
+    untouched = SimpleNamespace(temperature=0.7)
+
+    _disable_classifier_reasoning(direct_model)
+    _disable_classifier_reasoning(vertex_model)
+    _disable_classifier_reasoning(bedrock_model)
+    _disable_classifier_reasoning(untouched)
+
+    assert direct_model.thinking is None
+    assert vertex_model.model_kwargs == {}
+    assert bedrock_model.additional_model_request_fields == {}
+    assert untouched.temperature == 0.7

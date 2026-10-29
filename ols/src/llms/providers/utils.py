@@ -56,6 +56,35 @@ def load_vertex_credentials(credentials_json: str) -> GoogleCredentials:
     raise ValueError(msg)
 
 
+def anthropic_model_profile_max_tokens(model: str) -> int:
+    """Return the Anthropic model-profile output limit for a model name.
+
+    The Vertex and Bedrock adapters do not fill an unset output limit from the
+    model profile: the Vertex adapter hard-defaults to 4096 and the Bedrock
+    client applies its own low cap. A hardcoded cap below the profile default
+    silently truncates single-response structured output, because reasoning
+    tokens count against the same limit. Apply the model-profile default that
+    the direct Anthropic adapter would use, falling back to its fallback cap
+    for unknown models.
+
+    Args:
+        model: Model name or Bedrock inference-profile ID (for example
+            ``global.anthropic.claude-sonnet-5-5-v1:0``). Profiles are keyed
+            by bare model names.
+
+    Returns:
+        The model-profile maximum output tokens.
+    """
+    from langchain_anthropic.chat_models import (  # pylint: disable=import-outside-toplevel
+        _FALLBACK_MAX_OUTPUT_TOKENS,
+        _get_default_model_profile,
+    )
+
+    bare_model = model.split(":")[0].rsplit(".", 1)[-1]
+    profile = _get_default_model_profile(bare_model) or {}
+    return int(profile.get("max_output_tokens", _FALLBACK_MAX_OUTPUT_TOKENS))
+
+
 def populate_openai_reasoning(
     params: ModelParameters, default_parameters: dict[str, Any]
 ) -> None:

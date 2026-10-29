@@ -87,7 +87,7 @@ def test_load_anthropic_model(
     call_kwargs = mock_chat.call_args[1]
     assert call_kwargs["model_id"] == "us.anthropic.claude-opus-4-7"
     assert call_kwargs["region_name"] == "us-east-1"
-    assert call_kwargs["max_tokens"] == 4096
+    assert call_kwargs["max_tokens"] == 128000
     assert call_kwargs["bedrock_api_key"] == "secret_key"
 
 
@@ -918,3 +918,30 @@ def test_bedrock_load_uses_api_key_path_with_file_credentials(
     call_kwargs = mock_chat.call_args[1]
     assert call_kwargs["bedrock_api_key"] == "my-bedrock-api-key"
     assert "client" not in call_kwargs
+
+
+def test_anthropic_max_tokens_uses_model_profile(provider_config) -> None:
+    """Apply the Anthropic model-profile output limit for Anthropic models."""
+    bedrock = Bedrock(
+        model="anthropic.claude-sonnet-5-5", params={}, provider_config=provider_config
+    )
+    assert bedrock.default_params["max_tokens"] == 128000
+
+
+def test_non_anthropic_models_keep_default_cap(provider_config) -> None:
+    """Keep the previous default cap for non-Anthropic Bedrock models."""
+    bedrock = Bedrock(
+        model="openai.gpt-5.4", params={}, provider_config=provider_config
+    )
+    assert bedrock.default_params["max_tokens"] == 4096
+
+
+def test_bedrock_inference_profile_ids_derive_bare_model_name() -> None:
+    """Derive the bare model name from Bedrock inference-profile IDs."""
+    from ols.src.llms.providers.utils import anthropic_model_profile_max_tokens
+
+    assert anthropic_model_profile_max_tokens("global.anthropic.claude-sonnet-5-5") == (
+        128000
+    )
+    assert anthropic_model_profile_max_tokens("anthropic.claude-sonnet-5-5") == 128000
+    assert anthropic_model_profile_max_tokens("custom-model") == 4096

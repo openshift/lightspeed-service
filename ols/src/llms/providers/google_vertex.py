@@ -11,7 +11,10 @@ from ols import constants
 from ols.app.models.config import ModelParameters
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
-from ols.src.llms.providers.utils import load_vertex_credentials
+from ols.src.llms.providers.utils import (
+    anthropic_model_profile_max_tokens,
+    load_vertex_credentials,
+)
 from ols.utils.checks import InvalidConfigurationError
 
 if TYPE_CHECKING:
@@ -103,7 +106,7 @@ class GoogleVertexAnthropic(LLMProvider):
             "model_name": self.model,
             "project": self.project,
             "location": self.location,
-            "max_output_tokens": 512,
+            "max_output_tokens": anthropic_model_profile_max_tokens(self.model),
             "credentials": self.credentials,
         }
 

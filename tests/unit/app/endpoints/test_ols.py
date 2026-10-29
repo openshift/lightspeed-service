@@ -26,7 +26,9 @@ from ols.app.models.models import (  # noqa:E402
     TokenCounter,
 )
 from ols.src.tools.tool_result_inspection import (  # noqa:E402
+    TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
     TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+    ToolResultInspectionError,
     ToolResultRejectedError,
 )
 from ols.utils import suid  # noqa:E402
@@ -732,6 +734,25 @@ def test_generate_response_on_tool_result_inspection_failure():
     assert raised.value.status_code == 500
     assert raised.value.detail == {
         "response": TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+        "cause": "",
+    }
+
+
+@pytest.mark.usefixtures("_load_config")
+def test_generate_response_on_tool_result_classifier_failure():
+    """Identify classifier failures without implying malicious content."""
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response",
+        side_effect=ToolResultInspectionError("classifier failed"),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            ols.generate_response(
+                suid.get_suid(), LLMRequest(query="Tell me about Kubernetes"), "user-id"
+            )
+
+    assert raised.value.status_code == 500
+    assert raised.value.detail == {
+        "response": TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
         "cause": "",
     }
 
