@@ -40,8 +40,10 @@ from ols.app.models.models import (
 from ols.constants import MEDIA_TYPE_TEXT
 from ols.src.auth.auth import get_auth_dependency
 from ols.src.tools.tool_result_inspection import (
+    TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
     TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
     ToolResultInspectionError,
+    ToolResultRejectedError,
 )
 from ols.utils import errors_parsing
 from ols.utils.audit_logger import AuditContext
@@ -284,7 +286,7 @@ def generic_llm_error(error: Exception, media_type: str) -> str:
     Returns:
         str: The error message formatted for the media type.
     """
-    if isinstance(error, ToolResultInspectionError):
+    if isinstance(error, ToolResultRejectedError):
         if media_type == MEDIA_TYPE_TEXT:
             return TOOL_RESULT_SAFETY_FAILURE_MESSAGE
         return format_stream_data(
@@ -292,6 +294,18 @@ def generic_llm_error(error: Exception, media_type: str) -> str:
                 "event": "error",
                 "data": {
                     "response": TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+                    "cause": "",
+                },
+            }
+        )
+    if isinstance(error, ToolResultInspectionError):
+        if media_type == MEDIA_TYPE_TEXT:
+            return TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE
+        return format_stream_data(
+            {
+                "event": "error",
+                "data": {
+                    "response": TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
                     "cause": "",
                 },
             }

@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from ols import config, constants
 from ols.src.tools.tool_result_inspection import (
+    TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
     TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
     ToolResultInspectionError,
     ToolResultRejectedError,
@@ -169,7 +170,7 @@ def test_classifier_failure_uses_fixed_safety_response(client: TestClient) -> No
     assert response.status_code == requests.codes.internal_server_error
     assert response.json() == {
         "detail": {
-            "response": TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+            "response": TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
             "cause": "",
         }
     }
