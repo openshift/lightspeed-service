@@ -87,7 +87,7 @@ def test_tool_calling_all_provider_shapes() -> None:
         "openai": ["gpt-6-luna"],
         "azure_openai": ["gpt-6-luna"],
         "bedrock": ["openai.gpt-6-luna"],
-        "google_vertex_anthropic": ["claude-sonnet-4-6"],
+        "google_vertex_anthropic": ["claude-haiku-5-5"],
         "google_vertex": ["gemini-3.1-flash-lite"],
         "watsonx": ["ibm/granite-4-h-small"],
     }

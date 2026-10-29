@@ -53,7 +53,7 @@ PR_TOOL_CALLING_MATRICES = {
         "openai_tool_calling:openai:gpt-6-luna "
         "azure_openai_tool_calling:azure_openai:gpt-6-luna "
         "bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna "
-        "google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-sonnet-4-6 "
+        "google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-haiku-5-5 "
         "google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite",
         "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam "
         "$VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH",
@@ -77,7 +77,7 @@ PERIODIC_TOOL_CALLING_MATRICES = {
         "openai_tool_calling:openai:gpt-6-luna "
         "azure_openai_tool_calling:azure_openai:gpt-6-luna "
         "bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna "
-        "google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-sonnet-4-6 "
+        "google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-haiku-5-5 "
         "watsonx_tool_calling:watsonx:ibm/granite-4-h-small "
         "google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite",
         "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam "
@@ -465,10 +465,10 @@ def test_cluster_script_gates_anthropic_suite_on_credentials(
     run_suite() {{ printf '%s\\n' "$1" >> '{calls}'; }}
     ANTHROPIC_PROVIDER_KEY_PATH="{anthropic_key or ""}"
     run_suite google_vertex_anthropic "tags" "google_vertex_anthropic" "/keys/vertex" \\
-      "claude-sonnet-4-6" image default
+      "claude-haiku-5-5" image default
     if [ -n "${{ANTHROPIC_PROVIDER_KEY_PATH:-}}" ]; then
       run_suite anthropic "tags" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" \\
-        "claude-haiku-4-5" image default
+        "claude-haiku-5-5" image default
     else
       echo "Skipping anthropic suite: ANTHROPIC_PROVIDER_KEY_PATH is not set"
     fi

@@ -37,7 +37,7 @@ SUITE_IDS: dict[tuple[str, str], str] = {
     ("google_vertex", "gemini-3.1-flash-lite"): (
         "google_vertex_tool_result_inspection"
     ),
-    ("google_vertex_anthropic", "claude-sonnet-4-6"): (
+    ("google_vertex_anthropic", "claude-haiku-5-5"): (
         "google_vertex_anthropic_tool_result_inspection"
     ),
     ("watsonx", "ibm/granite-4-h-small"): "watsonx_tool_result_inspection",
