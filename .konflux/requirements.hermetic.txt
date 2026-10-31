@@ -1,10 +1,28 @@
 --index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/
+hatchling==1.32.4 \
+    --hash=sha256:765351bad03949f54fb2c81f1c6b97645ec223c46a699ef708cb0a0e9d3a0924
 maturin==1.15.0 \
     --hash=sha256:52eb3e4eb6af2d83e5ff4a856714b4d661eb49b937aa97cb995ab30c86435bb0 \
     --hash=sha256:8de7fc210b6949ed7ef3e60f31d71945d89c95d0a3695f2449521270dc591cf2
-uv==0.11.29 \
-    --hash=sha256:5ad8d45df914674d20e3b01511960af91fcc24802150c645c91fe09f6b701d1f \
-    --hash=sha256:94eaedf9d99f5bc2c06a57a03be483369a030946781dafe57ccf13d91c5c63d2
+pathspec==1.1.1 \
+    --hash=sha256:46a9e813171074dccd3cc765ee3f297fa95900dd0ad9602a3e7fb2f0c5cf20af
+pdm-backend==2.4.9 \
+    --hash=sha256:b61a1ce50684280867ee6616a295a91ed8e174d973a5b0830dccf51f18ddcb38
+pluggy==1.6.0 \
+    --hash=sha256:081e3f98c82c418e736365495ff07514f4e9222f88897e8597dfd482fd4dea25
+setuptools-scm==10.2.0 \
+    --hash=sha256:2178808880109b93cd53190cb588e4e7e274c214317e62d99193744a9fbef821
+tomlkit==0.15.2 \
+    --hash=sha256:fa5871480cfcee14c593597b66255e93417db8a24542ecf449b4df1e4a9fa66e
+trove-classifiers==2026.6.1.19 \
+    --hash=sha256:28073186e891d5668b8292969088eec9fa064e9e1998fa2d870ffeea05b48c9e
+uv==0.13.5 \
+    --hash=sha256:4cb2073cd36422c1e798a6078a00d9a008431216f824ce2d7feb2913b877126f \
+    --hash=sha256:bb0c8e0aa0d46755cd5b4cf5dd97914ecd55d1f8952f4f11cf87438bfec2c72c
 uv-build==0.11.29 \
     --hash=sha256:8a698dd58ec5b7e9c91165de5f43798575bc466ec334e3f93734a4df876ea7e6 \
     --hash=sha256:d00fb39395b6814d457420a2d27fb1513976d5c85aaf986f81843b79c6cddacb
+vcs-versioning==2.2.2 \
+    --hash=sha256:67bfdf355672b62d402f42a03e025d7cdfdbd4eb3cbb51d390aa02a11b24f6c4
+versioneer==0.29 \
+    --hash=sha256:89e1b78d7886e1d7e0e60e42bb7f68b223b337e0f2692b8a8e7070e77d5cd780
