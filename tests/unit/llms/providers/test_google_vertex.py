@@ -699,3 +699,23 @@ def test_anthropic_reasoning_config_without_thinking_enabled(mock_chat, tmpdir):
         "model_kwargs" not in call_kwargs
         or call_kwargs.get("model_kwargs", {}).get("thinking", {}) == {}
     )
+
+
+def test_anthropic_max_output_tokens_uses_model_profile(
+    anthropic_provider_config: ProviderConfig,
+) -> None:
+    """Apply the model-profile output default instead of a hardcoded 512 cap."""
+    vertex = GoogleVertexAnthropic(
+        model="claude-sonnet-5-5", provider_config=anthropic_provider_config
+    )
+    assert vertex.default_params["max_output_tokens"] == 128000
+
+
+def test_anthropic_max_output_tokens_falls_back_for_unknown_models(
+    anthropic_provider_config: ProviderConfig,
+) -> None:
+    """Keep the adapter fallback cap for models without a profile."""
+    vertex = GoogleVertexAnthropic(
+        model="unknown-claude", provider_config=anthropic_provider_config
+    )
+    assert vertex.default_params["max_output_tokens"] == 4096

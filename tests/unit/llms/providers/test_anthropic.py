@@ -296,3 +296,19 @@ def test_thinking_config(mock_chat_anthropic, provider_config_with_thinking):
     assert "anthropic_api_key" in anthropic.default_params
     assert "base_url" in anthropic.default_params
     assert "max_tokens" in anthropic.default_params
+
+
+def test_max_tokens_uses_model_profile_default(provider_config) -> None:
+    """Apply the Anthropic model-profile output limit, not a hardcoded cap."""
+    anthropic = Anthropic(
+        model="claude-sonnet-5-5", params={}, provider_config=provider_config
+    )
+    assert anthropic.default_params["max_tokens"] == 128000
+
+
+def test_max_tokens_falls_back_for_unknown_models(provider_config) -> None:
+    """Keep the adapter fallback cap for models without a profile."""
+    anthropic = Anthropic(
+        model="custom-model", params={}, provider_config=provider_config
+    )
+    assert anthropic.default_params["max_tokens"] == 4096

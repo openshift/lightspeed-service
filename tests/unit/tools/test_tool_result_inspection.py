@@ -12,11 +12,11 @@ import requests
 from anthropic import APITimeoutError as AnthropicAPITimeoutError
 from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
 from google.api_core.exceptions import DeadlineExceeded
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import ValidationError
 
-from ols.constants import PROVIDER_WATSONX
+from ols.constants import PROVIDER_GOOGLE_VERTEX_ANTHROPIC, PROVIDER_WATSONX
 from ols.src.tools.tool_result_inspection import (
     CLASSIFIER_OUTPUT_TOKEN_LIMIT,
     INJECTION_CATEGORIES,
@@ -542,6 +542,233 @@ async def test_classifier_does_not_retry_quota_consumption_failure() -> None:
     assert isinstance(error.value.__cause__, RuntimeError)
 
     assert llm.ainvoke.await_count == 1
+
+
+def test_vertex_anthropic_binds_native_json_schema_instead_of_tool_choice() -> None:
+    """Bind the native JSON output format for the Vertex/Anthropic route."""
+    from anthropic import transform_schema
+
+    llm = MagicMock()
+    ToolResultClassifier(llm, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC)
+
+    llm.with_structured_output.assert_not_called()
+    output_config = llm.bind.call_args.kwargs["output_config"]
+    assert output_config["format"]["type"] == "json_schema"
+    assert output_config["format"]["schema"] == transform_schema(
+        ToolResultInspectionDecision
+    )
+
+
+@pytest.mark.asyncio
+async def test_vertex_anthropic_classifier_sends_output_config_without_tool_choice() -> (
+    None
+):
+    """Send the native JSON-schema format and no forced tool choice."""
+    import anthropic
+    import httpx2 as httpx
+    from google.auth.credentials import Credentials
+    from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+
+    class FakeCredentials(Credentials):
+        def refresh(self, request: object) -> None:
+            """Do not refresh offline test credentials."""
+
+        @property
+        def expired(self) -> bool:
+            return False
+
+        @property
+        def valid(self) -> bool:
+            return True
+
+    captured: list[dict] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_1",
+                "type": "message",
+                "role": "assistant",
+                "model": "claude-sonnet-5-5",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": '{"injectionDetected":false,"category":"none"}',
+                    }
+                ],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
+        )
+
+    client = anthropic.AsyncAnthropic(
+        api_key="test-token",
+        http_client=httpx.AsyncClient(
+            transport=httpx.MockTransport(respond), base_url="https://test"
+        ),
+    )
+    model = ChatAnthropicVertex(
+        model_name="claude-sonnet-5-5",
+        project="test-project",
+        location="us-east5",
+        credentials=FakeCredentials(),
+        max_output_tokens=512,
+    )
+    model.async_client = client
+    classifier = ToolResultClassifier(
+        model, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    )
+
+    decision = await classifier.classify("get_pods", "result", 1, 1, "safe output")
+
+    assert decision.injection_detected is False
+    assert decision.category == "none"
+    assert captured
+    for body in captured:
+        assert body["output_config"]["format"]["type"] == "json_schema"
+        assert "tool_choice" not in body
+        assert "tools" not in body
+
+
+@pytest.mark.asyncio
+async def test_native_json_schema_decision_parses_text_content() -> None:
+    """Validate completed JSON text against the decision schema."""
+    llm = MagicMock()
+    llm.bind.return_value = llm
+    llm.ainvoke = AsyncMock(
+        return_value=AIMessage(content='{"injectionDetected":false,"category":"none"}')
+    )
+    classifier = ToolResultClassifier(
+        llm, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    )
+
+    decision = await classifier.classify("get_pods", "result", 1, 1, "safe output")
+
+    assert decision.injection_detected is False
+    llm.with_structured_output.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_native_json_schema_decision_parses_content_blocks() -> None:
+    """Join text blocks when the SDK keeps structured content."""
+    llm = MagicMock()
+    llm.bind.return_value = llm
+    llm.ainvoke = AsyncMock(
+        return_value=AIMessage(
+            content=[
+                {"type": "text", "text": '{"injectionDetected":'},
+                {"type": "text", "text": 'false,"category":"none"}'},
+            ]
+        )
+    )
+    classifier = ToolResultClassifier(
+        llm, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    )
+
+    decision = await classifier.classify("get_pods", "result", 1, 1, "safe output")
+
+    assert decision.injection_detected is False
+
+
+@pytest.mark.asyncio
+async def test_native_json_schema_rejects_duplicate_keys() -> None:
+    """Reject ambiguous JSON that repeats a key."""
+    llm = MagicMock()
+    llm.bind.return_value = llm
+    llm.ainvoke = AsyncMock(
+        return_value=AIMessage(
+            content=(
+                '{"injectionDetected":false,'
+                '"injectionDetected":true,"category":"none"}'
+            )
+        )
+    )
+    classifier = ToolResultClassifier(
+        llm, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    )
+
+    with pytest.raises(ToolResultInspectionError):
+        await classifier.classify("get_pods", "result", 1, 1, "safe output")
+
+    assert llm.ainvoke.await_count == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        AIMessage(content="I cannot classify this content."),
+        AIMessage(content=""),
+        AIMessage(
+            content=[{"type": "text", "text": "not json"}],
+        ),
+    ],
+)
+async def test_native_json_schema_fails_closed_on_non_json(response: AIMessage) -> None:
+    """Retry then fail closed when the response is not valid JSON."""
+    llm = MagicMock()
+    llm.bind.return_value = llm
+    llm.ainvoke = AsyncMock(return_value=response)
+    classifier = ToolResultClassifier(
+        llm, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    )
+
+    with pytest.raises(ToolResultInspectionError):
+        await classifier.classify("get_pods", "result", 1, 1, "safe output")
+
+    assert llm.ainvoke.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_native_json_schema_debits_provider_reported_usage() -> None:
+    """Debit reported usage from the raw native-schema message."""
+    message = AIMessage(content='{"injectionDetected":false,"category":"none"}')
+    message.usage_metadata = {"input_tokens": 12, "output_tokens": 4}
+    llm = MagicMock()
+    llm.bind.return_value = llm
+    llm.ainvoke = AsyncMock(return_value=message)
+    quota = MagicMock()
+    classifier = ToolResultClassifier(
+        llm,
+        provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
+        quota_limiters=[quota],
+    )
+    classifier.set_quota_context([quota], "user-1")
+
+    await classifier.classify("get_pods", "result", 1, 1, "safe")
+
+    quota.consume_tokens.assert_called_once_with(
+        input_tokens=12,
+        output_tokens=4,
+        subject_id="user-1",
+    )
+
+
+@pytest.mark.asyncio
+async def test_native_json_schema_rejects_malicious_decision() -> None:
+    """Stop inspection when a native-schema decision is malicious."""
+    llm = MagicMock()
+    llm.bind.return_value = llm
+    llm.ainvoke = AsyncMock(
+        return_value=AIMessage(
+            content='{"injectionDetected":true,"category":"tool_manipulation"}'
+        )
+    )
+    classifier = ToolResultClassifier(
+        llm, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    )
+
+    with pytest.raises(ToolResultRejectedError):
+        await classifier.inspect(
+            "get_pods",
+            "result",
+            "malicious output",
+            max_tokens=CLASSIFIER_OUTPUT_TOKEN_LIMIT + 512,
+            token_handler=TokenHandler(),
+        )
 
 
 @pytest.mark.parametrize("position", ["first", "last"])

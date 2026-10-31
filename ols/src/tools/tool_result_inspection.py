@@ -4,11 +4,12 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import httpx
 import requests
 from anthropic import APITimeoutError as AnthropicAPITimeoutError
+from anthropic import transform_schema
 from botocore.exceptions import ConnectTimeoutError as BotocoreConnectTimeoutError
 from botocore.exceptions import ReadTimeoutError as BotocoreReadTimeoutError
 from google.api_core.exceptions import DeadlineExceeded as GoogleDeadlineExceeded
@@ -17,13 +18,21 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
-from ols.constants import DEFAULT_MAX_TOKENS_FOR_RESPONSE, PROVIDER_WATSONX
+if TYPE_CHECKING:
+    from langchain_core.runnables import Runnable
+
+from ols.constants import (
+    DEFAULT_MAX_TOKENS_FOR_RESPONSE,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
+    PROVIDER_WATSONX,
+)
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
 
 TOOL_RESULT_SAFETY_FAILURE_MESSAGE = "Lightspeed stopped the operation because a tool result failed the safety inspection."  # noqa: E501
+TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE = "Lightspeed stopped the operation because the tool-result safety inspection could not be completed. No unsafe content was identified."  # noqa: E501
 
 _TIMEOUT_EXCEPTIONS = (
     TimeoutError,
@@ -198,11 +207,29 @@ class ToolResultClassifier:
             if provider_type == PROVIDER_WATSONX
             else ToolResultInspectionDecision
         )
-        self._llm = llm.with_structured_output(
-            schema,
-            method="json_schema",
-            include_raw=True,
-        )
+        self._llm: Runnable
+        if provider_type == PROVIDER_GOOGLE_VERTEX_ANTHROPIC:
+            # ChatAnthropicVertex ignores method="json_schema" in
+            # with_structured_output and always forces a tool call via
+            # tool_choice, which Claude 5.5 models reject with HTTP 400.
+            # Bind the native output format instead and validate the
+            # returned JSON text against the decision schema.
+            self._llm = llm.bind(
+                output_config={
+                    "format": {
+                        "type": "json_schema",
+                        "schema": transform_schema(schema),
+                    }
+                }
+            )
+            self._native_json_schema = True
+        else:
+            self._llm = llm.with_structured_output(
+                schema,
+                method="json_schema",
+                include_raw=True,
+            )
+            self._native_json_schema = False
         self._sleep = sleep
         self._quota_limiters = quota_limiters
         self._quota_subject_id = ""
@@ -331,16 +358,19 @@ class ToolResultClassifier:
                     "tool-result classifier quota accounting failed"
                 ) from error
             try:
-                parsed_result = (
-                    result.get("parsed")
-                    if isinstance(result, dict) and "parsed" in result
-                    else result
-                )
-                decision = (
-                    parsed_result
-                    if isinstance(parsed_result, ToolResultInspectionDecision)
-                    else ToolResultInspectionDecision.model_validate(parsed_result)
-                )
+                if self._native_json_schema:
+                    decision = _parse_native_decision(result)
+                else:
+                    parsed_result = (
+                        result.get("parsed")
+                        if isinstance(result, dict) and "parsed" in result
+                        else result
+                    )
+                    decision = (
+                        parsed_result
+                        if isinstance(parsed_result, ToolResultInspectionDecision)
+                        else ToolResultInspectionDecision.model_validate(parsed_result)
+                    )
                 return decision
             except Exception as error:
                 last_error = error
@@ -356,9 +386,9 @@ class ToolResultClassifier:
 
     def _consume_reported_usage(self, result: object) -> None:
         """Debit provider-reported usage when the provider returns it."""
-        if self._quota_limiters is None or not isinstance(result, dict):
+        if self._quota_limiters is None:
             return
-        raw = result.get("raw")
+        raw = result.get("raw") if isinstance(result, dict) else result
         usage = getattr(raw, "usage_metadata", None)
         if not isinstance(usage, dict):
             return
@@ -372,6 +402,33 @@ class ToolResultClassifier:
                 output_tokens=output_tokens,
                 subject_id=self._quota_subject_id,
             )
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject JSON objects that repeat a key with a different value."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate key in classifier response")
+        result[key] = value
+    return result
+
+
+def _parse_native_decision(result: object) -> ToolResultInspectionDecision:
+    """Validate completed JSON text from a native JSON-schema response."""
+    content = getattr(result, "content", None)
+    if isinstance(content, list):
+        text = "".join(
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+    elif isinstance(content, str):
+        text = content
+    else:
+        raise ValueError("classifier response contains no JSON text")
+    parsed = json.loads(text, object_pairs_hook=_reject_duplicate_keys)
+    return ToolResultInspectionDecision.model_validate(parsed)
 
 
 def chunk_text(

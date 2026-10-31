@@ -16,7 +16,10 @@ from ols.app.models.config import ModelParameters
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
-from ols.src.llms.providers.utils import populate_openai_reasoning
+from ols.src.llms.providers.utils import (
+    anthropic_model_profile_max_tokens,
+    populate_openai_reasoning,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +58,11 @@ class Bedrock(LLMProvider):
         return {
             "api_key": self.credentials or "",
             "model": self.model,
-            "max_tokens": 4096,
+            "max_tokens": (
+                anthropic_model_profile_max_tokens(self.model)
+                if self.model.startswith(ANTHROPIC_MODEL_PREFIX)
+                else 4096
+            ),
         }
 
     def _has_aws_credentials(self) -> bool:

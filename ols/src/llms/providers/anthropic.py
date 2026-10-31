@@ -9,6 +9,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
+from ols.src.llms.providers.utils import anthropic_model_profile_max_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class Anthropic(LLMProvider):
             "model": self.model,
             "anthropic_api_key": self.credentials,
             "base_url": self.url,
-            "max_tokens": constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE,
+            "max_tokens": anthropic_model_profile_max_tokens(self.model),
         }
 
         model_config = self.provider_config.models.get(self.model)

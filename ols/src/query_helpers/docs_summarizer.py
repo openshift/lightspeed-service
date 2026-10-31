@@ -46,6 +46,24 @@ from ols.utils.token_handler import (
 logger = logging.getLogger(__name__)
 
 
+def _disable_classifier_reasoning(model: Any) -> None:
+    """Strip the main request's reasoning configuration from the classifier.
+
+    The classifier produces one small structured decision, so reasoning
+    offers no benefit and its tokens count against the same output limit,
+    which can truncate the decision before it is produced. Keep the main
+    agent's reasoning configuration untouched.
+    """
+    if getattr(model, "thinking", None) is not None:
+        model.thinking = None
+    model_kwargs = getattr(model, "model_kwargs", None)
+    if isinstance(model_kwargs, dict):
+        model_kwargs.pop("thinking", None)
+    extra_fields = getattr(model, "additional_model_request_fields", None)
+    if isinstance(extra_fields, dict):
+        extra_fields.pop("thinking", None)
+
+
 def run_async_safely(coro: Coroutine[Any, Any, Any]) -> Any:
     """Run an async function safely."""
     try:
@@ -140,6 +158,7 @@ class DocsSummarizer(QueryHelper):
                 raise ToolResultInspectionError(
                     "tool-result classifier requires structured output support"
                 )
+            _disable_classifier_reasoning(classifier_llm)
             tool_result_classifier = ToolResultClassifier(
                 classifier_llm, provider_type=self.provider_config.type
             )
