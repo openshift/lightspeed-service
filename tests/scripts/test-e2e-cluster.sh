@@ -67,14 +67,14 @@ function run_suites() {
   run_suite "google_vertex" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-3.1-flash-lite" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-sonnet-4-6" "$OLS_IMAGE" "default"
+  run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-haiku-5-5" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
   # The anthropic suite needs a credential the Konflux integration-test
   # pipeline does not provide; skip it there instead of failing on the
   # unbound variable under set -u.
   if [ -n "${ANTHROPIC_PROVIDER_KEY_PATH:-}" ]; then
-    run_suite "anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" "claude-haiku-4-5" "$OLS_IMAGE" "default"
+    run_suite "anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "anthropic" "$ANTHROPIC_PROVIDER_KEY_PATH" "claude-haiku-5-5" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
   else
     echo "Skipping anthropic suite: ANTHROPIC_PROVIDER_KEY_PATH is not set" >&2
@@ -116,7 +116,7 @@ function run_suites() {
   # secret. The tested entries stay limited to the PR-CI matrix.
   E2E_MATRIX_CREDENTIAL_PROVIDERS="openai azure_openai bedrock google_vertex_anthropic google_vertex watsonx"
   E2E_MATRIX_CREDENTIAL_KEY_PATHS="$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH $WATSONX_PROVIDER_KEY_PATH"
-  run_suite "tool_calling_matrix" "tool_calling" "openai_tool_calling:openai:gpt-6-luna azure_openai_tool_calling:azure_openai:gpt-6-luna bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-sonnet-4-6 google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "tool_calling_all"
+  run_suite "tool_calling_matrix" "tool_calling" "openai_tool_calling:openai:gpt-6-luna azure_openai_tool_calling:azure_openai:gpt-6-luna bedrock_openai_tool_calling:bedrock:openai.gpt-6-luna google_vertex_anthropic_tool_calling:google_vertex_anthropic:claude-haiku-5-5 google_vertex_tool_calling:google_vertex:gemini-3.1-flash-lite" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH iam $VERTEX_PROVIDER_KEY_PATH $VERTEX_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "tool_calling_all"
   (( rc = rc || $? ))
 
   run_suite "gpt6_tool_calling_matrix" "gpt6_tool_calling" "openai_gpt6_tool_calling:openai:gpt-6-luna azure_openai_gpt6_tool_calling:azure_openai:gpt-6-luna" "$OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH" "multi" "$OLS_IMAGE" "gpt6_tool_calling_all"

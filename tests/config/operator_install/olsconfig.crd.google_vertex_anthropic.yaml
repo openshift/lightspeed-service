@@ -14,7 +14,7 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: claude-sonnet-4-6
+          - name: claude-haiku-5-5
         name: google_vertex_anthropic
         type: google_vertex_anthropic
         googleVertexAnthropicConfig:
@@ -22,7 +22,7 @@ spec:
           location: "global"
         url: https://aiplatform.googleapis.com/
   ols:
-    defaultModel: claude-sonnet-4-6
+    defaultModel: claude-haiku-5-5
     defaultProvider: google_vertex_anthropic
     deployment:
       replicas: 1

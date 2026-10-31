@@ -38,7 +38,7 @@ EXPECTED_PROVIDERS: dict[str, dict[str, Any]] = {
     },
     "google_vertex_anthropic": {
         "type": "google_vertex_anthropic",
-        "models": ["claude-sonnet-4-6"],
+        "models": ["claude-haiku-5-5"],
         "secret": "google-vertex-anthropiccreds",
     },
     "watsonx": {

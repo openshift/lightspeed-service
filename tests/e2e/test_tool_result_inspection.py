@@ -46,7 +46,7 @@ DEFAULT_INSPECTION_MATRIX: tuple[tuple[str, str], ...] = (
     ("bedrock", "anthropic.claude-haiku-5-5"),
     ("bedrock", "openai.gpt-6-luna"),
     ("google_vertex", "gemini-3.1-flash-lite"),
-    ("google_vertex_anthropic", "claude-sonnet-4-6"),
+    ("google_vertex_anthropic", "claude-haiku-5-5"),
     ("watsonx", "ibm/granite-4-h-small"),
     ("rhoai_vllm", "gpt-4.1-mini"),
     ("rhelai_vllm", "gpt-4.1-mini"),

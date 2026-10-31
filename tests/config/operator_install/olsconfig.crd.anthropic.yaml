@@ -14,12 +14,12 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: claude-haiku-4-5
+          - name: claude-haiku-5-5
         name: anthropic
         type: anthropic
         url: https://api.anthropic.com
   ols:
-    defaultModel: claude-haiku-4-5
+    defaultModel: claude-haiku-5-5
     defaultProvider: anthropic
     deployment:
       replicas: 1
