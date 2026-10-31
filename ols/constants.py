@@ -34,7 +34,6 @@ OPENSHIFT_DOCS_TOOL_NAME = "search_openshift_documentation"
 OLS_INTERNAL_TOOL_METADATA_KEY = "_ols_internal_tool"
 
 EMBEDDINGS_MODEL_BYOK_SUBDIR = "all-mpnet-base-v2"
-# EMBEDDINGS_MODEL_OKP_SUBDIR = "granite-embedding-30m-english"
 
 
 # models
@@ -128,8 +127,8 @@ RAG_CONTENT_LIMIT = 5
 RAG_SIMILARITY_CUTOFF = 0.3
 
 # Solr hybrid (OKP ``portal-rag`` / ``hybrid-search``) query embeddings must match the
-# vectors stored in the index (same default as solr-experiment / solr_vector_io).
-SOLR_HYBRID_EMBEDDING_MODEL_ID = "ibm-granite/granite-embedding-30m-english"
+# vectors stored in the OKP 1.3 index; equal dimensionality alone is insufficient.
+SOLR_HYBRID_EMBEDDING_MODEL_ID = "ibm-granite/granite-embedding-small-english-r2"
 
 
 # cache constants

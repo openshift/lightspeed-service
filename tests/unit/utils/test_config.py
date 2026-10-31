@@ -1228,6 +1228,6 @@ dev_config:
         client = config.solr_hybrid_search
         assert client is not None
         mock_hf.assert_called_once_with(
-            model_name=constants.SOLR_HYBRID_EMBEDDING_MODEL_ID
+            model_name="ibm-granite/granite-embedding-small-english-r2"
         )
     config.reload_empty()

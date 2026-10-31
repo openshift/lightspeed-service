@@ -168,9 +168,9 @@ get-embeddings-byok: ## Download and split BYOK/FAISS embedding model binary
 
 get-embeddings-okp: ## Download and split OKP/RAG embedding model binary
 	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
-		-o embeddings_model/granite-embedding-30m-english/model.safetensors \
-		"https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors"
-	cd embeddings_model/granite-embedding-30m-english && \
+		-o embeddings_model/granite-embedding-small-english-r2/model.safetensors \
+		"https://huggingface.co/ibm-granite/granite-embedding-small-english-r2/resolve/2ab6fa8ea2d674564defd37171ae19079b864b33/model.safetensors"
+	cd embeddings_model/granite-embedding-small-english-r2 && \
 		rm -f model.safetensors.tar.gz.* && \
 		tar czf - model.safetensors | split -b 95M - model.safetensors.tar.gz.
 

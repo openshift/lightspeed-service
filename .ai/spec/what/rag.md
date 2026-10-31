@@ -10,7 +10,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 3. Query normalization: before search, the query is normalized — stop words removed, IP/CIDR addresses and NIC names stripped, hyphenated terms quoted for stable Solr matching.
 
-4. The tool embeds the normalized query using `ibm-granite/granite-embedding-30m-english` and submits a hybrid-search POST to Solr's `portal-rag` collection. The search uses lexical edismax as the primary query with KNN vector reranking. [PENDING: Ask OKP team if server-side embedding is supported — preferred approach that would eliminate the granite model from the service image.]
+4. The tool embeds the normalized query using `ibm-granite/granite-embedding-small-english-r2` (384 dimensions) and submits a hybrid-search POST to Solr's `portal-rag` collection. The search uses lexical edismax as the primary query with KNN vector reranking. This model must be paired with an OKP index built using the same model (OKP 1.3 image); an older 384-dimensional index is not compatible merely because the dimensions match. Roll out the service image together with the matching RHOKP image; BYOK indexes and their separate model are unchanged. [PENDING: Ask OKP team if server-side embedding is supported — preferred approach that would eliminate the granite model from the service image.]
 
 5. Results are deduped by parent document (`parent_id` or `id`), filtered by configurable score threshold, and capped at `max_results`.
 
