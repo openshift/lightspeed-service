@@ -35,6 +35,10 @@ langchain-ibm==1.1.2 \
     --hash=sha256:ae162e7a8eaaf72a945abc92609638049619691e3f4a7c338b80a360574f0bbc
 langchain-mcp-adapters==0.3.2 \
     --hash=sha256:61cd1a09597adb619a9bafb0642938ffc2a9463d699a753f7af0420ea46c381a
+oauthlib==4.0.1 \
+    --hash=sha256:3d73febdb6faa00f277c81fb04be7b7586fb96fc3b7f0b9c772dada69a25ede7
+pyasn1==0.6.5 \
+    --hash=sha256:6b11616a6bcf3a40e635f082bb232fa57b5e0dd7f517bd7ddd69ec3794508a47
 python-frontmatter==1.2.0 \
     --hash=sha256:5b26ccd3cb85af77feb11d83b922c7bb5aeccb0c9d3fb236b938c600b6322984
 rank-bm25==0.2.2 \

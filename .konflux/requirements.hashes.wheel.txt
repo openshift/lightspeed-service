@@ -222,8 +222,6 @@ numexpr==2.14.1 \
 numpy==2.5.1 \
     --hash=sha256:56b3c007c7d0bf3cf44f3545cf7a9056fad39835e9044d843ac8a544aae88ad0 \
     --hash=sha256:721559a7de55779c32c6affe4f08b147bffd8ea53e633f5b0a3d0282e099d053
-oauthlib==3.3.1 \
-    --hash=sha256:c6fbab4f1a77a539f01175e2ea74b9552806bd0a849c70e744fda4ab801031c0
 openai==2.45.0 \
     --hash=sha256:93cbc0461f69bbd1c81c513c69d120bfe014049f02676a3f5e940541899c3238
 opentelemetry-api==1.44.0 \
@@ -269,8 +267,6 @@ protobuf==7.36.1 \
 psycopg2-binary==2.9.12 \
     --hash=sha256:1c7f7c47e0d20345f05875e81f1dd829601d6d4bc4f84d56fdf62892707b1fde \
     --hash=sha256:ecd0facc7874728ca28babc3d9c96c73510492a4c524e414ce27b32846d9bcb5
-pyasn1==0.6.4 \
-    --hash=sha256:aa4baf3e3b2b894b21127fc4769773650d15543dec5a3756daaa19c0f3763b7f
 pyasn1-modules==0.4.2 \
     --hash=sha256:6b1010138365a6fc22f4efd32edd504ec3f538e1ac3d1947ba9f7821ef15ef6c
 pycparser==3.12 \
