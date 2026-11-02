@@ -12,6 +12,7 @@ import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import cluster_api
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 
 NAMESPACE = "openshift-lightspeed"
@@ -29,9 +30,9 @@ MCP_TOKEN_VALUE = "Bearer test-secret-token-123"  # noqa: S105
 
 def _ensure_namespace() -> None:
     """Ensure the OLS namespace exists before MCP secrets and workloads are applied."""
-    cluster_utils.run_oc(
-        ["create", "ns", NAMESPACE],
-        ignore_existing_resource=True,
+    cluster_api.create_resource(
+        {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": NAMESPACE}},
+        ignore_existing=True,
     )
 
 
@@ -44,29 +45,19 @@ def _apply_mock_server_source() -> None:
         "metadata": {"name": MOCK_SERVER_SOURCE_CONFIGMAP, "namespace": NAMESPACE},
         "data": {"server.py": source},
     }
-    cluster_utils.run_oc(
-        ["apply", "-f", "-"],
-        command=yaml.safe_dump(configmap),
+    cluster_api.delete_resource(
+        "configmap", MOCK_SERVER_SOURCE_CONFIGMAP, NAMESPACE, ignore_missing=True
     )
+    cluster_api.apply_resource(configmap)
 
 
 def _deploy_mock_server() -> None:
     """Deploy the current mock MCP server source and service on the cluster."""
     _apply_mock_server_source()
-    cluster_utils.run_oc(
-        [
-            "delete",
-            "deployment",
-            MOCK_SERVER_NAME,
-            "-n",
-            NAMESPACE,
-            "--ignore-not-found",
-        ]
+    cluster_api.delete_resource(
+        "deployment", MOCK_SERVER_NAME, NAMESPACE, ignore_missing=True
     )
-    cluster_utils.run_oc(
-        ["apply", "-f", str(DEPLOYMENT_YAML)],
-        ignore_existing_resource=True,
-    )
+    cluster_api.apply_file(str(DEPLOYMENT_YAML))
 
     retry_until_timeout_or_success(
         60,
@@ -83,28 +74,11 @@ def _deploy_mock_server() -> None:
 
 def _create_token_secret() -> None:
     """Create the Kubernetes secret referenced by the mock-file-auth MCP server CR."""
-    cluster_utils.run_oc(
-        [
-            "delete",
-            "secret",
-            MCP_TOKEN_SECRET_NAME,
-            "-n",
-            NAMESPACE,
-            "--ignore-not-found",
-        ]
+    cluster_api.delete_resource(
+        "secret", MCP_TOKEN_SECRET_NAME, NAMESPACE, ignore_missing=True
     )
-
-    cluster_utils.run_oc(
-        [
-            "create",
-            "secret",
-            "generic",
-            MCP_TOKEN_SECRET_NAME,
-            f"--from-literal={MCP_HEADER_SECRET_DATA_KEY}={MCP_TOKEN_VALUE}",
-            "-n",
-            NAMESPACE,
-        ],
-        ignore_existing_resource=True,
+    cluster_api.create_secret(
+        MCP_TOKEN_SECRET_NAME, {MCP_HEADER_SECRET_DATA_KEY: MCP_TOKEN_VALUE}, NAMESPACE
     )
     print(f"Created secret '{MCP_TOKEN_SECRET_NAME}' in namespace '{NAMESPACE}'")
 
@@ -116,8 +90,8 @@ def setup_mcp_on_cluster() -> None:
     1. The mock server is reachable when OLS starts and discovers tools.
     2. The token secret exists for the operator to mount into the OLS pod.
 
-    Uses ``-n openshift-lightspeed`` for secrets so they match the OLSConfig CR
-    regardless of the active ``oc`` project (e.g. before install_ols switches project).
+    Use the explicit test namespace so secrets match the OLSConfig CR
+    without changing the developer's kubeconfig context.
     """
     _ensure_namespace()
     _create_token_secret()
@@ -131,37 +105,23 @@ def log_effective_mcp_debug_info() -> None:
     Logs ``spec.ols.introspectionEnabled`` from the OLSConfig CR and each entry in
     ``mcp_servers`` from the ``olsconfig`` ConfigMap (embedded ``olsconfig.yaml``).
     Intended for CI logs when debugging wrong tool selection (e.g. ``pods_log`` on
-    ``openshift`` vs mock ``openshift_pod_logs``). Skips quietly when ``oc`` or
-    resources are unavailable (e.g. local pytest against localhost).
+    ``openshift`` vs mock ``openshift_pod_logs``). Skip quietly when cluster
+    credentials or resources are unavailable (e.g. local pytest against localhost).
     """
     print("\n--- MCP e2e debug: cluster MCP configuration (best-effort) ---")
     try:
-        out = cluster_utils.run_oc(
-            [
-                "get",
-                "olsconfig",
-                "cluster",
-                "-o",
-                "jsonpath={.spec.ols.introspectionEnabled}",
-            ]
-        ).stdout.strip()
+        out = (
+            cluster_api.read_resource("olsconfig", "cluster")
+            .get("spec", {})
+            .get("ols", {})
+            .get("introspectionEnabled")
+        )
         print(f"OLSConfig spec.ols.introspectionEnabled: {out!r}")
     except Exception as e:
         print(f"Could not read OLSConfig introspectionEnabled: {e}")
 
     try:
-        raw = cluster_utils.run_oc(
-            [
-                "get",
-                "cm",
-                "olsconfig",
-                "-n",
-                NAMESPACE,
-                "-o",
-                "yaml",
-            ]
-        ).stdout
-        cm = yaml.safe_load(raw)
+        cm = cluster_api.read_resource("configmap", "olsconfig", NAMESPACE)
         data = cm.get("data") or {}
         if DEFAULT_CONFIGURATION_FILE not in data:
             print(
@@ -199,46 +159,13 @@ def log_effective_mcp_debug_info() -> None:
 def teardown_mcp_on_cluster() -> None:
     """Remove the mock MCP server deployment, service, and secret from the cluster."""
     try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "deployment",
-                MOCK_SERVER_NAME,
-                "-n",
-                NAMESPACE,
-                "--ignore-not-found",
-            ]
-        )
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "service",
-                MOCK_SERVER_NAME,
-                "-n",
-                NAMESPACE,
-                "--ignore-not-found",
-            ]
-        )
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "configmap",
-                MOCK_SERVER_SOURCE_CONFIGMAP,
-                "-n",
-                NAMESPACE,
-                "--ignore-not-found",
-            ]
-        )
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "secret",
-                MCP_TOKEN_SECRET_NAME,
-                "-n",
-                NAMESPACE,
-                "--ignore-not-found",
-            ]
-        )
+        for resource, name in (
+            ("deployment", MOCK_SERVER_NAME),
+            ("service", MOCK_SERVER_NAME),
+            ("configmap", MOCK_SERVER_SOURCE_CONFIGMAP),
+            ("secret", MCP_TOKEN_SECRET_NAME),
+        ):
+            cluster_api.delete_resource(resource, name, NAMESPACE, ignore_missing=True)
         print("Mock MCP server resources cleaned up")
     except Exception as e:
         print(f"Warning: MCP cleanup failed: {e}")

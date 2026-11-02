@@ -18,7 +18,7 @@ def test_operator_cleanup_respects_external_mirrors(external_mirrors):
         env["OLS_EXTERNAL_IMAGE_MIRRORS"] = external_mirrors
     shell = (
         'oc() { printf "oc %s\\n" "$*"; }\n'
-        "operator-sdk() { :; }\n"
+        'operator-sdk() { printf "operator-sdk %s\\n" "$*"; }\n'
         "source tests/scripts/utils.sh\n"
         "cleanup_ols_operator\n"
     )
@@ -32,6 +32,10 @@ def test_operator_cleanup_respects_external_mirrors(external_mirrors):
     )
     assert ("imagedigestmirrorset/" in result.stdout) == (external_mirrors != "true")
     assert "ns openshift-lightspeed" in result.stdout
+    assert (
+        "operator-sdk cleanup lightspeed-operator -n openshift-lightspeed"
+        in result.stdout
+    )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

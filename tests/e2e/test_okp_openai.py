@@ -12,22 +12,17 @@ from ols import constants
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e import test_api
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import cluster_api
 from tests.e2e.utils.decorators import retry
 
 
 @pytest.fixture(scope="module", autouse=True)
 def okp_ready() -> None:
     """Require the operator-managed OKP service and OLS retrieval configuration."""
-    cr = json.loads(
-        cluster_utils.run_oc(["get", "olsconfig", "cluster", "-o", "json"]).stdout
-    )
+    cr = cluster_api.read_resource("olsconfig", "cluster")
     assert not cr["spec"]["ols"].get("byokRAGOnly", False)
-    cluster_utils.run_oc(
-        ["rollout", "status", "deployment/lightspeed-rhokp", "--timeout=90s"]
-    )
-    configmap = json.loads(
-        cluster_utils.run_oc(["get", "configmap", "olsconfig", "-o", "json"]).stdout
-    )
+    cluster_api.wait_for_rollout("lightspeed-rhokp", timeout=90)
+    configmap = cluster_api.read_resource("configmap", "olsconfig")
     service_config = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
     assert service_config["ols_config"].get("solr_hybrid")
 

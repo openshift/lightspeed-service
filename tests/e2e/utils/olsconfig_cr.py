@@ -5,7 +5,7 @@ from typing import Literal
 
 import yaml
 
-from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import cluster_api
 
 
 def inspection_enabled_for_e2e(suffix: str) -> bool:
@@ -36,8 +36,7 @@ def apply_e2e_olsconfig(
     )
     inspection_config["enabled"] = inspection_enabled_for_e2e(suffix)
 
-    cluster_utils.run_oc(
-        [operation, "-f", "-"],
-        command=yaml.safe_dump(olsconfig),
-        ignore_existing_resource=ignore_existing_resource,
-    )
+    if operation == "apply":
+        cluster_api.apply_resource(olsconfig)
+    else:
+        cluster_api.create_resource(olsconfig, ignore_existing=ignore_existing_resource)

@@ -4,7 +4,6 @@
 # properly by linters
 # pyright: reportAttributeAccessIssue=false
 
-import json
 import os
 import time
 
@@ -13,7 +12,7 @@ from httpx import Client
 from pytest import TestReport
 
 from tests.e2e.utils import client as client_utils
-from tests.e2e.utils import cluster, ols_installer
+from tests.e2e.utils import cluster, cluster_api, ols_installer
 from tests.e2e.utils.adapt_ols_config import adapt_ols_config, switch_default_provider
 from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster, teardown_mcp_on_cluster
 from tests.e2e.utils.olsconfig_cr import inspection_enabled_for_e2e
@@ -49,17 +48,7 @@ def _maybe_setup_mcp() -> None:
 
 def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
     """Install OLS via bundle or adapt config when operator is already present."""
-    result = cluster.run_oc(
-        [
-            "get",
-            "clusterserviceversion",
-            "-n",
-            "openshift-lightspeed",
-            "-o",
-            "json",
-        ]
-    )
-    csv_data = json.loads(result.stdout)
+    csv_data = cluster_api.read_resource("clusterserviceversion")
 
     has_csv = bool(csv_data["items"])
     has_manager = cluster.lightspeed_operator_manager_deployed()
@@ -90,7 +79,17 @@ def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
     return ols_url, token, metrics_token, provider
 
 
-def pytest_sessionstart():
+def pytest_sessionstart() -> None:
+    """Clean up session credentials if any part of startup fails."""
+    try:
+        _setup_test_session()
+    except BaseException:
+        if on_cluster:
+            cluster.cleanup_session_tokens()
+        raise
+
+
+def _setup_test_session() -> None:
     """Set up common artifacts used by all e2e tests."""
     global OLS_READY  # pylint: disable=W0603
     global on_cluster  # pylint: disable=W0603
@@ -108,9 +107,6 @@ def pytest_sessionstart():
                     "SKIP_CLUSTER_SETUP enabled - skipping OLS installation/configuration."
                 )
                 print("Using existing cluster setup...")
-                cluster.run_oc(
-                    ["project", "openshift-lightspeed"], ignore_existing_resource=True
-                )
                 # warm up for - load RHOKP image
                 ols_installer.warm_up_rhokp_image()
                 ols_url = cluster.get_ols_url("ols")
@@ -169,14 +165,7 @@ def _operator_running_for_certs(request):
         return
 
     print("Scaling up operator controller manager for certificate tests...")
-    cluster.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "1",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-operator-controller-manager", 1)
     try:
         if not retry_until_timeout_or_success(
             60,
@@ -198,14 +187,7 @@ def _operator_running_for_certs(request):
         yield
     finally:
         print("Scaling down operator controller manager after certificate tests...")
-        cluster.run_oc(
-            [
-                "scale",
-                "deployment/lightspeed-operator-controller-manager",
-                "--replicas",
-                "0",
-            ]
-        )
+        cluster_api.scale_deployment("lightspeed-operator-controller-manager", 0)
         if not retry_until_timeout_or_success(
             30,
             3,
@@ -352,5 +334,8 @@ def pytest_sessionfinish(session, exitstatus):
             else:
                 print("Skipping must-gather for a passing suite")
         finally:
-            if "mcp" in ols_config_suffix:
-                teardown_mcp_on_cluster()
+            try:
+                if "mcp" in ols_config_suffix:
+                    teardown_mcp_on_cluster()
+            finally:
+                cluster.cleanup_session_tokens()

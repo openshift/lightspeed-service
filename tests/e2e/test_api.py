@@ -20,6 +20,7 @@ from ols.constants import (
 from ols.utils import suid
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import cluster_api
 from tests.e2e.utils import metrics as metrics_utils
 from tests.e2e.utils import response as response_utils
 from tests.e2e.utils.constants import (
@@ -551,15 +552,21 @@ def update_olsconfig(limiters: list[dict]):
         limiters: List of dictionaries containing limiter configurations
                  to set in ols_config.quota_handlers.limiters
     """
-    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
-    configmap = yaml.safe_load(configmap_yaml)
+    configmap = cluster_api.read_resource("configmap", "olsconfig")
     olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
     olsconfig["ols_config"]["quota_handlers"]["limiters"] = limiters
     configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
-    updated_configmap = yaml.dump(configmap)
-
-    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
-    cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
+    cluster_api.patch_resource(
+        "configmap",
+        "olsconfig",
+        {
+            "data": {
+                DEFAULT_CONFIGURATION_FILE: configmap["data"][
+                    DEFAULT_CONFIGURATION_FILE
+                ]
+            }
+        },
+    )
 
 
 @pytest.mark.quota_limits
@@ -578,20 +585,13 @@ def test_quota_limits():
     ), "available quota was not used or user limits were ignored"
     assert response.json()["input_tokens"] > 0, "input tokens were not populated"
     # Assure we're removing the correct configuration. Not assume and hardcode.
-    result = json.loads(cluster_utils.run_oc(["get", "olsconfig", "-o", "json"]).stdout)
+    result = cluster_api.read_resource("olsconfig")
     for limiter in result["items"][0]["spec"]["ols"]["quotaHandlersConfig"][
         "limitersConfig"
     ]:
         if limiter["type"] == "UserQuotaLimiter":
             break
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "0",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 0)
     update_olsconfig(
         limiters=[
             {
@@ -603,14 +603,7 @@ def test_quota_limits():
             }
         ]
     )
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "1",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 1)
     # Remove the user limitation, wait for pod and check available quota again
     cluster_utils.wait_for_running_pod()
     response = pytest.client.post(
@@ -625,23 +618,9 @@ def test_quota_limits():
         11111 < available_quota < 22222
     ), "Quota still being user limited when limitation was removed"
     assert response.json()["input_tokens"] > 0, "input tokens were not populated"
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "0",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 0)
     update_olsconfig(limiters=[])
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "1",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 1)
     cluster_utils.wait_for_running_pod()
     response = pytest.client.post(
         "/v1/query",

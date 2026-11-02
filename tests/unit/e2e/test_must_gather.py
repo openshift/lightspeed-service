@@ -1,76 +1,105 @@
-"""Unit tests for cluster artifact collection when Pods disappear."""
+"""Test artifact collection when pods disappear or log access fails."""
 
-import subprocess
 from pathlib import Path
+from unittest.mock import Mock, call
 
 import pytest
+from kubernetes.client import ApiException
+from openshift.dynamic.exceptions import (
+    ForbiddenError,
+    NotFoundError,
+    ResourceNotFoundError,
+)
 
 from tests.scripts import must_gather as gather_module
 
 
-def test_must_gather_skips_disappeared_pod_but_collects_other_logs(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+@pytest.mark.parametrize("status", [404, 403])
+def test_must_gather_handles_log_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, status: int
 ) -> None:
-    """Continue log collection after a Pod vanishes between listing and logs."""
+    """Skip only disappeared pods while preserving authorization failures."""
     monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
     monkeypatch.setenv("SUITE_ID", "inspection")
     monkeypatch.setattr(
-        gather_module.cluster_utils,
-        "run_oc_and_store_stdout",
-        lambda args, path: None,
+        gather_module.cluster_api, "read_resource", Mock(return_value={"items": []})
     )
     monkeypatch.setattr(
-        gather_module.cluster_utils,
-        "get_running_pods",
-        lambda: ["vanished", "healthy"],
+        gather_module.cluster_utils, "get_running_pods", lambda: ["vanished", "healthy"]
     )
     monkeypatch.setattr(
         gather_module.cluster_utils,
         "get_pod_containers",
-        lambda pod: ["server"],
+        lambda pod: ["server", "sidecar"] if pod == "vanished" else ["server"],
     )
 
-    def fake_run_oc(args: list[str]) -> subprocess.CompletedProcess[str]:
-        if args[1] == "pod/vanished":
-            raise subprocess.CalledProcessError(
-                1,
-                ["oc", *args],
-                stderr='Error from server (NotFound): pods "vanished" not found',
-            )
-        return subprocess.CompletedProcess(["oc", *args], 0, stdout="safe-log-entry")
+    def fake_pod_logs(pod: str, _container: str) -> str:
+        if pod == "vanished":
+            raise ApiException(status=status)
+        return "safe-log-entry"
 
-    monkeypatch.setattr(gather_module.cluster_utils, "run_oc", fake_run_oc)
+    pod_logs = Mock(side_effect=fake_pod_logs)
+    monkeypatch.setattr(gather_module.cluster_api, "pod_logs", pod_logs)
+    if status == 403:
+        with pytest.raises(ApiException) as error:
+            gather_module.must_gather()
+        assert error.value.status == 403
+    else:
+        gather_module.must_gather()
+        logs = tmp_path / "inspection" / "cluster" / "podlogs"
+        assert not (logs / "vanished-server.log").exists()
+        assert pod_logs.call_args_list == [
+            call("vanished", "server"),
+            call("healthy", "server"),
+        ]
+        assert (logs / "healthy-server.log").read_text() == "safe-log-entry"
+        assert (logs.parent / "pods.yaml").read_text() == "items: []\n"
 
-    gather_module.must_gather()
 
-    log_dir = tmp_path / "inspection" / "cluster" / "podlogs"
-    assert not (log_dir / "vanished-server.log").exists()
-    assert (log_dir / "healthy-server.log").read_text() == "safe-log-entry"
-
-
-def test_must_gather_does_not_ignore_unrelated_log_errors(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+@pytest.mark.parametrize("discovery_error", [False, True])
+def test_must_gather_skips_absent_resource_types(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, discovery_error: bool
 ) -> None:
-    """Do not mask authentication or other oc failures as Pod deletion."""
+    """Skip resource types whose CRD is absent without stopping collection."""
     monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
-    monkeypatch.setattr(
-        gather_module.cluster_utils,
-        "run_oc_and_store_stdout",
-        lambda args, path: None,
-    )
+    monkeypatch.setenv("SUITE_ID", "inspection")
+
+    def fake_read_resource(resource: str) -> dict:
+        if resource == "installplan":
+            if discovery_error:
+                raise ResourceNotFoundError("No matches for InstallPlan")
+            raise NotFoundError(ApiException(status=404))
+        return {"items": []}
+
+    monkeypatch.setattr(gather_module.cluster_api, "read_resource", fake_read_resource)
     monkeypatch.setattr(
         gather_module.cluster_utils, "get_running_pods", lambda: ["healthy"]
     )
     monkeypatch.setattr(
-        gather_module.cluster_utils, "get_pod_containers", lambda pod: ["server"]
+        gather_module.cluster_utils, "get_pod_containers", lambda _pod: ["server"]
+    )
+    monkeypatch.setattr(
+        gather_module.cluster_api, "pod_logs", Mock(return_value="safe logs")
     )
 
-    def fail_run_oc(args: list[str]) -> subprocess.CompletedProcess[str]:
-        raise subprocess.CalledProcessError(
-            1, ["oc", *args], stderr="Forbidden: insufficient access"
-        )
+    gather_module.must_gather()
 
-    monkeypatch.setattr(gather_module.cluster_utils, "run_oc", fail_run_oc)
+    cluster_dir = tmp_path / "inspection" / "cluster"
+    assert not (cluster_dir / "installplan.yaml").exists()
+    assert (cluster_dir / "pods.yaml").read_text() == "items: []\n"
+    assert (cluster_dir / "configmap.yaml").exists()
+    assert (cluster_dir / "podlogs" / "healthy-server.log").read_text() == "safe logs"
 
-    with pytest.raises(subprocess.CalledProcessError):
+
+def test_must_gather_propagates_resource_authorization_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Never mistake forbidden resource access for an absent API kind."""
+    monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        gather_module.cluster_api,
+        "read_resource",
+        Mock(side_effect=ForbiddenError(ApiException(status=403))),
+    )
+    with pytest.raises(ForbiddenError):
         gather_module.must_gather()
