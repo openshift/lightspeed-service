@@ -135,7 +135,9 @@ class DocsSummarizer(QueryHelper):
             # reasoning tokens against max_output_tokens, so a small cap can
             # truncate the structured decision before it is produced (OLS-4653).
             # The classifier uses the provider/model default response budget.
-            classifier_llm = self.llm_loader(self.provider, self.model, {})
+            classifier_llm = self.llm_loader(
+                self.provider, self.model, self._query_mode_llm_params()
+            )
             if not hasattr(classifier_llm, "with_structured_output"):
                 raise ToolResultInspectionError(
                     "tool-result classifier requires structured output support"
@@ -173,12 +175,19 @@ class DocsSummarizer(QueryHelper):
             tools.append(get_openshift_docs_tool(self._solr_client))
         return tools
 
+    def _query_mode_llm_params(self) -> dict[str, Any]:
+        """Return LLM params tagging requests with the query mode for a routing gateway."""
+        if self.provider_config.type != constants.PROVIDER_RHOAI_VLLM:
+            return {}
+        return {"default_headers": {constants.QUERY_MODE_HEADER: self._mode.value}}
+
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
         self.provider_config = config.llm_config.providers.get(self.provider)
         self.model_config = self.provider_config.models.get(self.model)
         self.generic_llm_params = {
-            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: self.model_config.parameters.max_tokens_for_response  # noqa: E501
+            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: self.model_config.parameters.max_tokens_for_response,  # noqa: E501
+            **self._query_mode_llm_params(),
         }
         self.bare_llm = self.llm_loader(
             self.provider,

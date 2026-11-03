@@ -101,6 +101,7 @@ RHOAIVLLMParameters = {
     ProviderParameter("reasoning_effort", str),
     ProviderParameter("verbosity", str),
     ProviderParameter("use_responses_api", bool),
+    ProviderParameter("default_headers", dict),
 }
 
 RHELAIVLLMParameters = {

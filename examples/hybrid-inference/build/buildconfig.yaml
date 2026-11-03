@@ -1,0 +1,28 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: lightspeed-service
+  namespace: openshift-lightspeed
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: lightspeed-service
+  namespace: openshift-lightspeed
+spec:
+  source:
+    git:
+      uri: https://github.com/RMalone8/lightspeed-service-hybrid-inference.git
+      ref: main
+  strategy:
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  resources:
+    limits:
+      memory: 8Gi
+  output:
+    to:
+      kind: ImageStreamTag
+      name: lightspeed-service:hybrid

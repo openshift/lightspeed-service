@@ -1,0 +1,50 @@
+listeners:
+  - name: gateway
+    address: "0.0.0.0:8080"
+    filter_chains: [main]
+
+filter_chains:
+  - name: main
+    filters:
+      - filter: static_response
+        status: 200
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: '{"status": "ok"}'
+        conditions:
+          - when:
+              path: "/healthz"
+
+      - filter: static_response
+        status: 200
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: '{"object": "list", "data": [{"id": "granite", "object": "model", "created": 0, "owned_by": "praxis"}]}'
+        conditions:
+          - when:
+              path: "/v1/models"
+              methods: ["GET"]
+
+      - filter: router
+        routes:
+          - path_prefix: "/"
+            headers:
+              X-OLS-Mode: "troubleshooting"
+            cluster: gpu-large
+          - path_prefix: "/"
+            cluster: cpu-small
+
+      - filter: load_balancer
+        clusters:
+          - name: cpu-small
+            endpoints:
+              - "cpu-small-predictor.openshift-lightspeed.svc.cluster.local:8080"
+          - name: gpu-large
+            endpoints:
+              - "gpu-large-predictor.openshift-lightspeed.svc.cluster.local:8080"
+
+insecure_options:
+  allow_private_endpoints: true
+  allow_private_upstreams: true
