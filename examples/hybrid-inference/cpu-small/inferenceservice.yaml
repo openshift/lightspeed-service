@@ -1,0 +1,33 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: cpu-small
+  namespace: openshift-lightspeed
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    deploymentStrategy:
+      type: Recreate
+    nodeSelector:
+      inference: cpu-small
+    tolerations:
+      - key: inference
+        operator: Equal
+        value: cpu-small
+        effect: NoSchedule
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: cpu-small-runtime
+      args:
+        - --model=ibm-granite/granite-4.2-3b-fp8
+        - --served-model-name=cpu-small
+        - --max-model-len=8192
+      resources:
+        requests:
+          cpu: "4"
+          memory: 16Gi
+        limits:
+          cpu: "8"
+          memory: 24Gi

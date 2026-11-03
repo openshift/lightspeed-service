@@ -1,0 +1,28 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: cpu-small-runtime
+  namespace: openshift-lightspeed
+spec:
+  supportedModelFormats:
+    - name: vLLM
+      autoSelect: true
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhaii/vllm-cpu-rhel9:3.5
+      args:
+        - --port=8080
+        - --download-dir=/models
+      env:
+        - name: HF_HUB_OFFLINE
+          value: "0"
+      ports:
+        - containerPort: 8080
+          name: http1
+      volumeMounts:
+        - name: models
+          mountPath: /models
+  volumes:
+    - name: models
+      persistentVolumeClaim:
+        claimName: cpu-small-models

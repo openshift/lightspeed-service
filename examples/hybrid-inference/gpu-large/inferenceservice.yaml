@@ -1,0 +1,35 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: gpu-large
+  namespace: openshift-lightspeed
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    deploymentStrategy:
+      type: Recreate
+    nodeSelector:
+      inference: gpu-large
+    tolerations:
+      - key: inference
+        operator: Equal
+        value: gpu-large
+        effect: NoSchedule
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: gpu-large-runtime
+      args:
+        - --model=ibm-granite/granite-4.2-8b-fp8
+        - --served-model-name=gpu-large
+        - --max-model-len=32768
+      resources:
+        requests:
+          nvidia.com/gpu: "1"
+          cpu: "4"
+          memory: 16Gi
+        limits:
+          nvidia.com/gpu: "1"
+          cpu: "8"
+          memory: 24Gi
