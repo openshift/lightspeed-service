@@ -14,7 +14,11 @@ generatorOptions:
   disableNameSuffixHash: true
 
 secretGenerator:
-  - name: llmcreds
+  - name: llmcreds-cpu-small
+    namespace: openshift-lightspeed
+    literals:
+      - apitoken=unused
+  - name: llmcreds-gpu-large
     namespace: openshift-lightspeed
     literals:
       - apitoken=unused

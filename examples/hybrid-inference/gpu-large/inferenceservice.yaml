@@ -24,6 +24,9 @@ spec:
         - --model=ibm-granite/granite-4.2-8b-fp8
         - --served-model-name=gpu-large
         - --max-model-len=32768
+        - --enable-auto-tool-choice
+        - --tool-call-parser=qwen3_coder
+        - --reasoning-parser=nemotron_v3
       resources:
         requests:
           nvidia.com/gpu: "1"

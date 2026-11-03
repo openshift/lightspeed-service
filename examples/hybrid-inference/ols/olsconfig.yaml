@@ -2,6 +2,7 @@ apiVersion: ols.openshift.io/v1alpha1
 kind: OLSConfig
 metadata:
   name: cluster
+  namespace: openshift-lightspeed
 spec:
   llm:
     providers:
@@ -9,19 +10,19 @@ spec:
         type: rhoai_vllm
         url: http://cpu-small-predictor.openshift-lightspeed.svc.cluster.local:8080/v1
         credentialsSecretRef:
-          name: llmcreds
+          name: llmcreds-cpu-small
         models:
           - name: cpu-small
-            contextWindowSize: 8192
+            contextWindowSize: 16384
       - name: gpu-large
         type: rhoai_vllm
         url: http://gpu-large-predictor.openshift-lightspeed.svc.cluster.local:8080/v1
         credentialsSecretRef:
-          name: llmcreds
+          name: llmcreds-gpu-large
         models:
           - name: gpu-large
             contextWindowSize: 32768
   ols:
-    defaultProvider: cpu-small
-    defaultModel: cpu-small
+    defaultProvider: gpu-large
+    defaultModel: gpu-large
     introspectionEnabled: false

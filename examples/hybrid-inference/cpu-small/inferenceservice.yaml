@@ -23,7 +23,10 @@ spec:
       args:
         - --model=ibm-granite/granite-4.2-3b-fp8
         - --served-model-name=cpu-small
-        - --max-model-len=8192
+        - --max-model-len=16384
+        - --enable-auto-tool-choice
+        - --tool-call-parser=qwen3_coder
+        - --reasoning-parser=nemotron_v3
       resources:
         requests:
           cpu: "4"
