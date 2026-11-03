@@ -21,7 +21,7 @@ filter_chains:
         headers:
           - name: Content-Type
             value: application/json
-        body: '{"object": "list", "data": [{"id": "granite", "object": "model", "created": 0, "owned_by": "praxis"}]}'
+        body: '{"object": "list", "data": [{"id": "hybrid-model", "object": "model", "created": 0, "owned_by": "praxis"}]}'
         conditions:
           - when:
               path: "/v1/models"

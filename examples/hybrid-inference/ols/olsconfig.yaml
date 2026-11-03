@@ -12,9 +12,9 @@ spec:
         credentialsSecretRef:
           name: llmcreds-praxis
         models:
-          - name: granite
+          - name: hybrid-model
             contextWindowSize: 32768
   ols:
     defaultProvider: praxis
-    defaultModel: granite
+    defaultModel: hybrid-model
     introspectionEnabled: false
