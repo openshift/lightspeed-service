@@ -19,7 +19,6 @@ from ols.src.quota.token_usage_history import TokenUsageHistory
 # as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
 from ols.src.rag_index.index_loader import IndexLoader  # type: ignore [attr-defined]
-from ols.src.rag_index.solr_support import SolrHybridSearch
 from ols.src.skills.skills_rag import SkillsRAG, load_skills_from_directory
 from ols.src.tools.tools_rag.hybrid_tools_rag import ToolsRAG
 from ols.utils.redactor import Redactor
@@ -56,10 +55,6 @@ class AppConfig:
         self.k8s_tools_resolved = False
         self._tools_approval: Optional[config_model.ToolsApprovalConfig] = None
         self._pending_approval_store: Optional["PendingApprovalStoreBase"] = None
-        self._cached_solr_embed_model: Any = None
-        self._cached_solr_hybrid_search: SolrHybridSearch | None = None
-        self._solr_hybrid_initialized: bool = False
-        self._solr_init_attempts: int = 0
         self._cached_byok_embed_model: Any = None
 
     @property
@@ -252,62 +247,6 @@ class AppConfig:
 
         return rag
 
-    def _solr_hybrid_embed_model(self) -> Any:
-        """Load and cache the HuggingFace embedding model for OKP ``portal-rag`` hybrid search."""
-        if self._cached_solr_embed_model is not None:
-            return self._cached_solr_embed_model
-        from llama_index.embeddings.huggingface import (  # pylint: disable=import-outside-toplevel
-            HuggingFaceEmbedding,
-        )
-
-        for name in ("sentence_transformers", "transformers"):
-            logging.getLogger(name).setLevel(logging.ERROR)
-        self._cached_solr_embed_model = HuggingFaceEmbedding(
-            model_name=constants.SOLR_HYBRID_EMBEDDING_MODEL_ID
-        )
-        return self._cached_solr_embed_model
-
-    _SOLR_MAX_INIT_ATTEMPTS = 3
-
-    @property
-    def solr_hybrid_search(self) -> SolrHybridSearch | None:
-        """Return Solr hybrid RAG client when ``ols_config.solr_hybrid`` is present.
-
-        Re-attempts initialization on every access until it succeeds, so
-        RHOKP starting after the app-server is tolerated without a pod restart.
-        Once connected, the result is cached for the lifetime of the process.
-        Gives up permanently after ``_SOLR_MAX_INIT_ATTEMPTS`` failures.
-        """
-        if self._solr_hybrid_initialized:
-            return self._cached_solr_hybrid_search
-        settings = self.config.ols_config.solr_hybrid  # type: ignore[attr-defined]
-        if settings is None:
-            self._solr_hybrid_initialized = True
-            return None
-        try:
-            embed_model = self._solr_hybrid_embed_model()
-            encode_fn = embed_model.get_text_embedding
-            self._cached_solr_hybrid_search = SolrHybridSearch(settings, encode_fn)
-            self._solr_hybrid_initialized = True
-            return self._cached_solr_hybrid_search
-        except Exception:
-            self._solr_init_attempts += 1
-            if self._solr_init_attempts >= self._SOLR_MAX_INIT_ATTEMPTS:
-                logger.error(
-                    "Solr hybrid RAG permanently unavailable after %d attempts "
-                    "— product documentation search is disabled for this pod",
-                    self._solr_init_attempts,
-                )
-                self._solr_hybrid_initialized = True
-            else:
-                logger.warning(
-                    "Solr hybrid RAG not yet available (attempt %d/%d) "
-                    "— will retry on next request",
-                    self._solr_init_attempts,
-                    self._SOLR_MAX_INIT_ATTEMPTS,
-                )
-            return None
-
     @property
     def proxy_config(self) -> Optional[config_model.ProxyConfig]:
         """Return the proxy configuration."""
@@ -354,9 +293,6 @@ class AppConfig:
                 del self.__dict__["tools_rag"]
             if "skills_rag" in self.__dict__:
                 del self.__dict__["skills_rag"]
-            self._cached_solr_hybrid_search = None
-            self._solr_hybrid_initialized = False
-            self._solr_init_attempts = 0
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())

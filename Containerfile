@@ -76,16 +76,14 @@ RUN echo "Verifying dependencies installation..." && \
     TIKTOKEN_CACHE_DIR=/app-root/.tiktoken_cache python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" && \
     echo "All dependencies installed and verified successfully!"
 
-# Step 5: Reassemble embedding model safetensors from compressed chunks and validate.
+# Step 5: Reassemble the BYOK embedding model safetensors from compressed chunks and validate.
 COPY --chmod=775 embeddings_model ./embeddings_model
-RUN for model_dir in all-mpnet-base-v2 granite-embedding-small-english-r2; do \
-      cat "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* | \
-        tar xzf - --no-same-owner -C "embeddings_model/${model_dir}" || \
-      { echo "ERROR: failed to extract embeddings_model/${model_dir}/model.safetensors from chunks" ; exit 1 ; } && \
-      rm -f "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* && \
-      python3 -c "import safetensors; safetensors.safe_open('embeddings_model/${model_dir}/model.safetensors', framework='pt'); print('OK:', '${model_dir}')" || \
-      { echo "ERROR: corrupt safetensors file: embeddings_model/${model_dir}/model.safetensors" ; exit 1 ; } ; \
-    done
+RUN cat embeddings_model/all-mpnet-base-v2/model.safetensors.tar.gz.* | \
+      tar xzf - --no-same-owner -C embeddings_model/all-mpnet-base-v2 || \
+    { echo "ERROR: failed to extract the BYOK embedding model" ; exit 1 ; } && \
+    rm -f embeddings_model/all-mpnet-base-v2/model.safetensors.tar.gz.* && \
+    python3 -c "import safetensors; safetensors.safe_open('embeddings_model/all-mpnet-base-v2/model.safetensors', framework='pt'); print('OK: all-mpnet-base-v2')" || \
+    { echo "ERROR: corrupt BYOK embedding model safetensors file" ; exit 1 ; }
 
 FROM ${RUNTIME_BASE_IMAGE}
 ARG RUNTIME_DNF_COMMAND=microdnf
@@ -122,17 +120,11 @@ COPY --chmod=775 --from=builder /app-root/embeddings_model ./embeddings_model
 # Two cache trees are needed: the standard HF hub cache (used by huggingface_hub and
 # transformers when no cache_dir override is given) and the llama_index cache (passed as
 # cache_folder to SentenceTransformer by llama_index's HuggingFaceEmbedding wrapper).
-RUN for model_dir in all-mpnet-base-v2 granite-embedding-small-english-r2; do \
-    case "$model_dir" in \
-      all-mpnet-base-v2) hf_id="sentence-transformers--all-mpnet-base-v2" ;; \
-      granite-embedding-small-english-r2) hf_id="ibm-granite--granite-embedding-small-english-r2" ;; \
-    esac && \
-    for cache_root in /app-root/.cache/huggingface/hub /app-root/.cache/llama_index; do \
-      repo_dir="${cache_root}/models--${hf_id}" && \
+RUN for cache_root in /app-root/.cache/huggingface/hub /app-root/.cache/llama_index; do \
+      repo_dir="${cache_root}/models--sentence-transformers--all-mpnet-base-v2" && \
       mkdir -p "$repo_dir/snapshots/local" "$repo_dir/refs" && \
       printf '%s' "local" > "$repo_dir/refs/main" && \
-      ln -sf "/app-root/embeddings_model/${model_dir}"/* "$repo_dir/snapshots/local/" ; \
-    done ; \
+      ln -sf /app-root/embeddings_model/all-mpnet-base-v2/* "$repo_dir/snapshots/local/" ; \
     done && \
     chown -R 1001:0 /app-root/.cache
 

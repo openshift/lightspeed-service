@@ -485,8 +485,8 @@ def test_generate_prompt_skill_content_none_has_no_effect(model):
     )
 
 
-def test_solr_docs_tool_guidance_appended_for_ask_tool_mode():
-    """Solr docs tool prompt supplements attach in ask mode when enabled."""
+def test_openshift_docs_tool_guidance_appended_for_ask_tool_mode():
+    """Docs tool prompt supplements attach in ask mode when enabled."""
     prompt, llm_input_values = GeneratePrompt(
         query,
         [],
@@ -494,19 +494,19 @@ def test_solr_docs_tool_guidance_appended_for_ask_tool_mode():
         "SYS",
         tool_call=True,
         mode=QueryMode.ASK,
-        solr_docs_tool_guidance=True,
+        openshift_docs_tool_guidance=True,
     ).generate_prompt("gpt-4o-mini")
     template = prompt.messages[0].prompt.template
-    assert "Solr docs tool:" in template
+    assert "OpenShift docs tool:" in template
     assert "Grounded answers (passages from" in template
-    assert "search_openshift_documentation" in template
+    assert "``search``" in template
     assert "ALWAYS call" in template
     assert "do not rely on memory alone" in template
     assert prompt.format(**llm_input_values).startswith("System: SYS")
 
 
-def test_solr_docs_tool_guidance_not_appended_for_troubleshooting():
-    """Solr docs supplements are ask-only; troubleshooting keeps cluster agent text."""
+def test_openshift_docs_tool_guidance_not_appended_for_troubleshooting():
+    """Docs supplements are ask-only; troubleshooting keeps cluster agent text."""
     prompt, _ = GeneratePrompt(
         query,
         [],
@@ -514,12 +514,12 @@ def test_solr_docs_tool_guidance_not_appended_for_troubleshooting():
         "SYS",
         tool_call=True,
         mode=QueryMode.TROUBLESHOOTING,
-        solr_docs_tool_guidance=True,
+        openshift_docs_tool_guidance=True,
     ).generate_prompt("gpt-4o-mini")
-    assert "Solr docs tool:" not in prompt.messages[0].prompt.template
+    assert "OpenShift docs tool:" not in prompt.messages[0].prompt.template
 
 
-def test_solr_docs_tool_guidance_false_omits_supplement():
+def test_openshift_docs_tool_guidance_false_omits_supplement():
     """When guidance flag is off, supplements are not added."""
     prompt, _ = GeneratePrompt(
         query,
@@ -528,13 +528,13 @@ def test_solr_docs_tool_guidance_false_omits_supplement():
         "SYS",
         tool_call=True,
         mode=QueryMode.ASK,
-        solr_docs_tool_guidance=False,
+        openshift_docs_tool_guidance=False,
     ).generate_prompt("gpt-4o-mini")
     assert "Grounded answers (passages from" not in prompt.messages[0].prompt.template
 
 
-def test_solr_docs_tool_guidance_with_byok_uses_relaxed_supplement():
-    """When BYOK is active, the relaxed Solr supplement is used instead of the mandatory one."""
+def test_openshift_docs_tool_guidance_with_byok_uses_relaxed_supplement():
+    """Use relaxed docs guidance when BYOK is active."""
     prompt, _ = GeneratePrompt(
         query,
         [],
@@ -542,24 +542,22 @@ def test_solr_docs_tool_guidance_with_byok_uses_relaxed_supplement():
         "SYS",
         tool_call=True,
         mode=QueryMode.ASK,
-        solr_docs_tool_guidance=True,
+        openshift_docs_tool_guidance=True,
         byok_active=True,
     ).generate_prompt("gpt-4o-mini")
     template = prompt.messages[0].prompt.template
-    assert "Solr docs tool:" in template
-    assert "search_openshift_documentation" in template
+    assert "OpenShift docs tool:" in template
+    assert "``search``" in template
     assert "ALWAYS call" not in template
     assert "Do not rely on memory alone" not in template
     assert "domain-specific knowledge" in template
     assert "Never contradict or override" in template
-    # Post-result topic guard mirrors the non-BYOK supplement so off-topic
-    # questions are refused even when the tool returns incidental matches.
     assert "then you may use general knowledge" in template
     assert "refuse it regardless of what the tool returned" in template
 
 
-def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
-    """When BYOK is not active, the mandatory Solr supplement is used."""
+def test_openshift_docs_tool_guidance_without_byok_uses_mandatory_supplement():
+    """Use mandatory docs guidance when BYOK is inactive."""
     prompt, _ = GeneratePrompt(
         query,
         [],
@@ -567,7 +565,7 @@ def test_solr_docs_tool_guidance_without_byok_uses_mandatory_supplement():
         "SYS",
         tool_call=True,
         mode=QueryMode.ASK,
-        solr_docs_tool_guidance=True,
+        openshift_docs_tool_guidance=True,
         byok_active=False,
     ).generate_prompt("gpt-4o-mini")
     template = prompt.messages[0].prompt.template

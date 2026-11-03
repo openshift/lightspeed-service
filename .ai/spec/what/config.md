@@ -76,6 +76,7 @@ The YAML file has four top-level sections:
 | `ols_config.skills` | object | none | Skills directory and matching config | see what/skills.md |
 | `ols_config.quota_handlers` | object | none | Quota limiter storage, scheduler, and limiters | see what/quota.md |
 | `ols_config.reference_content` | object | none | RAG index paths and embeddings model | see what/rag.md |
+| `ols_config.openshift_docs_mcp` | object | none | Dedicated RHOKP MCP endpoint and result limit for OpenShift docs search | see what/rag.md |
 | `ols_config.system_prompt_path` | string | none | Path to file containing custom system prompt | -- |
 | `ols_config.history_compression_enabled` | bool | true | Toggle conversation history compression | -- |
 | `ols_config.max_iterations` | int | mode-dependent | Tool-calling loop iteration cap (ask=5, troubleshooting=35) | -- |
@@ -163,7 +164,7 @@ Each provider entry under `llm_providers` supports:
 
 ### Tool Budget Computation
 
-18. When MCP servers are configured, each model's `max_tokens_for_tools` is computed as `context_window_size * tool_budget_ratio`. When no MCP servers are configured, `max_tokens_for_tools` is 0.
+18. When generic MCP servers or `ols_config.openshift_docs_mcp` are configured, each model's `max_tokens_for_tools` is computed as `context_window_size * tool_budget_ratio`. When neither is configured, `max_tokens_for_tools` is 0.
 19. After computing tool budgets, the system validates that `context_window_size > max_tokens_for_response + max_tokens_for_tools` for every model. Violation is a fatal configuration error.
 
 ## Planned Changes

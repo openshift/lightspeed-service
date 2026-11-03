@@ -82,9 +82,10 @@ llm_providers:
       - name: model-name
 ols_config:
   # max_workers: 1
-  # Product docs via Solr hybrid (OKP).  Omit solr_hybrid to disable.
-  solr_hybrid:
-    solr_http_base: "https://solr.example.com:8983"
+  # Product docs via RHOKP MCP.
+  openshift_docs_mcp:
+    url: "https://lightspeed-rhokp.<namespace>.svc:8443/mcp"
+    max_results: 5
   # BYOK / local FAISS indexes (user-supplied content only).
   reference_content:
     indexes:

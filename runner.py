@@ -1,5 +1,6 @@
 """Main app entrypoint. Starts Uvicorn-based REST API service."""
 
+import asyncio
 import logging
 import os
 import sys
@@ -61,8 +62,13 @@ def _ensure_cert_bundle() -> None:
 
 
 def load_index():
-    """Resolve Solr hybrid search and load RAG indexes before accepting requests."""
-    config.solr_hybrid_search  # pylint: disable=W0104, E0606
+    """Wait for RHOKP MCP and load RAG indexes before accepting requests."""
+    if config.ols_config.openshift_docs_mcp is not None:  # pylint: disable=E0606
+        from ols.src.rag_index.rhokp_mcp import (  # pylint: disable=import-outside-toplevel
+            initialize_rhokp_mcp,
+        )
+
+        asyncio.run(initialize_rhokp_mcp(config.ols_config.openshift_docs_mcp))
     config.rag_index  # pylint: disable=W0104, E0606
 
 
