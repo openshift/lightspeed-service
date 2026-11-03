@@ -30,11 +30,10 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
     }
 )
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
-OPENSHIFT_DOCS_TOOL_NAME = "search_openshift_documentation"
+OPENSHIFT_DOCS_TOOL_NAME = "search"
 OLS_INTERNAL_TOOL_METADATA_KEY = "_ols_internal_tool"
 
 EMBEDDINGS_MODEL_BYOK_SUBDIR = "all-mpnet-base-v2"
-# EMBEDDINGS_MODEL_OKP_SUBDIR = "granite-embedding-30m-english"
 
 
 # models
@@ -92,7 +91,7 @@ DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 TOKEN_BUFFER_WEIGHT = 1.1
 
 # Fraction of context window reserved for tool outputs when MCP servers or
-# Solr hybrid search is configured. Computed as int(context_window_size * ratio) at startup.
+# OpenShift docs MCP is configured. Computed as int(context_window_size * ratio) at startup.
 DEFAULT_TOOL_BUDGET_RATIO = 0.5
 TOOL_BUDGET_RATIO_MIN = 0.1
 TOOL_BUDGET_RATIO_MAX = 0.6
@@ -126,11 +125,6 @@ RAG_CONTENT_LIMIT = 5
 # as there won't be perfect matching chunk.
 # Range: 0 to 1
 RAG_SIMILARITY_CUTOFF = 0.3
-
-# Solr hybrid (OKP ``portal-rag`` / ``hybrid-search``) query embeddings must match the
-# vectors stored in the index (same default as solr-experiment / solr_vector_io).
-SOLR_HYBRID_EMBEDDING_MODEL_ID = "ibm-granite/granite-embedding-30m-english"
-
 
 # cache constants
 CACHE_TYPE_MEMORY = "memory"

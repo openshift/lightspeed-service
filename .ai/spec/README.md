@@ -19,7 +19,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [agent-modes.md](what/agent-modes.md) | ASK vs TROUBLESHOOTING: iteration limits, system prompts, behavioral differences |
 | [conversation-history.md](what/conversation-history.md) | Storage backends, CRUD operations, compression, user isolation, concurrency |
 | [llm-providers.md](what/llm-providers.md) | Provider contract, 10 provider types with deviations, parameter system, reasoning models |
-| [rag.md](what/rag.md) | Document retrieval via FAISS, multi-index, BYOK, hybrid RAG (tool/skill filtering only) |
+| [rag.md](what/rag.md) | OpenShift documentation via RHOKP MCP; BYOK retrieval via FAISS; hybrid RAG for tool/skill filtering |
 | [auth.md](what/auth.md) | Three auth modules (k8s, noop, noop-with-token), permission scopes, user identity |
 | [tools.md](what/tools.md) | MCP tool integration: gathering, execution, token budget, filtering, approval workflow |
 | [skills.md](what/skills.md) | Skill discovery, selection via hybrid RAG, file concatenation, prompt injection |

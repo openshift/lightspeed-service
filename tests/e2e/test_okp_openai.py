@@ -29,7 +29,7 @@ def okp_ready() -> None:
         cluster_utils.run_oc(["get", "configmap", "olsconfig", "-o", "json"]).stdout
     )
     service_config = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
-    assert service_config["ols_config"].get("solr_hybrid")
+    assert service_config["ols_config"].get("openshift_docs_mcp")
 
 
 @pytest.mark.rag
@@ -78,7 +78,7 @@ def test_openai_okp_documentation_retrieval(endpoint: str, check_version: bool) 
         tool_names = [call["name"] for call in body["tool_calls"]]
         references = body["referenced_documents"]
 
-    assert "search_openshift_documentation" in tool_names
+    assert "search" in tool_names
     assert references
     urls = [doc["doc_url"] for doc in references]
     assert all(doc["doc_title"] for doc in references)

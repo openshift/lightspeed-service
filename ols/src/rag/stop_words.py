@@ -1,4 +1,4 @@
-"""English stop words for hybrid RAG tokenization and Solr query normalization."""
+"""English stop words for hybrid RAG tokenization."""
 
 # Subset of NLTK's English stop-word list, inlined to avoid the dependency.
 ENGLISH_STOP_WORDS: frozenset[str] = frozenset(

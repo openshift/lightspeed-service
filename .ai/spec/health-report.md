@@ -1,20 +1,17 @@
 # Spec health report
 
-Last evaluated: 2026-08-31
-Trigger: staleness + accuracy check (spec-first alignment pass)
+Last evaluated: 2026-10-06
+Trigger: RHOKP MCP migration documentation audit
 Layout: software (.ai/spec/)
 
 ## Stale
 
-None remaining. All staleness findings from the August 2026 audit were resolved
-in this same alignment pass (see Resolved below).
+None remaining after the August 2026 alignment pass and the October 2026 RHOKP MCP migration audit (see Resolved below).
 
 ## Resolved (August 2026 alignment pass)
 
 1. **how/project-structure.md — module map missing shipped files.** Added entries for
-   `src/llms/providers/bedrock.py`, `src/llms/providers/utils.py`,
-   `src/tools/offloaded_content.py`, `utils/audit_logger.py`, `utils/otel.py`,
-   `src/rag/stop_words.py`, `src/rag_index/solr_support.py`.
+   shipped providers, utilities, and RAG modules.
 
 2. **how/project-structure.md — metrics list incomplete.** Added `ols_llm_reasoning_token_total`
    and OTel GenAI histograms to the metrics inventory.
@@ -32,6 +29,16 @@ in this same alignment pass (see Resolved below).
    health-backed probes) changed to `[PLANNED: OLS-3221]`.
 
 6. **README.md — provider count.** Updated from "8 providers" to "9 provider types".
+
+## Resolved (October 2026 RHOKP MCP migration audit)
+
+1. **what/rag.md — retired product-document retrieval architecture.** Replaced the former
+   service-side hybrid-retrieval description with the dedicated RHOKP MCP tool contract, filters,
+   startup discovery, citations, and current configuration.
+2. **how/project-structure.md and what/config.md — stale architecture and configuration.**
+   Updated the module map, runner flow, and tool-budget rules for RHOKP MCP.
+3. **docs/ai/config.md — reserved tool name.** Documented that the dedicated docs tool reserves
+   `search` and generic tools with that name are omitted when docs MCP is enabled.
 
 ## Missing
 

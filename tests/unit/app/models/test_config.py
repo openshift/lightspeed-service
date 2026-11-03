@@ -33,7 +33,6 @@ from ols.app.models.config import (
     ReferenceContent,
     ReferenceContentIndex,
     SkillsConfig,
-    SolrHybridSettings,
     TLSConfig,
     TLSSecurityProfile,
     UserDataCollection,
@@ -2261,7 +2260,6 @@ def test_ols_config(tmpdir):
         ols_config.tool_round_cap_fraction == constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
     )
     assert ols_config.offload_storage_path == constants.DEFAULT_OFFLOAD_STORAGE_PATH
-    assert ols_config.solr_hybrid is None
 
 
 def test_ols_config_tool_result_inspection_defaults_to_disabled():
@@ -2302,29 +2300,79 @@ def test_ols_config_with_custom_offload_storage_path():
     assert ols_config.offload_storage_path == "/custom/offload/path"
 
 
-def test_ols_config_solr_hybrid_parses_from_yaml_dict():
-    """Parse optional ``solr_hybrid`` under ``ols_config`` into ``SolrHybridSettings``."""
-    base = {
-        "default_provider": "p",
-        "default_model": "m",
-        "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
-    }
+def test_ols_config_openshift_docs_mcp_parses_url():
+    """Parse the dedicated OpenShift documentation MCP endpoint."""
     ols_config = OLSConfig(
         {
-            **base,
-            "solr_hybrid": {
-                "solr_http_base": "https://solr.example.com:8983",
-                "max_results": 7,
-            },
+            "openshift_docs_mcp": {
+                "url": "https://lightspeed-rhokp.test.svc:8443/mcp",
+                "max_results": 12,
+            }
         }
     )
-    assert ols_config.solr_hybrid is not None
-    assert ols_config.solr_hybrid.solr_http_base == "https://solr.example.com:8983"
-    assert ols_config.solr_hybrid.max_results == 7
+
+    assert str(ols_config.openshift_docs_mcp.url) == (
+        "https://lightspeed-rhokp.test.svc:8443/mcp"
+    )
+    assert ols_config.openshift_docs_mcp.max_results == 12
 
 
-def test_config_reserves_tool_budget_for_solr_hybrid_without_mcp():
-    """Tool budget is non-zero when Solr hybrid is configured, even without MCP servers."""
+def test_ols_config_openshift_docs_mcp_defaults_max_results():
+    """Use the existing retrieval result limit when MCP max results are omitted."""
+    ols_config = OLSConfig(
+        {
+            "openshift_docs_mcp": {
+                "url": "https://lightspeed-rhokp.test.svc:8443/mcp",
+            }
+        }
+    )
+
+    assert ols_config.openshift_docs_mcp.max_results == 5
+
+
+def test_ols_config_rejects_docs_mcp_max_results_over_mcp_limit():
+    """Reject a docs MCP result limit above its supported maximum of 20."""
+    with pytest.raises(ValidationError):
+        OLSConfig(
+            {
+                "openshift_docs_mcp": {
+                    "url": "https://lightspeed-rhokp.test.svc:8443/mcp",
+                    "max_results": 21,
+                }
+            }
+        )
+
+
+def test_ols_config_rejects_invalid_docs_mcp_url():
+    """Reject a non-HTTP OpenShift documentation MCP endpoint URL."""
+    with pytest.raises(ValidationError):
+        OLSConfig(
+            {
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {"max_entries": 10},
+                },
+                "openshift_docs_mcp": {
+                    "url": "ftp://lightspeed-rhokp.test.svc:8443/mcp"
+                },
+            }
+        )
+
+
+def test_ols_config_rejects_http_docs_mcp_url():
+    """Require HTTPS for the service-CA-protected RHOKP MCP endpoint."""
+    with pytest.raises(ValidationError):
+        OLSConfig(
+            {
+                "openshift_docs_mcp": {
+                    "url": "http://lightspeed-rhokp.test.svc:8443/mcp",
+                }
+            }
+        )
+
+
+def test_config_reserves_tool_budget_for_docs_mcp_without_generic_mcp():
+    """Reserve a tool budget when the built-in docs MCP is configured."""
     data = {
         "llm_providers": [
             {
@@ -2346,8 +2394,8 @@ def test_config_reserves_tool_budget_for_solr_hybrid_without_mcp():
             "default_model": "m1",
             "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
             "authentication_config": {"module": "foo"},
-            "solr_hybrid": {
-                "solr_http_base": "https://solr.example.com:8983",
+            "openshift_docs_mcp": {
+                "url": "https://lightspeed-rhokp.test.svc:8443/mcp",
             },
         },
         "dev_config": {"disable_tls": True},
@@ -2355,28 +2403,6 @@ def test_config_reserves_tool_budget_for_solr_hybrid_without_mcp():
     cfg = Config(data)
     model = cfg.llm_providers.providers["openai"].models["m1"]
     assert model.max_tokens_for_tools == 5000
-
-
-def test_ols_config_solr_hybrid_validate_yaml_rejects_bad_url():
-    """``validate_yaml`` rejects non-http(s) Solr base URLs."""
-    settings = SolrHybridSettings(solr_http_base="not-a-url")
-    with pytest.raises(InvalidConfigurationError, match=r"solr_hybrid\.solr_http_base"):
-        settings.validate_yaml()
-
-
-def test_ols_config_validate_yaml_solr_hybrid_rejects_invalid_base_url():
-    """``OLSConfig.validate_yaml`` validates ``solr_hybrid`` when present."""
-    ols_config = OLSConfig(
-        {
-            "default_provider": "p",
-            "default_model": "m",
-            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
-            "logging_config": {"logging_level": "INFO"},
-            "solr_hybrid": {"solr_http_base": "ftp://example.com"},
-        }
-    )
-    with pytest.raises(InvalidConfigurationError, match=r"solr_hybrid\.solr_http_base"):
-        ols_config.validate_yaml(disable_tls=True)
 
 
 def test_ols_config_tool_round_cap_fraction():
