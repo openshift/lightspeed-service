@@ -11,9 +11,6 @@ resources:
   - praxis/deployment.yaml
   - ols/olsconfig.yaml
 
-generatorOptions:
-  disableNameSuffixHash: true
-
 configMapGenerator:
   - name: praxis-config
     namespace: openshift-lightspeed
@@ -23,5 +20,7 @@ configMapGenerator:
 secretGenerator:
   - name: llmcreds-praxis
     namespace: openshift-lightspeed
+    options:
+      disableNameSuffixHash: true
     literals:
       - apitoken=unused

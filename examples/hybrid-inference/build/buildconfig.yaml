@@ -13,7 +13,7 @@ spec:
   source:
     git:
       uri: https://github.com/RMalone8/lightspeed-service-hybrid-inference.git
-      ref: main
+      ref: feat/mode-based-model-routing
   strategy:
     dockerStrategy:
       dockerfilePath: Containerfile

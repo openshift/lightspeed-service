@@ -31,10 +31,10 @@ filter_chains:
         routes:
           - path_prefix: "/"
             headers:
-              X-OLS-Mode: "troubleshooting"
-            cluster: gpu-large
-          - path_prefix: "/"
+              X-OLS-Mode: "ask"
             cluster: cpu-small
+          - path_prefix: "/"
+            cluster: gpu-large
 
       - filter: load_balancer
         clusters:
