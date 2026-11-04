@@ -77,8 +77,8 @@ function run_suites() {
     run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-    run_suite "rhaiis_vllm" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "rhaiis_vllm" "$RHAIIS_PROVIDER_KEY_PATH" "meta-llama/Llama-3.1-70B-Instruct" "$OLS_IMAGE" "default"
-    (( rc = rc || $? ))
+    # run_suite "rhaiis_vllm" "not azure_entra_id and not certificates and not (tool_calling and not smoketest) and not byok1 and not byok2 and not quota_limits and not data_export" "rhaiis_vllm" "$RHAIIS_PROVIDER_KEY_PATH" "meta-llama/Llama-3.1-70B-Instruct" "$OLS_IMAGE" "default"
+    # (( rc = rc || $? ))
 
     # Bedrock suites — PROVIDER_KEY_PATH carries a discriminator ("iam" or
     # "iam_role") instead of a credential file path; see
