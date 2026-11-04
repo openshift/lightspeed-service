@@ -89,6 +89,24 @@ def test_load_anthropic_model(
     assert call_kwargs["region_name"] == "us-east-1"
     assert call_kwargs["max_tokens"] == 4096
     assert call_kwargs["bedrock_api_key"] == "secret_key"
+    assert "disable_streaming" not in call_kwargs
+
+
+@patch(
+    "ols.src.llms.providers.bedrock.ChatBedrockConverse",
+    autospec=True,
+)
+def test_load_haiku_55_enables_streaming(
+    mock_chat: MagicMock, provider_config: ProviderConfig
+) -> None:
+    """Enable streaming for Claude Haiku 5.5."""
+    bedrock = Bedrock(
+        model="anthropic.claude-haiku-5-5", params={}, provider_config=provider_config
+    )
+
+    bedrock.load()
+
+    assert mock_chat.call_args.kwargs["disable_streaming"] is False
 
 
 @patch(

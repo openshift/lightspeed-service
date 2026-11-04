@@ -191,6 +191,12 @@ class Bedrock(LLMProvider):
 
             params["model_id"] = model_id
             params["region_name"] = region
+            # langchain-aws 1.7.6 doesn't recognize Haiku 5.5 as streaming-capable;
+            # its non-streaming fallback can drop Bedrock tool_use blocks. Force
+            # streaming until 1.8.2+, which adds Haiku support. That release requires
+            # langchain-core>=1.6.10, so the dependency bump needs separate Konflux review.
+            if model == "anthropic.claude-haiku-5-5":
+                params["disable_streaming"] = False
 
             max_tokens = params.pop("max_tokens", 4096)
             params["max_tokens"] = max_tokens
