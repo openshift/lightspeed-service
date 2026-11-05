@@ -39,8 +39,10 @@ from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.src.tools.tool_result_inspection import (
+    TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
     TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
     ToolResultInspectionError,
+    ToolResultRejectedError,
 )
 from ols.utils import errors_parsing, suid
 from ols.utils.audit_logger import AuditContext, AuditLogger
@@ -551,11 +553,19 @@ def generate_response(
         )
         logger.debug("%s Generated response: %s", conversation_id, response)
         return response
-    except ToolResultInspectionError:
+    except ToolResultRejectedError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
+                "cause": "",
+            },
+        )
+    except ToolResultInspectionError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
                 "cause": "",
             },
         )

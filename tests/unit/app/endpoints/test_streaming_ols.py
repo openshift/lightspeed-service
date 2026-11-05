@@ -33,7 +33,11 @@ from ols.app.models.models import (  # noqa:E402
     StreamedChunk,
     TokenCounter,
 )
-from ols.src.tools.tool_result_inspection import ToolResultRejectedError  # noqa: E402
+from ols.src.tools.tool_result_inspection import (  # noqa: E402
+    TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
+    ToolResultInspectionError,
+    ToolResultRejectedError,
+)
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import (  # noqa:E402
     _LLM_BACKEND_PREFIX,
@@ -221,6 +225,25 @@ def test_generic_llm_error_uses_fixed_tool_safety_message():
                     "Lightspeed stopped the operation because a tool result failed "
                     "the safety inspection."
                 ),
+                "cause": "",
+            },
+        }
+    )
+
+
+def test_generic_llm_error_identifies_classifier_failure():
+    """Distinguish classifier failures from malicious-content decisions."""
+    error = ToolResultInspectionError("secret provider detail")
+
+    assert (
+        generic_llm_error(error, constants.MEDIA_TYPE_TEXT)
+        == TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE
+    )
+    assert generic_llm_error(error, constants.MEDIA_TYPE_JSON) == format_stream_data(
+        {
+            "event": "error",
+            "data": {
+                "response": TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
                 "cause": "",
             },
         }
