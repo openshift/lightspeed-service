@@ -99,6 +99,7 @@ dev = [
 
 [tool.uv]
 constraint-dependencies = ["zipp>=3.20.1"]
+override-dependencies = ["pillow>=13.0.0"]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
