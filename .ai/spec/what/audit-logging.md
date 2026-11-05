@@ -2,6 +2,10 @@
 
 Implementation spec for compliance audit logging in lightspeed-service (OLS). Parent spec: `ols/.ai/spec/what/audit-logging.md` (authoritative for cross-repo requirements, event semantics, correlation contract, and OTel GenAI attribute reference).
 
+## Separate Outbound Records [IMPLEMENTED: OLS-4192]
+
+[Outbound request audit](outbound-request-audit.md) defines an additional metadata-only JSON log type for Python transport attempts. Its dedicated emitter is a narrowly scoped exception to rules 15–18 for this record type only. Existing compliance spans, full content capture, `user_id`, and exporters remain unchanged. They MUST NOT be copied into the new records, whose field allowlist excludes personal identity and content.
+
 ## Behavioral Rules
 
 ### Per-Request Traces
@@ -95,6 +99,10 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 ### Single-Emission Rule
 
+Rules 15–19 describe the existing content-bearing span audit. The separate metadata-only
+LLM connectivity audit below is an explicit exception: it uses ordinary application logging
+and does not copy any datum or content from existing audit spans/events.
+
 15. Each audit-significant datum MUST be recorded exactly once, as an OTel span or span event. The stdout and OTLP exporters are two destinations for the same emission, not two separate emission paths.
 
 16. Python `logging` MUST emit only developer-debugging messages and MUST NOT re-emit data that appears in spans or span events. This collapses any current dual-emission (structured JSON + OTel span) into a single path: OTel spans/events for audit (two exporters, one emission), standard logging for developer debugging only.
@@ -116,12 +124,12 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 ```yaml
 ols_config:
   audit:
-    enabled: true             # default: true (audit on even if section is absent)
+    logging: Enabled          # Enabled (default) or Disabled; enabled is a derived property
     otel:
       endpoint: ""            # optional OTLP gRPC endpoint; no-op exporter when empty/absent
 ```
 
-21. `audit.enabled` controls audit emission. Defaults to `true` -- when the config section is absent or the field is not set, audit logging is on. Set to `false` to suppress all audit spans and events.
+21. `audit.logging` controls audit eligibility. Its default is `Enabled`; `Disabled` suppresses new audit spans/events and connectivity attempts. Python code reads the derived `audit.enabled` property. An already-started connectivity attempt still receives its matching completion if the setting changes.
 
 22. `audit.otel.endpoint` controls OTLP trace export. When set, the service configures an OTLP exporter with the given endpoint. CA trust for gRPC is handled via the `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` environment variable, set from `SSL_CERT_FILE` at startup. When endpoint is absent, a no-op OTLP exporter is used. The stdout exporter always emits regardless of whether an OTLP endpoint is configured.
 
@@ -142,6 +150,124 @@ request.lifecycle               [root, INTERNAL, gen_ai.conversation.id=<conv_id
 ```
 
 For multi-turn conversations, each request produces a separate trace. All traces for the same conversation share `gen_ai.conversation.id` as a span attribute. Query by `gen_ai.conversation.id` to see the full conversation.
+
+## Metadata-only connectivity audit
+
+`ols/utils/audit_support.py` emits `llm.request.started` / `llm.request.completed`,
+`mcp.request.started` / `mcp.request.completed`, and `auth.request.started` /
+`auth.request.completed` as
+JSON messages at INFO through `ols.connection_audit`, with the existing service handlers,
+formatting and level filtering. These are not OTLP log records; the formatted log line may
+have the normal application-log prefix. No new telemetry provider/exporter/configuration or
+Collector dependency is introduced. Existing `ols/utils/otel.py` behavior remains unchanged.
+
+Generated `attempt_id` identifies one owned native HTTP attempt. A lock-protected in-memory
+dictionary retains only active safe metadata and a monotonic start; atomic removal is the
+once-only completion gate. Retries have separate attempt IDs and one logical-call ID per
+dispatch. Generate emitted logical-call IDs locally; never copy caller-supplied runnable or
+native SDK run IDs into audit records. Use only private transient native object-identity keys
+to recognize nested dispatch, including async-to-sync fallback; never emit those keys. Keep
+independent invocations separate even when they reuse a native run ID. Preserve native SDK
+run IDs, callbacks and validation timing unchanged. Local trace/span IDs are optional
+write-only links to existing tracing, not matching keys or backend queries. Missing trace context is valid. A process crash may leave a start
+without completion; live attempts are not expired or declared complete by an observer timeout.
+
+Observe native EOF, close, failure and cancellation, not just response headers. HTTP success
+is not model, tool, JSON-RPC or credential semantic success. Early close, including SSE DONE
+before observed physical EOF, is conservatively incomplete. Preserve native async-generator finalization and client/stream
+ownership. A readiness future timeout does not complete its still-running HTTP request.
+Logging/cleanup failures must not replace native errors or retain completed dictionary entries.
+
+Record fields (schema version 1; omit unknown optional values):
+
+- Common: `schema_version`, `event`, `timestamp`, `attempt_id`, `logical_call_id`, `operation`,
+  `streaming`, optional `trace_id`/`span_id`.
+- LLM identity only: `provider`, `hosting`, optional audit-safe `model`.
+- MCP identity only: configured `mcp_server`, `mcp_transport` (`streamable_http` or `sse`).
+- Credential identity only: controlled `provider` (`azure`, `google`, `aws`), operation `token`.
+- Authority/measurement: `destination_scheme`, `destination_host`, `destination_port`, optional
+  `target_scheme`/`target_host`/`target_port` for a proxy, `request_body_bytes`, `timeout_ms`.
+- Completion: `outcome` (`success`/`failure`/`cancelled`), `duration_ms`, `http_status`,
+  `response_headers_ms`, `response_complete`, `response_body_bytes`, `failure_category`.
+- Native TLS evidence only: `decision`, `decision_control`, `deny_reason`.
+
+For Vertex, project recognized publisher-model resource identifiers to their public model
+name. Omit `model` for private model/endpoint resources or unrecognized resource/URI forms;
+never retain their project/path in audit metadata. Keep the original SDK model argument and
+ordinary model names (including other providers' qualified names) unchanged.
+
+Controlled failure categories: `dns`, `connect`, `tls`, `timeout`, `transport`, `http_error`,
+`stream_error`, `incomplete_response`, `cancelled`. Operations: `agent`, `tool_result_classifier`,
+`history`, `health`, or fallback `model`. Provider/hosting pairs: OpenAI `openai/openai`, Azure
+`openai/azure`, vLLM `openai/rhoai_vllm` or `openai/rhelai_vllm`, Anthropic `anthropic/anthropic`,
+Vertex `gemini/gcp.vertex_ai` or `anthropic/gcp.vertex_ai`, Bedrock `anthropic/bedrock` or
+`openai/bedrock`, Watsonx `watsonx/watsonx`.
+
+The loader observes the original constructed model's native transports through consolidated
+`ols/utils/audit_support.py` adapters. Preserve HTTPX/HTTPX2/aiohttp/urllib3/backend
+selection, proxy mounts, pooling, TLS, retries, backpressure, messages, callbacks and token
+accounting. Retain the native model name, qualified name and module on the dispatch subclass
+so LangChain naming, serialization/callback identity and cache keys remain native even with
+audit logging disabled. Reuse existing native cache entries; cache hits emit no HTTP attempts.
+IBM physical observation is below its retry loop and follows native TLS pool
+recreation. SDK-private hooks are version-sensitive and need native boundary regression tests.
+Unknown custom IBM transports without native pools are left unchanged, not replaced.
+
+Never include prompts, payloads, headers, credentials, raw exception text, full URLs, paths,
+queries or user/conversation/account/tenant/project/role/session identities. Count bytes only
+as consumed. Do not copy span content or unrelated application logs. Constructor/setup,
+metadata/token-count helpers and credential traffic are not LLM or MCP attempts. Static
+credentials, cache hits, preflight failures, local signing, incoming auth, Kubernetes,
+embeddings and remotely owned HTTP do not generate synthetic attempts. Live cloud/cluster
+qualification remains deferred. No guarantee of remote delivery, downstream indexing or
+five-second searchable availability is asserted.
+
+### Credential ownership and native acquisition
+
+Port the sandbox `AuthRequestMetadata` / `auth_request` pattern rather than credential policy.
+A credential scope uses its own logical-call ID and optional originating trace snapshot;
+nested same-provider scopes share that identity and restore the previous LLM/MCP scope.
+Only actual observed HTTP emits `auth.request.*`, including physical native retries.
+
+- Azure: decorate the original `ClientSecretCredential` token methods and its existing lazy
+  requests transport. Observe native acquisition, including MSAL discovery HTTP. Preserve
+  the service token cache, scopes, native credential/cache, pipeline, retries and transport.
+- Google Vertex (Gemini and Anthropic): decorate the native credentials returned by
+  `load_vertex_credentials`. Observe the requests session supplied to native `refresh`,
+  including Google async SDK worker refresh. Keep both supported JSON credential types,
+  JWT grants, native caches and local self-signing policy unchanged. Decorate native proxy
+  managers as selected by the original requests adapter; do not construct a session.
+- AWS: decorate the original STS client's connection-manager selection before the service's
+  existing `assume_role`. Keep eager acquisition, role/session parameters, signing and returned
+  native boto3 session unchanged; do not copy sandbox's lazy refresh credential policy.
+
+This sandbox port does **not** cover Watsonx IAM acquisition/refresh or arbitrary MCP OAuth
+helper exchanges. Watsonx's first IAM exchange occurs during SDK model construction;
+its original ownership/construction remains unchanged. Those are explicit coverage gaps,
+not synthetic successes. Unsupported custom credential/transport shapes remain unchanged.
+
+### MCP ownership and purpose
+
+`gather_mcp_tools` decorates native HTTP client factories without mutating caller connection
+configuration. Existing custom factories still receive their headers, timeout and auth
+objects and retain their client, TLS/proxy policy, pool, mounts and ownership. Discovery
+and the native tool interceptor carry controlled purposes into client construction. MCP
+Apps observe their existing native HTTP clients for resource reads and tool calls.
+
+MCP operations are `discovery`, `tool`, `resource`, or fallback `connection`. They describe
+the owning logical operation, not a JSON-RPC method inferred by inspecting request content.
+The client captures immutable server/purpose/logical-call/trace metadata once; native SDK
+background tasks and body consumers do not borrow unrelated LLM or later caller context.
+The `streaming` flag follows the native HTTP `send(stream=...)` mode for each request.
+
+Count actual HTTP traffic, including initialization, notifications, discovery pagination,
+SSE GET/reconnection, authentication retries of the original MCP request, and session
+termination. Long-lived SSE responses finish only at observed EOF, close, failure or
+cancellation, not when one RPC result arrives. Native auth-flow helper requests are not
+MCP attempts. Stdio and server-owned downstream HTTP are not instrumented. Do not retain
+MCP session IDs, JSON-RPC IDs, tool-call IDs, tool names, arguments, results or resource URIs.
+An HTTP 200 carrying a tool error can still be a successful physical HTTP attempt; existing
+tool error handling and safety decisions remain unchanged.
 
 ## Cross-References
 

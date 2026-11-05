@@ -8,6 +8,7 @@ from google.oauth2 import credentials as oauth2_credentials
 from google.oauth2 import service_account
 
 from ols.app.models.config import ModelParameters
+from ols.utils.audit_support import instrument_google_credentials
 
 # Vertex AI service account requires this scope to access the API
 # https://github.com/googleapis/python-genai/issues/2#issuecomment-2537279484
@@ -43,15 +44,17 @@ def load_vertex_credentials(credentials_json: str) -> GoogleCredentials:
         raise ValueError(msg)
     scopes = list(VERTEX_AI_OAUTH_SCOPES)
     if cred_type == "service_account":
-        return service_account.Credentials.from_service_account_info(
-            parsed,
-            scopes=scopes,
-        )  # type: ignore[no-untyped-call]
+        return instrument_google_credentials(
+            service_account.Credentials.from_service_account_info(
+                parsed, scopes=scopes
+            )  # type: ignore[no-untyped-call]
+        )
     if cred_type == "authorized_user":
-        return oauth2_credentials.Credentials.from_authorized_user_info(
-            parsed,
-            scopes=scopes,
-        )  # type: ignore[no-untyped-call]
+        return instrument_google_credentials(
+            oauth2_credentials.Credentials.from_authorized_user_info(
+                parsed, scopes=scopes
+            )  # type: ignore[no-untyped-call]
+        )
     msg = f"Unsupported Google credential type for Vertex: {cred_type!r}"
     raise ValueError(msg)
 

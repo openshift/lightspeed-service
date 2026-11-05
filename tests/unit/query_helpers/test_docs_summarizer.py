@@ -2,7 +2,7 @@
 
 import logging
 from typing import ClassVar
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
 import pytest
 from langchain_core.globals import get_debug, set_debug
@@ -159,7 +159,8 @@ def test_tool_result_classifier_logging(caplog):
 
 def test_tool_result_classifier_does_not_force_temperature() -> None:
     """Initialize the classifier without overriding model sampling parameters."""
-    loader = MagicMock(side_effect=mock_llm_loader(None))
+    original_loader = mock_llm_loader(None)
+    loader = MagicMock(side_effect=original_loader)
     with (
         patch.object(
             config.ols_config.guardrails.tool_result_inspection,
@@ -174,6 +175,10 @@ def test_tool_result_classifier_does_not_force_temperature() -> None:
         summarizer = DocsSummarizer(llm_loader=loader)
 
     assert summarizer._tool_result_classifier is not None
+    assert loader.call_args_list == [
+        call(summarizer.provider, summarizer.model, summarizer.generic_llm_params),
+        call(summarizer.provider, summarizer.model, {}),
+    ]
     # The classifier LLM must not carry a classifier-specific token cap:
     # a small max_output_tokens truncates thinking models' decisions (OLS-4653).
     loader.assert_called_with(summarizer.provider, summarizer.model, {})
@@ -248,8 +253,8 @@ def test_tool_result_classifier_uses_configured_temperature(
         mock_chat_anthropic.call_args.kwargs["max_tokens"]
         == DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
-    for call in mock_chat_anthropic.call_args_list:
-        kwargs = call.kwargs
+    for mock_call in mock_chat_anthropic.call_args_list:
+        kwargs = mock_call.kwargs
         if temperature is None:
             assert "temperature" not in kwargs
         else:

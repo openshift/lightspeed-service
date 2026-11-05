@@ -51,8 +51,13 @@ def llm_is_ready() -> bool:
             config.ols_config.default_provider,
             config.ols_config.default_model,
         )
+
+        def invoke_readiness() -> Any:
+            """Invoke the configured model in the existing executor worker."""
+            return bare_llm.invoke("Hello there!")
+
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(bare_llm.invoke, "Hello there!")
+        future = executor.submit(invoke_readiness)
         try:
             response = future.result(timeout=LLM_READINESS_TIMEOUT)
         finally:
