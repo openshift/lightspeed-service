@@ -28,10 +28,20 @@ spec:
         - --tool-call-parser=qwen3_coder
         - --reasoning-parser=qwen3
         - --language-model-only
+        - '--default-chat-template-kwargs={"enable_thinking": false}'
+      env:
+        - name: VLLM_CPU_OMP_THREADS_BIND
+          value: "16-30"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+              optional: true
       resources:
         requests:
-          cpu: "10"
+          cpu: "24"
           memory: 100Gi
         limits:
-          cpu: "14"
+          cpu: "28"
           memory: 128Gi
