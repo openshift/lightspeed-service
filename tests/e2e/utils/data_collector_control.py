@@ -4,13 +4,13 @@ This module provides methods to configure the lightspeed-to-dataverse-exporter
 for testing purposes.
 """
 
-import json
 import os
 import time
 
 import yaml
 
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import cluster_api
 from tests.e2e.utils.constants import OLS_USER_DATA_PATH
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -67,18 +67,9 @@ class DataCollectorControl:
         """
         try:
             # Get the current config map (created by operator)
-            result = cluster_utils.run_oc(
-                [
-                    "get",
-                    "configmap",
-                    EXPORTER_CONFIG_MAP_NAME,
-                    "-n",
-                    EXPORTER_NAMESPACE,
-                    "-o",
-                    "yaml",
-                ]
+            configmap = cluster_api.read_resource(
+                "configmap", EXPORTER_CONFIG_MAP_NAME, EXPORTER_NAMESPACE
             )
-            configmap = yaml.safe_load(result.stdout)
 
             # Store original config for restoration (only first time)
             if self._original_exporter_config is None:
@@ -113,21 +104,11 @@ class DataCollectorControl:
             exporter_config_str = yaml.dump(exporter_config, default_flow_style=False)
 
             # Patch the ConfigMap
-            patch_data = json.dumps(
-                {"data": {EXPORTER_CONFIG_FILENAME: exporter_config_str}}
-            )
-            result = cluster_utils.run_oc(
-                [
-                    "patch",
-                    "configmap",
-                    EXPORTER_CONFIG_MAP_NAME,
-                    "-n",
-                    EXPORTER_NAMESPACE,
-                    "--type",
-                    "merge",
-                    "-p",
-                    patch_data,
-                ]
+            cluster_api.patch_resource(
+                "configmap",
+                EXPORTER_CONFIG_MAP_NAME,
+                {"data": {EXPORTER_CONFIG_FILENAME: exporter_config_str}},
+                EXPORTER_NAMESPACE,
             )
             # Log what was updated
             print("Exporter config updated:")
@@ -160,15 +141,7 @@ class DataCollectorControl:
 
         # Scale down deployment first to ensure clean restart
         print("Scaling down deployment before ConfigMap update...")
-        cluster_utils.run_oc(
-            [
-                "scale",
-                "deployment/lightspeed-app-server",
-                "-n",
-                EXPORTER_NAMESPACE,
-                "--replicas=0",
-            ]
-        )
+        cluster_api.scale_deployment("lightspeed-app-server", 0, EXPORTER_NAMESPACE)
 
         # Wait for pod to terminate completely
         print("Waiting for pod to terminate...")
@@ -209,15 +182,7 @@ class DataCollectorControl:
         """
         try:
             print("Scaling deployment back up...")
-            cluster_utils.run_oc(
-                [
-                    "scale",
-                    "deployment/lightspeed-app-server",
-                    "-n",
-                    EXPORTER_NAMESPACE,
-                    "--replicas=1",
-                ]
-            )
+            cluster_api.scale_deployment("lightspeed-app-server", 1, EXPORTER_NAMESPACE)
             print("Waiting for new pod to start...")
             time.sleep(5)
 
@@ -228,10 +193,9 @@ class DataCollectorControl:
                 try:
                     new_pod = cluster_utils.get_pod_by_prefix()[0]
                     # Verify pod is ready
-                    result = cluster_utils.run_oc(
-                        ["get", "pod", new_pod, "-n", EXPORTER_NAMESPACE, "-o", "json"]
+                    pod_info = cluster_api.read_resource(
+                        "pod", new_pod, EXPORTER_NAMESPACE
                     )
-                    pod_info = yaml.safe_load(result.stdout)
                     if pod_info.get("status", {}).get("phase") == "Running":
                         self.pod_name = new_pod
                         print(f"New pod {new_pod} is ready")
@@ -270,18 +234,9 @@ class DataCollectorControl:
         """
         try:
             # Get container logs to verify config
-            log_result = cluster_utils.run_oc(
-                [
-                    "logs",
-                    pod_name,
-                    "-c",
-                    container_name,
-                    "-n",
-                    EXPORTER_NAMESPACE,
-                    "--tail=50",
-                ]
+            logs = cluster_api.pod_logs(
+                pod_name, container_name, EXPORTER_NAMESPACE, tail_lines=50
             )
-            logs = log_result.stdout
 
             # Look for collection interval in logs
             for line in logs.split("\n"):
@@ -353,34 +308,28 @@ def patch_exporter_mode_to_manual() -> None:
     #   ["--mode", "openshift", "--config", "/etc/config/config.yaml", ...]
     # to:
     #   ["--mode", "manual", "--config", "/etc/config/config.yaml", ...]
-    patch = json.dumps(
-        [
-            {
-                "op": "replace",
-                "path": "/spec/template/spec/containers/1/args",
-                "value": [
-                    "--mode",
-                    "manual",
-                    "--config",
-                    "/etc/config/config.yaml",
-                    "--log-level",
-                    "DEBUG",
-                    "--data-dir",
-                    "/app-root/ols-user-data",
-                ],
-            }
-        ]
-    )
-    cluster_utils.run_oc(
-        [
-            "patch",
-            "deployment/lightspeed-app-server",
-            "-n",
-            EXPORTER_NAMESPACE,
-            "--type=json",
-            "-p",
-            patch,
-        ]
+    patch = [
+        {
+            "op": "replace",
+            "path": "/spec/template/spec/containers/1/args",
+            "value": [
+                "--mode",
+                "manual",
+                "--config",
+                "/etc/config/config.yaml",
+                "--log-level",
+                "DEBUG",
+                "--data-dir",
+                "/app-root/ols-user-data",
+            ],
+        }
+    ]
+    cluster_api.patch_resource(
+        "deployment",
+        "lightspeed-app-server",
+        patch,
+        EXPORTER_NAMESPACE,
+        patch_type="json",
     )
     print("Deployment patched: exporter now using manual mode")
 
@@ -421,15 +370,7 @@ def prepare_for_data_collection_test(
 
     # Scale down deployment to apply changes
     print("Scaling down deployment...")
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "-n",
-            EXPORTER_NAMESPACE,
-            "--replicas=0",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 0, EXPORTER_NAMESPACE)
 
     # Wait for pod to terminate
     print("Waiting for pod to terminate...")

@@ -29,10 +29,10 @@ function cleanup_ols_operator() {
     oc scale deployment lightspeed-operator-controller-manager -n openshift-lightspeed --replicas=1
 
     # delete the OLS operand
-    oc delete --wait --ignore-not-found olsconfig/cluster
+    oc delete --wait --ignore-not-found olsconfig/cluster -n openshift-lightspeed
         
     # cleanup the bundle
-    operator-sdk cleanup lightspeed-operator
+    operator-sdk cleanup lightspeed-operator -n openshift-lightspeed
     
     # delete the OLS namespace
     oc delete --wait --ignore-not-found ns openshift-lightspeed

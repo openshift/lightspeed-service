@@ -144,7 +144,7 @@ verify:	install-woke install-deps-test verify-hermetic-requirements ## Verify th
 	uv run black . --check
 	uv run ruff check .
 	./woke . --exit-1-on-failure
-	uv run --extra evaluation pylint ols scripts tests runner.py
+	uv run --extra evaluation pylint ols scripts/*.py tests runner.py
 	uv run --extra evaluation mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 verify-hermetic-requirements:	## Verify hermetic build hash files are in sync with uv.lock

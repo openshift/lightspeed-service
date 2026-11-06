@@ -20,7 +20,7 @@ from tests.e2e.mcp.server.server import (
     BENIGN_INSPECTION_RESULT,
     MALICIOUS_INSPECTION_RESULT,
 )
-from tests.e2e.utils import cluster
+from tests.e2e.utils import cluster_api
 from tests.e2e.utils.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.utils.inspection_assertions import (
     assert_inspection_outcome,
@@ -92,18 +92,14 @@ def _read_sse_events(response_text: str) -> list[dict]:
 
 def _assert_mock_tool_called(tool_name: str) -> None:
     """Make sure that the mock MCP server received the named tool call."""
-    logs = cluster.run_oc(
-        ["logs", "deployment/mcp-mock-server", "-n", NAMESPACE]
-    ).stdout
+    logs = cluster_api.deployment_logs("mcp-mock-server", NAMESPACE)
     if f"MCP tool called: {tool_name}" not in logs:
         pytest.fail("The mock MCP server did not record the expected tool call")
 
 
 def _service_logs() -> str:
     """Read app-server logs without exposing them in assertion failures."""
-    return cluster.run_oc(
-        ["logs", "deployment/lightspeed-app-server", "-n", NAMESPACE]
-    ).stdout
+    return cluster_api.deployment_logs("lightspeed-app-server", NAMESPACE)
 
 
 def _inspection_outcomes_since(previous: str, current: str) -> list[tuple[str, str]]:
@@ -129,9 +125,7 @@ def _failure_diagnostics_since(
         outcomes = _inspection_outcomes_since(previous_logs, current_logs)
         classifier_failures = classifier_failures_since(previous_logs, current_logs)
     try:
-        mock_logs = cluster.run_oc(
-            ["logs", "deployment/mcp-mock-server", "-n", NAMESPACE]
-        ).stdout
+        mock_logs = cluster_api.deployment_logs("mcp-mock-server", NAMESPACE)
         mock_tool_called = f"MCP tool called: {tool_name}" in mock_logs
     except Exception:
         mock_tool_called = None
@@ -283,9 +277,7 @@ def test_malicious_tool_result_fails_closed_without_leaking_content(
 
     _assert_mock_tool_called(tool_name)
     service_logs = _service_logs()
-    mock_logs = cluster.run_oc(
-        ["logs", "deployment/mcp-mock-server", "-n", NAMESPACE]
-    ).stdout
+    mock_logs = cluster_api.deployment_logs("mcp-mock-server", NAMESPACE)
     assert_rejected_result_absent(
         {
             "response_text": MALICIOUS_INSPECTION_RESULT in response_text,

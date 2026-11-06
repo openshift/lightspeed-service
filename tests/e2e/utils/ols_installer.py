@@ -1,6 +1,5 @@
 """Functions to install the service onto an OCP cluster using the OLS operator."""
 
-import json
 import os
 import subprocess
 import time
@@ -8,36 +7,25 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
+from openshift.dynamic.exceptions import ConflictError, DynamicApiError
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import cluster_api
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.olsconfig_cr import apply_e2e_olsconfig
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
-OC_COMMAND_RETRY_COUNT = 120
-OC_COMMAND_RETRY_DELAY = 5
+CLUSTER_RETRY_COUNT = 120
+CLUSTER_RETRY_DELAY = 5
 
 disconnected = os.getenv("DISCONNECTED", "")
 
 
 def _app_server_deployment_exists() -> bool:
-    """Return True if the OLS API Deployment exists (``oc -o name`` shape varies by version)."""
-    name_line = cluster_utils.run_oc(
-        [
-            "get",
-            "deployment",
-            "lightspeed-app-server",
-            "--ignore-not-found",
-            "-o",
-            "name",
-        ]
-    ).stdout.strip()
-    return name_line in (
-        "deployment.apps/lightspeed-app-server",
-        "deployment/lightspeed-app-server",
-    )
+    """Return whether the OLS API Deployment exists."""
+    return cluster_utils.deployment_exists("lightspeed-app-server")
 
 
 def _wait_for_operator_controller_ready() -> None:
@@ -64,16 +52,16 @@ def _wait_for_operator_controller_ready() -> None:
 
 def _dump_ols_install_debug() -> None:
     """Print cluster state to logs when install waits fail (Konflux / Azure debugging)."""
-    for label, args in (
-        ("OLSConfig", ["get", "olsconfig", "cluster", "-o", "yaml"]),
-        ("deployments", ["get", "deployments", "-n", "openshift-lightspeed"]),
-        ("CSV", ["get", "csv", "-n", "openshift-lightspeed", "-o", "wide"]),
+    for resource, name in (
+        ("olsconfig", "cluster"),
+        ("deployment", None),
+        ("clusterserviceversion", None),
     ):
         try:
-            print(f"--- {label} (debug) ---")
-            print(cluster_utils.run_oc(args).stdout)
+            print(f"--- {resource} (debug) ---")
+            print(yaml.safe_dump(cluster_api.read_resource(resource, name)))
         except Exception as e:
-            print(f"Could not get {label}: {e}")
+            print(f"Could not get {resource}: {e}")
 
 
 def create_and_config_sas() -> tuple[str, str]:
@@ -82,9 +70,6 @@ def create_and_config_sas() -> tuple[str, str]:
     Returns:
         tuple containing token and metrics token.
     """
-    cluster_utils.run_oc(
-        ["project", "openshift-lightspeed"], ignore_existing_resource=True
-    )
     cluster_utils.create_user("test-user", ignore_existing_resource=True)
     cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
     token = cluster_utils.get_token_for("test-user")
@@ -101,29 +86,7 @@ def create_and_config_sas() -> tuple[str, str]:
     # grant pod listing permission to test-user - to test the tools,
     # more specifically the we need the test-user be able to see pods
     # in the namespace
-    cluster_utils.run_oc(
-        [
-            "create",
-            "role",
-            "pod-reader",
-            "--verb=get,list",
-            "--resource=pods",
-            "--namespace=openshift-lightspeed",
-        ],
-        ignore_existing_resource=True,
-    )
-
-    cluster_utils.run_oc(
-        [
-            "create",
-            "rolebinding",
-            "test-user-pod-reader",
-            "--role=pod-reader",
-            "--serviceaccount=openshift-lightspeed:test-user",
-            "--namespace=openshift-lightspeed",
-        ],
-        ignore_existing_resource=True,
-    )
+    cluster_api.configure_pod_reader()
 
     print("Granted test-user permission to list pods.")
 
@@ -137,8 +100,7 @@ def update_ols_config() -> None:
         Nothing.
     """
     # modify olsconfig configmap
-    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
-    configmap = yaml.safe_load(configmap_yaml)
+    configmap = cluster_api.read_resource("configmap", "olsconfig")
     olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
 
     # one of our libs logs a secrets in debug mode which causes the pod
@@ -175,10 +137,17 @@ def update_ols_config() -> None:
         }
 
     configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
-    updated_configmap = yaml.dump(configmap)
-
-    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
-    cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
+    cluster_api.patch_resource(
+        "configmap",
+        "olsconfig",
+        {
+            "data": {
+                DEFAULT_CONFIGURATION_FILE: configmap["data"][
+                    DEFAULT_CONFIGURATION_FILE
+                ]
+            }
+        },
+    )
 
 
 def replace_ols_image(ols_image: str) -> None:
@@ -194,8 +163,8 @@ def replace_ols_image(ols_image: str) -> None:
 
     # Ensure the operator controller manager pod is gone before touching anything else
     retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        OC_COMMAND_RETRY_DELAY,
+        CLUSTER_RETRY_COUNT,
+        CLUSTER_RETRY_DELAY,
         lambda: not cluster_utils.get_pod_by_prefix(
             "lightspeed-operator-controller-manager", fail_not_found=False
         ),
@@ -204,27 +173,28 @@ def replace_ols_image(ols_image: str) -> None:
 
     # scale down the ols api server so we can ensure no pods
     # are still running the unsubstituted image
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "0",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 0)
 
     # wait for the old ols api pod to go away due to deployment being scaled down
     retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        OC_COMMAND_RETRY_DELAY,
+        CLUSTER_RETRY_COUNT,
+        CLUSTER_RETRY_DELAY,
         lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
         "Waiting for OLS API pod to be scaled down",
     )
 
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
-    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
-    cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+    cluster_api.patch_resource(
+        "deployment",
+        "lightspeed-app-server",
+        [
+            {
+                "op": "replace",
+                "path": "/spec/template/spec/containers/0/image",
+                "value": ols_image,
+            }
+        ],
+        patch_type="json",
     )
 
 
@@ -253,18 +223,17 @@ def ensure_azure_entra_id_secret() -> None:
     client_secret = values["AZUREOPENAI_ENTRA_ID_CLIENT_SECRET"]
 
     print("Ensuring azure-entra-id secret exists...")
-    cluster_utils.run_oc(
-        [
-            "create",
-            "secret",
-            "generic",
-            "azure-entra-id",
-            f"--from-literal=tenant_id={tenant_id}",
-            f"--from-literal=client_id={client_id}",
-            f"--from-literal=client_secret={client_secret}",
-        ],
-        ignore_existing_resource=True,
-    )
+    credentials = {
+        "tenant_id": tenant_id,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    try:
+        cluster_api.create_secret("azure-entra-id", credentials, ignore_existing=False)
+    except ConflictError:
+        cluster_api.patch_resource(
+            "secret", "azure-entra-id", {"stringData": credentials}
+        )
 
 
 _BEDROCK_IAM_ENV_KEYS: tuple[str, ...] = (
@@ -307,45 +276,20 @@ def ensure_bedrock_iam_secret(creds: str) -> None:
             f"Set these CI/Vault/Prow env vars before running Bedrock e2e tests."
         )
 
-    oc_args: list[str] = [
-        "create",
-        "secret",
-        "generic",
-        "llmcreds",
-    ]
-
+    prefix = "BEDROCK_ROLE_" if creds == "iam_role" else "BEDROCK_"
+    data = {
+        "aws_access_key_id": values[prefix + "AWS_ACCESS_KEY_ID"],
+        "aws_secret_access_key": values[prefix + "AWS_SECRET_ACCESS_KEY"],
+    }
     if creds == "iam_role":
-        oc_args.extend(
-            [
-                f"--from-literal=aws_access_key_id={values['BEDROCK_ROLE_AWS_ACCESS_KEY_ID']}",
-                f"--from-literal=aws_secret_access_key={values['BEDROCK_ROLE_AWS_SECRET_ACCESS_KEY']}",
-                f"--from-literal=role_arn={values['BEDROCK_ROLE_ARN']}",
-            ]
-        )
-    else:
-        oc_args.extend(
-            [
-                f"--from-literal=aws_access_key_id={values['BEDROCK_AWS_ACCESS_KEY_ID']}",
-                f"--from-literal=aws_secret_access_key={values['BEDROCK_AWS_SECRET_ACCESS_KEY']}",
-            ]
-        )
-
+        data["role_arn"] = values["BEDROCK_ROLE_ARN"]
     print(f"Ensuring Bedrock IAM secret exists (mode={creds})...")
-    cluster_utils.run_oc(oc_args, ignore_existing_resource=True)
+    cluster_api.create_secret("llmcreds", data)
 
 
 def _delete_secret(secret_name: str) -> None:
     """Delete a secret, tolerating its absence."""
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "secret",
-                secret_name,
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print(f"secret {secret_name} does not yet exist. Creating it.")
+    cluster_api.delete_resource("secret", secret_name, ignore_missing=True)
 
 
 def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
@@ -368,27 +312,11 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
         return
     if creds == "empty":
         _delete_secret("llmcreds")
-        cluster_utils.run_oc(
-            [
-                "create",
-                "secret",
-                "generic",
-                "llmcreds",
-                f"--from-literal=apitoken={creds}",
-            ],
-            ignore_existing_resource=True,
-        )
+        cluster_api.create_secret("llmcreds", {"apitoken": creds})
     elif provider_size == 1:
         _delete_secret("llmcreds")
-        cluster_utils.run_oc(
-            [
-                "create",
-                "secret",
-                "generic",
-                "llmcreds",
-                f"--from-file=apitoken={creds}",
-            ],
-            ignore_existing_resource=True,
+        cluster_api.create_secret(
+            "llmcreds", {"apitoken": Path(creds).read_text(encoding="utf-8")}
         )
     else:
         # Only refresh this provider's own secret: other providers in the
@@ -396,15 +324,8 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
         # foreign secret here would break a multi-provider deployment.
         secret_name = provider_name.replace("_", "-") + "creds"
         _delete_secret(secret_name)
-        cluster_utils.run_oc(
-            [
-                "create",
-                "secret",
-                "generic",
-                secret_name,
-                f"--from-file=apitoken={creds}",
-            ],
-            ignore_existing_resource=True,
+        cluster_api.create_secret(
+            secret_name, {"apitoken": Path(creds).read_text(encoding="utf-8")}
         )
 
 
@@ -497,20 +418,10 @@ def warm_up_rhokp_image() -> None:
 
     Runs at most once per CI job: ARTIFACT_DIR is shared by every suite in
     a job, so a marker file records the warmed image and later suites skip
-    the pull (each pull spawns an ``oc debug`` pod on every node).
+    the pull (each pull uses a short-lived pod on every node).
     """
-    operator_deployment = json.loads(
-        cluster_utils.run_oc(
-            [
-                "get",
-                "deployment",
-                "lightspeed-operator-controller-manager",
-                "-n",
-                "openshift-lightspeed",
-                "-o",
-                "json",
-            ]
-        ).stdout
+    operator_deployment = cluster_api.read_resource(
+        "deployment", "lightspeed-operator-controller-manager"
     )
     rhokp_image = next(
         (
@@ -534,9 +445,7 @@ def warm_up_rhokp_image() -> None:
             print(f"RHOKP image already warmed in this job: {rhokp_image}")
             return
 
-    nodes = json.loads(cluster_utils.run_oc(["get", "nodes", "-o", "json"]).stdout)[
-        "items"
-    ]
+    nodes = cluster_api.read_resource("node")["items"]
     if not nodes:
         raise RuntimeError("Could not find any cluster nodes to warm up")
 
@@ -547,17 +456,9 @@ def warm_up_rhokp_image() -> None:
             print(f"Pulling RHOKP image on node {node_name}: {rhokp_image}")
             pulls.append(
                 executor.submit(
-                    cluster_utils.run_oc,
-                    [
-                        "debug",
-                        f"node/{node_name}",
-                        "--",
-                        "chroot",
-                        "/host",
-                        "crictl",
-                        "pull",
-                        rhokp_image,
-                    ],
+                    cluster_api.warm_image,
+                    node_name,
+                    rhokp_image,
                     timeout=600,
                 )
             )
@@ -578,32 +479,26 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest",
         )
         # setup the lightspeed namespace
-        cluster_utils.run_oc(
-            ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
-        )
-        cluster_utils.run_oc(
-            ["project", "openshift-lightspeed"], ignore_existing_resource=True
+        cluster_api.create_resource(
+            {
+                "apiVersion": "v1",
+                "kind": "Namespace",
+                "metadata": {"name": "openshift-lightspeed"},
+            },
+            ignore_existing=True,
         )
         print("created OLS project")
 
         # HyperShift mirrors are provisioned through HostedCluster; guest-side
         # ImageDigestMirrorSet mutations are rejected by admission policy.
         if os.getenv("OLS_EXTERNAL_IMAGE_MIRRORS", "false") != "true":
-            cluster_utils.run_oc(
-                [
-                    "apply",
-                    "-f",
-                    "tests/config/operator_install/imagedigestmirrorset.yaml",
-                ],
-                ignore_existing_resource=True,
+            cluster_api.apply_file(
+                "tests/config/operator_install/imagedigestmirrorset.yaml"
             )
 
         # install the operator from bundle
         print("Installing OLS operator from bundle")
         _run_bundle_with_retry(bundle_image)
-    cluster_utils.run_oc(
-        ["project", "openshift-lightspeed"], ignore_existing_resource=True
-    )
     token, metrics_token = create_and_config_sas()
 
     # wait for the operator to install
@@ -611,15 +506,10 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     r = retry_until_timeout_or_success(
         120,
         10,
-        lambda: cluster_utils.run_oc(
-            [
-                "get",
-                "clusterserviceversion",
-                "-o",
-                "jsonpath={.items[0].status.phase}",
-            ]
-        ).stdout
-        == "Succeeded",
+        lambda: any(
+            csv.get("status", {}).get("phase") == "Succeeded"
+            for csv in cluster_api.read_resource("clusterserviceversion")["items"]
+        ),
         "Waiting for OLS operator to install",
     )
     if not r:
@@ -642,17 +532,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     warm_up_rhokp_image()
 
     # create the olsconfig operand
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "olsconfig",
-                "cluster",
-                "--wait",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("olsconfig does not yet exist. Creating it.")
+    cluster_api.delete_resource("olsconfig", "cluster", ignore_missing=True)
 
     try:
         crd_yml_file = "tests/config/operator_install/olsconfig.crd.evaluation.yaml"
@@ -679,31 +559,20 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             "create",
             suffix=ols_config_suffix,
             substitute_environment=substitute_environment,
-            ignore_existing_resource=True,
+            ignore_existing_resource=False,
         )
 
-    except subprocess.CalledProcessError as e:
-        csv = cluster_utils.run_oc(
-            ["get", "clusterserviceversion", "-o", "jsonpath={.items[0].status}"]
-        )
-        print(
-            f"Error creating olsconfig: {e}, stdout: {e.output}, stderr: {e.stderr}, csv: {csv}"
-        )
+    except DynamicApiError as e:
+        csv = cluster_api.read_resource("clusterserviceversion")
+        print(f"Error creating olsconfig: {e}, csv: {csv}")
         raise
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "1",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-operator-controller-manager", 1)
     _wait_for_operator_controller_ready()
 
     # wait for the ols api server deployment to be created
     r = retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        OC_COMMAND_RETRY_DELAY,
+        CLUSTER_RETRY_COUNT,
+        CLUSTER_RETRY_DELAY,
         _app_server_deployment_exists,
         "Waiting for OLS API server deployment to be created",
     )
@@ -717,8 +586,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     # Ensure ols pod exists so it gets deleted during the scale down to zero, otherwise
     # there may be a race condition.
     retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        OC_COMMAND_RETRY_DELAY,
+        CLUSTER_RETRY_COUNT,
+        CLUSTER_RETRY_DELAY,
         lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False),
     )
 
@@ -726,14 +595,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     new_ols_image = os.getenv("OLS_IMAGE", "")
 
     # scale down the operator controller manager to avoid it interfering with the tests
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "0",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-operator-controller-manager", 0)
 
     if new_ols_image != "":
         replace_ols_image(new_ols_image)
@@ -741,24 +603,10 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     # Scale down server pod. If image is replaced, it won't do anything
     # otherwise, it enables the config modification and subsequent
     # scaling up
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "0",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 0)
     update_ols_config()
     # scale the ols app server up
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "1",
-        ]
-    )
+    cluster_api.scale_deployment("lightspeed-app-server", 1)
     print("Deployment updated, waiting for new pod to be ready")
     # Wait for the pod to start being created and then wait for it to start running.
     cluster_utils.wait_for_running_pod(wait_http_ready=False)
@@ -766,13 +614,9 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     print("-" * 50)
     print("OLS pod seems to be ready")
     print("All pods")
-    print(cluster_utils.run_oc(["get", "pods"]).stdout)
+    print(yaml.safe_dump(cluster_api.read_resource("pod")))
     print("Running pods")
-    print(
-        cluster_utils.run_oc(
-            ["get", "pods", "--field-selector=status.phase=Running"]
-        ).stdout
-    )
+    print(cluster_utils.get_running_pods())
     pod_name = cluster_utils.get_pod_by_prefix()[0]
     print(f"Found new running OLS pod {pod_name}")
     print("-" * 50)
@@ -780,9 +624,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     # Print the deployment so we can confirm the configuration is what we
     # expect it to be (must-gather will also collect this)
     print(
-        cluster_utils.run_oc(
-            ["get", "deployment", "lightspeed-app-server", "-o", "yaml"]
-        ).stdout
+        yaml.safe_dump(cluster_api.read_resource("deployment", "lightspeed-app-server"))
     )
     print("-" * 50)
     if not disconnected:
@@ -800,22 +642,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             print(f"Warning: Could not configure exporter: {e}")
             print("Tests may experience interference from data collector")
 
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "route",
-                "ols",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("No route exists, creating it.")
-    # create a route so tests can access OLS directly
-    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/route.yaml"])
-
-    url = cluster_utils.run_oc(
-        ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
-    ).stdout.strip("'")
-    ols_url = f"https://{url}"
+    cluster_api.delete_resource("route", "ols", ignore_missing=True)
+    cluster_api.apply_file("tests/config/operator_install/route.yaml")
+    ols_url = cluster_utils.get_ols_url("ols")
     wait_for_ols(ols_url)
     return ols_url, token, metrics_token

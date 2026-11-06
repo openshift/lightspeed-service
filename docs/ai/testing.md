@@ -106,6 +106,39 @@ async def test_async(mock_load_llm):
     ...
 ```
 
+## Native cluster access
+
+Test code uses `tests/e2e/utils/cluster_api.py` for structured OpenShift API
+operations and `cluster.py` for OLS-specific helpers. Do not add subprocess `oc`
+calls in Python test helpers. Shell-based setup, cleanup, and RHOAI provisioning
+continue to use the `oc` CLI.
+
+- Authentication is lazy; explicit `KUBECONFIG` takes precedence over in-cluster
+  credentials. Helpers use explicit namespaces and never change the current context.
+- Resource discovery goes through `cluster_api.resource_for`; authentication and
+  the 120-second default HTTP timeout (including discovery) live in `openshift_client`.
+- Patch only the changed data when editing fetched ConfigMaps. Declarative manifests
+  use server-side apply without forcing field ownership; this is not client-side
+  `oc apply`. OLSConfig replacement requires successful deletion before creation,
+  and unexpected existing resources are errors.
+- Mock API operations at their usage sites. The E2E helper unit tests reject
+  unmocked credential loading; they must not require a running cluster.
+- Preserve API error semantics: suppress only the requested missing/existing
+  resource cases, not authorization failures.
+- Pod execution uses a bounded WebSocket and checks the remote exit status.
+  Kubernetes 33.1.0 ignores `_request_timeout` during WebSocket connection setup.
+  `get_client()` installs a small `BoundedWebSocket` compatibility shim in
+  `kubernetes.stream.ws_client` with a 120s connection timeout. It affects only
+  Kubernetes WebSockets in the E2E process, not HTTP or socket defaults.
+  Connection setup has this fixed timeout even with a shorter execution deadline;
+  the execution deadline starts before the handshake, not after it.
+  The Kubernetes `WSClient` is not a context manager; close it explicitly, and
+  read its channels with an explicit `timeout` — the default blocks forever when
+  a running command produces no output, defeating the execution deadline.
+- Session tokens remain secret-backed because evaluation subprocesses reuse them
+  without refreshing. Session-finish cleanup deletes their secrets even when the
+  test namespace is retained; startup failures also trigger token cleanup.
+
 ## Parametrize for Variants
 
 Use `@pytest.mark.parametrize` instead of duplicating test functions:

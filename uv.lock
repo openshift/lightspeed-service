@@ -2790,6 +2790,7 @@ dev = [
     { name = "gradio" },
     { name = "memray" },
     { name = "mypy" },
+    { name = "openshift" },
     { name = "packaging" },
     { name = "pybuild-deps" },
     { name = "pydantic" },
@@ -2876,6 +2877,7 @@ dev = [
     { name = "gradio", specifier = ">=4.44.1" },
     { name = "memray", specifier = ">=1.15.0" },
     { name = "mypy", specifier = ">=1.17.0" },
+    { name = "openshift", specifier = ">=0.13.2" },
     { name = "packaging", specifier = ">=24.1" },
     { name = "pybuild-deps", specifier = ">=0.5.0" },
     { name = "pydantic", specifier = ">=2.9.2" },
@@ -2911,6 +2913,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/50/9a/8c75e8c8a5b407a0586faeb2afac91674ff955c191ecc1d6d3b6669f6788/openai-2.54.0.tar.gz", hash = "sha256:e3e6f8bc1ba30ddf381ace1a14340eed381cb984a1a59bd0f34b5be3b5d49cfa", size = 1100285, upload-time = "2026-08-11T18:46:59.035Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/64/a8/bb76c7356de8ad57f59d5ff993d434df0607f07f08bcc9c9a5c275e399c0/openai-2.54.0-py3-none-any.whl", hash = "sha256:89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b", size = 1660351, upload-time = "2026-08-11T18:46:56.684Z" },
+]
+
+[[package]]
+name = "openshift"
+version = "0.13.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kubernetes" },
+    { name = "python-string-utils" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/f6/9e2e4935b59726bff3d53da35afba3904fe9ed693efedd6b7bbddff6cc78/openshift-0.13.2.tar.gz", hash = "sha256:f55789fce56fcbf7e2cd9377a68c4a99ab406074d3324b9abcca98477d101471", size = 19539, upload-time = "2023-07-25T22:28:44.379Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/74/68/0e4ff591b6369f5ee5b50a8600e7db1444d5527f2a67a5d17b6b5ae8523c/openshift-0.13.2-py3-none-any.whl", hash = "sha256:f1459006fc7f96ff7d2f6c0c00bdef5cb2e75a1b466f601997d9084a816a8949", size = 18170, upload-time = "2023-07-25T22:28:43.234Z" },
 ]
 
 [[package]]
@@ -3674,6 +3690,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5b/42/55c32bb9b12693c092ad250a0e82edb5b31ddeda6eb772de5f308b3804ad/python_multipart-0.0.32.tar.gz", hash = "sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e", size = 46881, upload-time = "2026-06-04T16:18:58.647Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl", hash = "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23", size = 30042, upload-time = "2026-06-04T16:18:57.319Z" },
+]
+
+[[package]]
+name = "python-string-utils"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/91/8c883b83c7d039ca7e6c8f8a7e154a27fdeddd98d14c10c5ee8fe425b6c0/python-string-utils-1.0.0.tar.gz", hash = "sha256:dcf9060b03f07647c0a603408dc8b03f807f3b54a05c6e19eb14460256fac0cb", size = 20147, upload-time = "2020-03-04T20:18:59.402Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/09/6e87b91d3bb2daca20aa3db6c027735be59809dbf3415933b3b19654ca6f/python_string_utils-1.0.0-py3-none-any.whl", hash = "sha256:f1a88700baf99db1a9b6953f44181ad9ca56623c81e257e6009707e2e7851fa4", size = 26322, upload-time = "2020-03-04T20:18:57.755Z" },
 ]
 
 [[package]]

@@ -1,453 +1,288 @@
-"""Unit tests for e2e OLS installation."""
+"""Test cluster installation orchestration without cluster access."""
 
-import json
-import subprocess
 from pathlib import Path
 from threading import Barrier
-from typing import Any
+from unittest.mock import Mock
 
 import pytest
-import yaml
+from kubernetes.client.exceptions import ApiException
+from openshift.dynamic.exceptions import ConflictError, ForbiddenError
 
-from tests.e2e.utils import cluster, ols_installer
+from tests.e2e.utils import cluster_api, ols_installer
+
+
+@pytest.mark.parametrize("credentials_available", [False, True])
+def test_ensure_azure_entra_id_secret_refreshes_credentials(
+    monkeypatch: pytest.MonkeyPatch, credentials_available: bool
+) -> None:
+    """Replace stale credentials only when all new values are available."""
+    values = {
+        "AZUREOPENAI_ENTRA_ID_TENANT_ID": "tenant",
+        "AZUREOPENAI_ENTRA_ID_CLIENT_ID": "client",
+        "AZUREOPENAI_ENTRA_ID_CLIENT_SECRET": "new-secret",
+    }
+    for key, value in values.items():
+        monkeypatch.setenv(key, value)
+    if not credentials_available:
+        monkeypatch.delenv("AZUREOPENAI_ENTRA_ID_CLIENT_SECRET")
+    calls = Mock()
+    monkeypatch.setattr(cluster_api, "delete_resource", calls.delete_resource)
+    monkeypatch.setattr(cluster_api, "create_secret", calls.create_secret)
+    monkeypatch.setattr(cluster_api, "patch_resource", calls.patch_resource)
+    ols_installer.ensure_azure_entra_id_secret()
+    if not credentials_available:
+        assert not calls.mock_calls
+        return
+    assert [call[0] for call in calls.mock_calls] == ["create_secret"]
+    calls.delete_resource.assert_not_called()
+    calls.create_secret.assert_called_once_with(
+        "azure-entra-id",
+        {"tenant_id": "tenant", "client_id": "client", "client_secret": "new-secret"},
+        ignore_existing=False,
+    )
+
+
+@pytest.mark.parametrize("write_fails", [False, True])
+def test_existing_entra_secret_is_updated_without_deletion(
+    monkeypatch: pytest.MonkeyPatch, write_fails: bool
+) -> None:
+    """Keep the existing Secret intact if updating rotated credentials fails."""
+    for key, value in {
+        "AZUREOPENAI_ENTRA_ID_TENANT_ID": "tenant",
+        "AZUREOPENAI_ENTRA_ID_CLIENT_ID": "client",
+        "AZUREOPENAI_ENTRA_ID_CLIENT_SECRET": "rotated",
+    }.items():
+        monkeypatch.setenv(key, value)
+    calls = Mock()
+    calls.create_secret.side_effect = ConflictError(ApiException(status=409))
+    if write_fails:
+        calls.patch_resource.side_effect = ForbiddenError(ApiException(status=403))
+    for operation in ("create_secret", "patch_resource", "delete_resource"):
+        monkeypatch.setattr(cluster_api, operation, getattr(calls, operation))
+    if write_fails:
+        with pytest.raises(ForbiddenError):
+            ols_installer.ensure_azure_entra_id_secret()
+    else:
+        ols_installer.ensure_azure_entra_id_secret()
+    calls.delete_resource.assert_not_called()
+    calls.create_secret.assert_called_once_with(
+        "azure-entra-id",
+        {"tenant_id": "tenant", "client_id": "client", "client_secret": "rotated"},
+        ignore_existing=False,
+    )
+    calls.patch_resource.assert_called_once_with(
+        "secret",
+        "azure-entra-id",
+        {
+            "stringData": {
+                "tenant_id": "tenant",
+                "client_id": "client",
+                "client_secret": "rotated",
+            }
+        },
+    )
 
 
 @pytest.mark.parametrize("external_mirrors", [None, "false", "true"])
-def test_install_ols_mirror_management(monkeypatch, external_mirrors):
+def test_install_ols_mirror_management(
+    monkeypatch: pytest.MonkeyPatch, external_mirrors: str | None
+) -> None:
     """Only mutate guest mirrors when they are not externally managed."""
-
-    class BundleReachedError(Exception):
-        """Stop before installing the bundle on a real cluster."""
-
-    calls = []
-
-    def run_oc(args, **_kwargs):
-        calls.append(args)
-
-    def run_bundle(_image):
-        raise BundleReachedError
-
+    create, apply = Mock(), Mock()
+    monkeypatch.setattr(cluster_api, "create_resource", create)
+    monkeypatch.setattr(cluster_api, "apply_file", apply)
     monkeypatch.setattr(ols_installer, "disconnected", False)
-    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", run_oc)
-    monkeypatch.setattr(ols_installer, "_run_bundle_with_retry", run_bundle)
+    monkeypatch.setattr(
+        ols_installer,
+        "_run_bundle_with_retry",
+        Mock(side_effect=RuntimeError("bundle reached")),
+    )
     monkeypatch.delenv("OLS_EXTERNAL_IMAGE_MIRRORS", raising=False)
     if external_mirrors is not None:
         monkeypatch.setenv("OLS_EXTERNAL_IMAGE_MIRRORS", external_mirrors)
-    with pytest.raises(BundleReachedError):
+    with pytest.raises(RuntimeError, match="bundle reached"):
         ols_installer.install_ols()
-    mirror_calls = [
-        args
-        for args in calls
-        if "tests/config/operator_install/imagedigestmirrorset.yaml" in args
-    ]
+    assert create.call_args.args[0]["kind"] == "Namespace"
     if external_mirrors == "true":
-        assert mirror_calls == []
+        apply.assert_not_called()
     else:
-        assert mirror_calls == [
-            ["apply", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"]
-        ]
+        apply.assert_called_once_with(
+            "tests/config/operator_install/imagedigestmirrorset.yaml"
+        )
 
 
 @pytest.mark.parametrize(
-    "provider, suffix, inspection_enabled, expected_url",
+    "provider,suffix,inspection,url",
     [
         ("openai", "default", False, None),
         ("rhoai_vllm_lseval", "default", False, "https://model.example.test/v1"),
         ("openai", "mcp_inspection", True, None),
     ],
-    ids=["default-template", "environment-substituted-template", "inspection-template"],
 )
-def test_install_ols_creates_olsconfig_with_suffix_inspection_value(
+def test_install_ols_creates_olsconfig(
     monkeypatch: pytest.MonkeyPatch,
     provider: str,
     suffix: str,
-    inspection_enabled: bool,
-    expected_url: str | None,
+    inspection: bool,
+    url: str | None,
 ) -> None:
-    """Pass the suffix-selected inspection CR to oc during a fresh install."""
-
-    class OlsConfigCapturedError(Exception):
-        """Stop installation after capturing the OLSConfig command."""
-
-    captured: dict[str, Any] = {}
-
-    def fake_run_oc(
-        args: list[str],
-        command: str | None = None,
-        ignore_existing_resource: bool = False,
-    ) -> Any:
-        if args[:2] == ["create", "-f"]:
-            captured["args"] = args
-            captured["command"] = command
-            captured["ignore_existing_resource"] = ignore_existing_resource
-            raise OlsConfigCapturedError
-        if args[:3] == ["get", "clusterserviceversion", "-o"]:
-            return type("Result", (), {"stdout": "Succeeded"})()
-        return None
-
+    """Create the suffix-selected resource with environment substitution."""
+    create = Mock(side_effect=RuntimeError("resource captured"))
+    monkeypatch.setattr(cluster_api, "create_resource", create)
+    monkeypatch.setattr(cluster_api, "delete_resource", Mock())
     monkeypatch.setattr(ols_installer, "disconnected", True)
-    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
     monkeypatch.setattr(
         ols_installer, "create_and_config_sas", lambda: ("token", "metrics")
     )
-    monkeypatch.setattr(ols_installer, "create_secrets", lambda *_args: None)
-    monkeypatch.setattr(ols_installer, "warm_up_rhokp_image", lambda: None)
+    monkeypatch.setattr(ols_installer, "create_secrets", Mock())
+    monkeypatch.setattr(ols_installer, "warm_up_rhokp_image", Mock())
     monkeypatch.setattr(
-        ols_installer, "retry_until_timeout_or_success", lambda *_args, **_kwargs: True
+        ols_installer, "retry_until_timeout_or_success", lambda *_a, **_k: True
     )
-    monkeypatch.setenv("PROVIDER", provider)
-    monkeypatch.setenv("PROVIDER_KEY_PATH", "unused")
-    monkeypatch.setenv("KSVC_URL", "https://model.example.test")
-    monkeypatch.setenv("OLS_CONFIG_SUFFIX", suffix)
-
-    with pytest.raises(OlsConfigCapturedError):
+    for key, value in {
+        "PROVIDER": provider,
+        "PROVIDER_KEY_PATH": "unused",
+        "KSVC_URL": "https://model.example.test",
+        "OLS_CONFIG_SUFFIX": suffix,
+    }.items():
+        monkeypatch.setenv(key, value)
+    with pytest.raises(RuntimeError, match="resource captured"):
         ols_installer.install_ols()
-
-    assert captured["args"] == ["create", "-f", "-"]
-    assert captured["ignore_existing_resource"] is True
-    cr = yaml.safe_load(captured["command"])
-    assert (
-        cr["spec"]["ols"]["guardrails"]["toolResultInspection"]["enabled"]
-        is inspection_enabled
-    )
-    if expected_url is not None:
-        provider_config = cr["spec"]["llm"]["providers"][0]
-        assert provider_config["url"] == expected_url
+    spec = create.call_args.args[0]["spec"]
+    assert create.call_args.kwargs["ignore_existing"] is False
+    assert spec["ols"]["guardrails"]["toolResultInspection"]["enabled"] is inspection
+    if url:
+        assert spec["llm"]["providers"][0]["url"] == url
 
 
-class _SecretCallRecorder:
-    """Record oc secret commands and stand in for ensure_bedrock_iam_secret."""
-
-    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        self.calls: list[list[str]] = []
-        monkeypatch.setattr(
-            ols_installer.cluster_utils,
-            "run_oc",
-            lambda args, **_kwargs: self._oc(args),
-        )
-        monkeypatch.setattr(
-            ols_installer,
-            "ensure_bedrock_iam_secret",
-            lambda creds: self.calls.append(["ensure-bedrock-iam", creds]),
-        )
-
-    def _oc(self, args: list[str]) -> Any:
-        self.calls.append(args)
-        return type("Result", (), {"stdout": ""})()
-
-    def deleted_secrets(self) -> list[str]:
-        return [args[2] for args in self.calls if args[:2] == ["delete", "secret"]]
-
-    def created_secrets(self) -> list[str]:
-        return [
-            args[3]
-            for args in self.calls
-            if args[:3] == ["create", "secret", "generic"]
-        ]
-
-
-def test_create_secrets_multi_provider_preserves_bedrock_llmcreds(
+@pytest.mark.parametrize(
+    "provider,count,expected",
+    [
+        ("openai", 1, "llmcreds"),
+        ("openai", 3, "openaicreds"),
+        ("watsonx", 3, "watsonxcreds"),
+    ],
+)
+def test_create_secrets_only_refreshes_owned_secret(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    provider: str,
+    count: int,
+    expected: str,
 ) -> None:
-    """Keep the bedrock IAM secret when other providers add their own secrets."""
-    recorder = _SecretCallRecorder(monkeypatch)
-
-    ols_installer.create_secrets("bedrock", "iam", 3)
-    ols_installer.create_secrets("openai", "/keys/openai", 3)
-    ols_installer.create_secrets("watsonx", "/keys/watsonx", 3)
-
-    assert recorder.deleted_secrets() == ["llmcreds", "openaicreds", "watsonxcreds"]
-    assert recorder.created_secrets() == ["openaicreds", "watsonxcreds"]
-    assert ["ensure-bedrock-iam", "iam"] in recorder.calls
-
-
-def test_create_secrets_single_provider_refreshes_llmcreds(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Recreate llmcreds from the key file for a single-provider deployment."""
-    recorder = _SecretCallRecorder(monkeypatch)
-
-    ols_installer.create_secrets("openai", "/keys/openai", 1)
-
-    assert recorder.deleted_secrets() == ["llmcreds"]
-    assert recorder.created_secrets() == ["llmcreds"]
-    assert "--from-file=apitoken=/keys/openai" in recorder.calls[-1]
+    """Keep other providers' credentials untouched."""
+    path = tmp_path / "key"
+    path.write_text("test-key\n")
+    delete, create = Mock(), Mock()
+    monkeypatch.setattr(cluster_api, "delete_resource", delete)
+    monkeypatch.setattr(cluster_api, "create_secret", create)
+    ols_installer.create_secrets(provider, str(path), count)
+    delete.assert_called_once_with("secret", expected, ignore_missing=True)
+    create.assert_called_once_with(expected, {"apitoken": "test-key\n"})
 
 
-def test_create_secrets_empty_creds_recreates_llmcreds(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Recreate llmcreds with a literal value when no key file is given."""
-    recorder = _SecretCallRecorder(monkeypatch)
-
+def test_create_secrets_empty_and_bedrock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Handle literal empty credentials and the Bedrock discriminator."""
+    delete, create, bedrock = Mock(), Mock(), Mock()
+    monkeypatch.setattr(cluster_api, "delete_resource", delete)
+    monkeypatch.setattr(cluster_api, "create_secret", create)
+    monkeypatch.setattr(ols_installer, "ensure_bedrock_iam_secret", bedrock)
     ols_installer.create_secrets("openai", "empty", 1)
+    create.assert_called_once_with("llmcreds", {"apitoken": "empty"})
+    ols_installer.create_secrets("bedrock", "iam", 3)
+    bedrock.assert_called_once_with("iam")
+    assert [call.args for call in delete.call_args_list] == [
+        ("secret", "llmcreds"),
+        ("secret", "llmcreds"),
+    ]
 
-    assert recorder.deleted_secrets() == ["llmcreds"]
-    assert recorder.created_secrets() == ["llmcreds"]
-    assert "--from-literal=apitoken=empty" in recorder.calls[-1]
 
-
-def test_warm_up_rhokp_image_pulls_operator_image_concurrently_on_each_node(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Pull the configured image on all nodes concurrently with a long timeout."""
-    image = "registry.example.com/rhokp@sha256:abc123"
-    deployment = {
+def _deployment(image: str | None) -> dict:
+    """Build the operator deployment containing the image argument."""
+    return {
         "spec": {
             "template": {
                 "spec": {
                     "containers": [
-                        {
-                            "name": "manager",
-                            "args": ["--leader-elect", f"--rhokp-image={image}"],
-                        }
+                        {"args": [f"--rhokp-image={image}"] if image else []}
                     ]
                 }
             }
         }
     }
-    nodes = {
-        "items": [
-            {"metadata": {"name": "worker-a"}},
-            {"metadata": {"name": "worker-b"}},
+
+
+def test_warm_up_rhokp_image_concurrent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pull on every node concurrently with the extended timeout."""
+    image = "registry.example.com/rhokp@sha256:abc123"
+    read = Mock(
+        side_effect=[
+            _deployment(image),
+            {
+                "items": [
+                    {"metadata": {"name": name}} for name in ("worker-a", "worker-b")
+                ]
+            },
         ]
-    }
-    pull_barrier = Barrier(2)
-    calls: list[tuple[list[str], int]] = []
-
-    def fake_run_oc(
-        args: list[str],
-        command: str | None = None,
-        ignore_existing_resource: bool = False,
-        timeout: int = cluster.OC_SUBPROCESS_TIMEOUT,
-    ) -> subprocess.CompletedProcess[str]:
-        calls.append((args, timeout))
-        if args[:2] == ["get", "deployment"]:
-            stdout = json.dumps(deployment)
-        elif args[:2] == ["get", "nodes"]:
-            stdout = json.dumps(nodes)
-        else:
-            pull_barrier.wait(timeout=2)
-            stdout = ""
-        return subprocess.CompletedProcess(args, 0, stdout, "")
-
-    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+    )
+    barrier = Barrier(2)
+    warm = Mock(side_effect=lambda *_a, **_k: barrier.wait(timeout=30))
+    monkeypatch.setattr(cluster_api, "read_resource", read)
+    monkeypatch.setattr(cluster_api, "warm_image", warm)
     monkeypatch.delenv("ARTIFACT_DIR", raising=False)
-
     ols_installer.warm_up_rhokp_image()
-
-    pull_calls = [args for args, _ in calls if args[0] == "debug"]
-    assert sorted(pull_calls) == sorted(
-        [
-            [
-                "debug",
-                "node/worker-a",
-                "--",
-                "chroot",
-                "/host",
-                "crictl",
-                "pull",
-                image,
-            ],
-            [
-                "debug",
-                "node/worker-b",
-                "--",
-                "chroot",
-                "/host",
-                "crictl",
-                "pull",
-                image,
-            ],
-        ]
-    )
-    assert [timeout for args, timeout in calls if args[0] == "debug"] == [600, 600]
+    assert sorted(call.args for call in warm.call_args_list) == [
+        ("worker-a", image),
+        ("worker-b", image),
+    ]
+    assert [call.kwargs for call in warm.call_args_list] == [
+        {"timeout": 600},
+        {"timeout": 600},
+    ]
 
 
-def _warmup_run_oc_stub(
-    deployment: dict[str, Any], nodes: dict[str, Any], calls: list[list[str]]
-) -> Any:
-    """Build a run_oc stub serving the deployment and node listings."""
-
-    def fake_run_oc(
-        args: list[str],
-        command: str | None = None,
-        ignore_existing_resource: bool = False,
-        timeout: int = cluster.OC_SUBPROCESS_TIMEOUT,
-    ) -> subprocess.CompletedProcess[str]:
-        calls.append(args)
-        if args[:2] == ["get", "deployment"]:
-            stdout = json.dumps(deployment)
-        elif args[:2] == ["get", "nodes"]:
-            stdout = json.dumps(nodes)
-        else:
-            stdout = ""
-        return subprocess.CompletedProcess(args, 0, stdout, "")
-
-    return fake_run_oc
-
-
-def test_warm_up_rhokp_image_runs_once_per_job(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+@pytest.mark.parametrize("old_image", [None, "old-image"])
+def test_warm_up_rhokp_image_marker(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, old_image: str | None
 ) -> None:
-    """Create the artifact directory, then skip pulls when already warmed."""
-    image = "registry.example.com/rhokp@sha256:abc123"
-    deployment = {
-        "spec": {
-            "template": {
-                "spec": {
-                    "containers": [
-                        {"name": "manager", "args": [f"--rhokp-image={image}"]}
-                    ]
-                }
-            }
-        }
-    }
-    nodes = {"items": [{"metadata": {"name": "worker-a"}}]}
-    calls: list[list[str]] = []
-    monkeypatch.setattr(
-        ols_installer.cluster_utils,
-        "run_oc",
-        _warmup_run_oc_stub(deployment, nodes, calls),
-    )
-    artifact_dir = tmp_path / "artifacts"
-    monkeypatch.setenv("ARTIFACT_DIR", str(artifact_dir))
-    marker = artifact_dir / ".rhokp_image_warmed"
-    assert not artifact_dir.exists()
-
-    ols_installer.warm_up_rhokp_image()
-    assert marker.read_text(encoding="utf-8") == image
-    assert [args for args in calls if args[0] == "debug"]
-
-    calls.clear()
-    ols_installer.warm_up_rhokp_image()
-    assert not [args for args in calls if args[0] == "debug"]
-
-
-def test_warm_up_rhokp_image_rewarms_for_a_different_image(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Pull again when the operator image changed within one job."""
-    deployment = {
-        "spec": {
-            "template": {
-                "spec": {
-                    "containers": [
-                        {
-                            "name": "manager",
-                            "args": [
-                                "--rhokp-image=registry.example.com/rhokp@sha256:new"
-                            ],
-                        }
-                    ]
-                }
-            }
-        }
-    }
-    nodes = {"items": [{"metadata": {"name": "worker-a"}}]}
-    calls: list[list[str]] = []
-    monkeypatch.setattr(
-        ols_installer.cluster_utils,
-        "run_oc",
-        _warmup_run_oc_stub(deployment, nodes, calls),
-    )
-    monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path))
-    (tmp_path / ".rhokp_image_warmed").write_text(
-        "registry.example.com/rhokp@sha256:old", encoding="utf-8"
-    )
-
-    ols_installer.warm_up_rhokp_image()
-
-    pull_calls = [args for args in calls if args[0] == "debug"]
-    assert len(pull_calls) == 1
-    assert pull_calls[0][-1] == "registry.example.com/rhokp@sha256:new"
-
-
-def test_warm_up_rhokp_image_raises_when_deployment_has_no_image(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Report a missing RHOKP image before attempting any node pulls."""
-    calls: list[list[str]] = []
-
-    def fake_run_oc(
-        args: list[str],
-        command: str | None = None,
-        ignore_existing_resource: bool = False,
-    ) -> subprocess.CompletedProcess[str]:
-        calls.append(args)
-        return subprocess.CompletedProcess(
-            args,
-            0,
-            json.dumps(
-                {"spec": {"template": {"spec": {"containers": [{"args": []}]}}}}
-            ),
-            "",
+    """Create the artifact directory and rewarm only if the image changes."""
+    image = "registry.example.com/rhokp@sha256:new"
+    read = Mock(
+        side_effect=lambda resource, *_a: (
+            _deployment(image)
+            if resource == "deployment"
+            else {"items": [{"metadata": {"name": "worker-a"}}]}
         )
-
-    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
-    monkeypatch.delenv("ARTIFACT_DIR", raising=False)
-
-    with pytest.raises(RuntimeError, match="--rhokp-image"):
-        ols_installer.warm_up_rhokp_image()
-
-    assert calls == [
-        [
-            "get",
-            "deployment",
-            "lightspeed-operator-controller-manager",
-            "-n",
-            "openshift-lightspeed",
-            "-o",
-            "json",
-        ]
-    ]
+    )
+    warm = Mock()
+    monkeypatch.setattr(cluster_api, "read_resource", read)
+    monkeypatch.setattr(cluster_api, "warm_image", warm)
+    artifacts = tmp_path / "artifacts"
+    marker = artifacts / ".rhokp_image_warmed"
+    if old_image:
+        artifacts.mkdir()
+        marker.write_text(old_image)
+    monkeypatch.setenv("ARTIFACT_DIR", str(artifacts))
+    ols_installer.warm_up_rhokp_image()
+    warm.assert_called_once_with("worker-a", image, timeout=600)
+    assert marker.read_text() == image
+    warm.reset_mock()
+    ols_installer.warm_up_rhokp_image()
+    warm.assert_not_called()
 
 
-def test_warm_up_rhokp_image_raises_when_cluster_has_no_nodes(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    "image,match", [(None, "--rhokp-image"), ("image", "cluster nodes")]
+)
+def test_warm_up_rhokp_image_missing_inputs(
+    monkeypatch: pytest.MonkeyPatch, image: str | None, match: str
 ) -> None:
-    """Report an empty node list instead of silently skipping the warm-up."""
-    deployment = {
-        "spec": {
-            "template": {
-                "spec": {
-                    "containers": [
-                        {
-                            "args": [
-                                "--rhokp-image=registry.example.com/rhokp@sha256:abc123"
-                            ]
-                        }
-                    ]
-                }
-            }
-        }
-    }
-    outputs = iter([json.dumps(deployment), json.dumps({"items": []})])
-    calls: list[list[str]] = []
-
-    def fake_run_oc(
-        args: list[str],
-        command: str | None = None,
-        ignore_existing_resource: bool = False,
-    ) -> subprocess.CompletedProcess[str]:
-        calls.append(args)
-        return subprocess.CompletedProcess(args, 0, next(outputs), "")
-
-    monkeypatch.setattr(ols_installer.cluster_utils, "run_oc", fake_run_oc)
+    """Reject absent image arguments and empty node lists."""
     monkeypatch.delenv("ARTIFACT_DIR", raising=False)
-
-    with pytest.raises(RuntimeError, match="cluster nodes"):
+    monkeypatch.setattr(
+        cluster_api,
+        "read_resource",
+        Mock(side_effect=[_deployment(image), {"items": []}]),
+    )
+    with pytest.raises(RuntimeError, match=match):
         ols_installer.warm_up_rhokp_image()
-
-    assert calls == [
-        [
-            "get",
-            "deployment",
-            "lightspeed-operator-controller-manager",
-            "-n",
-            "openshift-lightspeed",
-            "-o",
-            "json",
-        ],
-        ["get", "nodes", "-o", "json"],
-    ]
