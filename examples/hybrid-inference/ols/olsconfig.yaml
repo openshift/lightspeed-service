@@ -13,7 +13,9 @@ spec:
           name: llmcreds-praxis
         models:
           - name: hybrid-model
-            contextWindowSize: 32768
+            contextWindowSize: 16384
+            parameters:
+              maxTokensForResponse: 2048
   ols:
     defaultProvider: praxis
     defaultModel: hybrid-model
