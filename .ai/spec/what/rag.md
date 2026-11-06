@@ -1,79 +1,52 @@
 # RAG (Retrieval-Augmented Generation)
 
-The RAG subsystem augments LLM responses with relevant documentation so that answers are grounded in authoritative content rather than relying solely on the model's training data. Two retrieval architectures coexist: **OKP** retrieves OCP product documentation via a tool-based flow (Solr hybrid search through the `search_openshift_documentation` LangChain tool, invoked by the LLM during the tool-calling loop), while **BYOK** retrieves customer-supplied content via direct FAISS RAG (chunks merged into prompt context before generation).
+The RAG subsystem augments LLM responses with relevant documentation. OpenShift product documentation is retrieved through RHOKP's dedicated MCP search tool; customer-supplied content is retrieved from local FAISS indexes (BYOK). Hybrid RAG is also used to filter generic MCP tools and select skills.
 
-## Behavioral Rules — OKP Retrieval (OCP Product Documentation)
+## Behavioral Rules — OpenShift Documentation (RHOKP MCP)
 
-1. OCP product documentation is retrieved via the `search_openshift_documentation` LangChain tool. The LLM decides when to invoke it during the tool-calling loop. This is tool-based retrieval, not direct RAG — passages are not merged into prompt context automatically.
-
-2. [PLANNED: OLS-3697] The tool connects to the standalone RHOKP Service (Solr HTTPS at `https://lightspeed-rhokp.<ns>.svc:8443`) deployed by the operator as a separate Deployment. The service trusts the RHOKP service-ca cert via the operator-set `SSL_CERT_FILE`. The RHOKP Deployment is a self-contained single-image appliance containing Solr and the OCP documentation corpus.
-
-3. Query normalization: before search, the query is normalized — stop words removed, IP/CIDR addresses and NIC names stripped, hyphenated terms quoted for stable Solr matching.
-
-4. The tool embeds the normalized query using `ibm-granite/granite-embedding-30m-english` and submits a hybrid-search POST to Solr's `portal-rag` collection. The search uses lexical edismax as the primary query with KNN vector reranking. [PENDING: Ask OKP team if server-side embedding is supported — preferred approach that would eliminate the granite model from the service image.]
-
-5. Results are deduped by parent document (`parent_id` or `id`), filtered by configurable score threshold, and capped at `max_results`.
-
-6. The tool returns JSON passages with `text`, `score`, `title`, and `docs_url`. The LLM uses these to compose a grounded answer with citations.
-
-7. When the OKP tool is active, supplementary prompt guidance is appended to agent instructions (ASK mode) directing the LLM to ground answers on retrieved passages and cite sources. Two variants exist: `SOLR_DOCS_TOOL_SUPPLEMENT` (mandatory OKP invocation — used when no BYOK is configured) and `SOLR_DOCS_TOOL_SUPPLEMENT_WITH_BYOK` (used when BYOK reference content is configured). The BYOK variant labels the provided context as domain-specific knowledge, instructs the LLM to use it directly when it answers the question, and restricts OKP to supplementary general OpenShift details. It explicitly prohibits contradicting or overriding relevant domain knowledge with OKP results.
-
-8. Solr failures degrade gracefully — the tool returns empty results or a structured error, and the request continues without OKP passages. The service never fails a user request due to Solr errors.
-
-9. Tool calling is enabled when Solr hybrid is configured, even without MCP servers. This ensures OKP retrieval works in non-agentic deployments.
-
-10. [OLS-1894] When the `OLS_ROSA_PRODUCT` environment variable is set (by the operator on ROSA clusters), the Solr `chunk_filter_query` includes the ROSA product alongside `openshift_container_platform`. The filter becomes a compound OR: `(product:openshift_container_platform AND product_version:<ocp_resolved>) OR (product:<rosa_product> AND product_version:<rosa_resolved>)`. ROSA product version resolution uses the same facet-query + clamp-to-nearest mechanism as OCP: extract the major version from `OCP_CLUSTER_VERSION`, query Solr for available versions of the ROSA product, and clamp to nearest. When `OLS_ROSA_PRODUCT` is absent, the filter is OCP-only (no change from current behavior). If the ROSA product is not found in Solr, the service logs a warning and falls back to OCP-only filtering.
-
-11. [PLANNED: OLS-3432] The `search_openshift_documentation` tool must support dynamic product filtering via an optional `additional_products` argument. At startup, available OpenShift-related products are discovered from Solr (facet query on `product:*openshift*`), excluding `openshift_container_platform` and ROSA products (`red_hat_openshift_service_on_aws`, `red_hat_openshift_service_on_aws_classic_architecture`). The discovered product names are listed in the tool description so the LLM can select relevant products per query. When `additional_products` is provided, the Solr `fq` becomes a compound OR: OCP (version-pinned) + each additional product (no version filter — layered products use independent versioning). Invalid product names are rejected. When `additional_products` is absent or empty, the filter is the static baseline (OCP-only, or OCP+ROSA on ROSA clusters). ROSA products are never in the dynamic list — they are handled by the static filter from OLS-1894.
+1. When `ols_config.openshift_docs_mcp` is configured, OLS must expose a built-in documentation tool named `search` with a `query` argument. The dedicated RHOKP endpoint is separate from generic `mcp_servers` configuration.
+2. The configured RHOKP URL must use HTTPS. `max_results` defaults to 5, is limited to 1–20, and is passed to RHOKP as the `rows` argument.
+3. OLS must derive product/version filters in service code rather than asking the LLM to choose them. `OCP_CLUSTER_VERSION` supplies the major.minor version for `openshift_container_platform`; when `OLS_ROSA_PRODUCT` is set, OLS adds that product with the same major.minor version.
+4. If `OCP_CLUSTER_VERSION` is missing or does not match the supported version format, documentation search must fail closed without calling RHOKP.
+5. OLS must discover RHOKP's native `search` tool before exposing the local documentation tool. Discovery retries up to 36 times with a five-second backoff and uses a 60-second timeout for each Streamable HTTP request. A successful tool discovery is cached by endpoint for the process lifetime. If all attempts fail on the runner startup path, startup fails; if discovery is deferred to first-request tool resolution, that request fails.
+6. In the normal runner path, RHOKP discovery occurs before Uvicorn starts. If startup takes the Pyroscope path that starts Uvicorn before `load_index()`, tool resolution must perform the same discovery on the first request before exposing `search`; subsequent requests use the cache.
+7. When the dedicated docs MCP is configured, `search` is reserved for RHOKP. Generic MCP tools with that name must be omitted from the request's tool list to avoid duplicate tool names; other generic MCP tools remain available.
+8. RHOKP results may identify source URLs as `online_source_url`. OLS must provide a `docs_url` alias to the LLM so the existing citation prompt contract remains valid, and must include source URLs and titles in the API's referenced-document metadata.
+9. If an RHOKP search invocation fails after initialization, OLS must return a structured tool error. Product/version filters must not be omitted to recover from the failure.
+10. When the docs MCP is configured, tool calling is enabled even if no generic MCP servers are configured. Ask-mode prompt guidance directs the LLM to ground relevant answers on retrieved passages; the BYOK variant prioritizes relevant customer context and uses product docs as supplementary information.
 
 ## Behavioral Rules — BYOK Retrieval (Customer Content)
 
 1. BYOK FAISS vector indexes are built offline from customer-supplied Markdown documentation. Indexes are loaded from the local filesystem at startup and are never built or modified at runtime.
-
 2. Each index is identified by three properties: a filesystem path to the persisted FAISS vector store (`product_docs_index_path`), an optional index identifier used during deserialization (`product_docs_index_id`), and an optional human-readable origin label used in logging and result metadata (`product_docs_origin`).
-
 3. Multiple indexes may be loaded simultaneously. This enables customer-specific content separation (e.g., internal runbooks, product-specific docs, organization knowledge bases).
-
 4. Each index must be loaded independently. If one index fails to load, the remaining indexes must continue loading and the service must operate with whatever indexes succeeded. Partial load must be logged as a warning.
-
 5. When a configured index path does not exist, validation must fail immediately with a hard configuration error. There is no fallback logic — BYOK users supply their own paths and are responsible for ensuring they exist.
-
 6. The embedding model used for BYOK vector similarity is configurable via a filesystem path to a HuggingFace-compatible model (`embeddings_model_path`). If no path is configured, the service must fall back to the default model (`sentence-transformers/all-mpnet-base-v2`), which is bundled directly in the service image. The chosen model must be redistributable under an Apache 2.0 compatible license. [PLANNED: OLS-1812 — operator CRD support for per-index embedding model path]
-
 7. Retrieval must use vector similarity search against the loaded FAISS indexes. The number of most-similar document chunks returned per query is controlled by a configurable content limit. Chunks scoring below a configurable similarity cutoff must be discarded, even if they are within the top-k.
-
 8. When multiple indexes are loaded, results from all indexes must be merged into a single ranked list using score dilution. The first index receives no penalty. Subsequent indexes receive a progressively increasing score penalty, capped at a fixed dilution depth. After dilution, all results across all indexes must be sorted by weighted score in descending order and the top-k returned.
-
 9. Each retrieved chunk must be annotated with the `index_id` and `index_origin` metadata from the index it came from. This metadata must flow through to logging, diagnostics, and referenced document output.
-
 10. Retrieved document chunks must be converted to referenced document citations consisting of a URL (`docs_url` metadata) and a title (`title` metadata). These citations must be deduplicated by URL, preserving insertion order. The deduplicated list must be included in the API response so the UI can present citations to the user.
-
 11. Each retrieved chunk must be checked against the available token budget. If a chunk does not fit within the minimum token threshold, it and all subsequent chunks must be skipped. Chunks that fit within the remaining budget may be truncated to fit.
-
 12. RAG dependencies (LlamaIndex, FAISS, HuggingFace embeddings) are heavy. To avoid unnecessary memory overhead when RAG is not configured:
     - RAG library imports must be deferred until first use.
     - If no reference content is configured, RAG libraries must never be loaded.
     - Type annotations for RAG-specific types must be aliased to `Any` at module scope to avoid import-time dependencies.
-
 13. The readiness probe must check whether the BYOK index has finished loading. If reference content is configured with a non-empty indexes list but the index has not yet loaded, the service must report not ready (HTTP 503) with cause "Index is not ready". If no reference content is configured, or if reference content is present but has no indexes (empty list or None), the index check must pass — BYOK RAG is optional. The service must not accept user queries until any configured BYOK index is fully loaded.
 
 ## Behavioral Rules — Tool & Skill Filtering (Hybrid RAG)
 
-15. The hybrid retrieval system combines dense retrieval (cosine similarity via an in-memory Qdrant vector store) with sparse retrieval (BM25 keyword matching). Scores are fused using a weighted linear combination controlled by a configurable alpha parameter: alpha = 1.0 means pure dense retrieval, alpha = 0.0 means pure sparse retrieval. Results below a configurable similarity threshold must be discarded.
-
-16. The tools hybrid RAG instance must only be created when tool filtering configuration is present and MCP servers are configured. The skills hybrid RAG instance must only be created when skills configuration is present and a skills directory containing valid skill definitions exists.
+1. The hybrid retrieval system combines dense retrieval (cosine similarity via an in-memory Qdrant vector store) with sparse retrieval (BM25 keyword matching). Scores are fused using a weighted linear combination controlled by a configurable alpha parameter: alpha = 1.0 means pure dense retrieval, alpha = 0.0 means pure sparse retrieval. Results below a configurable similarity threshold must be discarded.
+2. The tools hybrid RAG instance must only be created when tool filtering configuration is present and generic MCP servers are configured. The skills hybrid RAG instance must only be created when skills configuration is present and a skills directory containing valid skill definitions exists.
 
 ## Configuration Surface
 
-### OKP (Solr Hybrid)
+### OpenShift Documentation (RHOKP MCP)
 
-- `ols_config.solr_hybrid.solr_http_base` — Solr base URL (default `http://localhost:8080`; [PLANNED: OLS-3697] operator-generated as `https://lightspeed-rhokp.<ns>.svc:8443`).
-- `ols_config.solr_hybrid.max_results` — Max passages returned after parent dedup (default `RAG_CONTENT_LIMIT`).
-- `ols_config.solr_hybrid.chunk_filter_query` — Optional Solr `fq` for product/content filtering.
-- `ols_config.solr_hybrid.hybrid_vector_boost` — Vector weight in reranker (default 8.0).
-- `ols_config.solr_hybrid.hybrid_pool_docs` — `reRankDocs` pool size (default 100).
-- `ols_config.solr_hybrid.hybrid_score_threshold` — Drop low-score hits (default 0.0).
-- `ols_config.solr_hybrid.hybrid_solr_timeout_s` — HTTP timeout in seconds (default 60).
+- `ols_config.openshift_docs_mcp.url` — HTTPS endpoint for the dedicated RHOKP MCP server.
+- `ols_config.openshift_docs_mcp.max_results` — Maximum number of results sent as `rows` (default 5, range 1–20).
+- `OCP_CLUSTER_VERSION` — Cluster version used to derive the OpenShift product filter.
+- `OLS_ROSA_PRODUCT` — Optional ROSA product name added to the product filter.
 
 ### BYOK (FAISS)
 
@@ -99,19 +72,12 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 ## Constraints
 
 1. BYOK indexes must be pre-built offline and loaded read-only. The service must never create, modify, or rebuild an index at runtime.
-
 2. The BYOK embedding model used for retrieval must be the same model used to create the index. A mismatch will produce meaningless similarity scores.
-
 3. All embedding models shipped with the product must be redistributable under an Apache 2.0 compatible license.
-
 4. The `product_docs_index_id` must not be set without a corresponding `product_docs_index_path`. This combination must be rejected at configuration validation time.
-
 5. Score dilution is applied positionally: the first index in the configuration list is the primary index and receives no penalty. Index ordering in the configuration therefore determines retrieval priority.
-
 6. Referenced document deduplication is by URL only. If two chunks from different indexes share the same URL but different titles, the first-seen title wins.
-
-7. OKP configuration (`solr_hybrid`) is operator-generated and not user-facing. It is always present when the RHOKP standalone operand is deployed.
-
+7. OLS must not load or package a RHOKP documentation embedding model; RHOKP owns the embedding and retrieval implementation.
 8. When RAG libraries are lazily loaded, the `index_loader` module is excluded from static type checking (mypy) because its types are only available after the deferred import executes.
 
 ## BYOK (Bring Your Own Knowledge)
@@ -124,11 +90,5 @@ Customers can supply their own documentation as additional RAG indexes, so that 
 
 ## Planned Changes
 
-- [DONE: OLS-1894] ROSA-aware OKP retrieval — service reads `OLS_ROSA_PRODUCT` env var and builds compound Solr filter. Operator-side detection pending.
-- [PLANNED: OLS-2704] RAG as a service / MCP — externalize RAG retrieval behind an MCP interface.
 - [PLANNED: OLS-1872] BYOK — internal web source integration (Git, Confluence).
 - [PLANNED: OLS-1812] Add embedding model path to CRD for each index, enabling per-index embedding model configuration through the operator.
-- [PENDING] OKP server-side embedding — if OKP team confirms, the granite model can be removed from the service image.
-- [PLANNED: OLS-3697] RHOKP standalone HTTPS cutover — `solr_http_base` changes to HTTPS cluster DNS URL. No service code changes needed; HTTPS trust provided by operator-set `SSL_CERT_FILE`.
-- [PLANNED: OLS-3432] Dynamic product filtering — LLM-driven selection of additional OpenShift-related products (Pipelines, GitOps, Service Mesh, etc.) via tool argument. Depends on OLS-3310.
-- [PLANNED] Multi-version OKP support — query specific OCP version documentation.

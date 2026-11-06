@@ -141,14 +141,14 @@ async def test_inspect_tool_messages_skips_registered_openshift_docs_tool() -> N
     agent = _make_agent(tool_result_classifier=classifier)
     agent.model_config.context_window_size = 600
     agent.model_config.parameters.max_tokens_for_response = 1000
-    docs_tool = SampleTool("search_openshift_documentation")
+    docs_tool = SampleTool("search")
     docs_tool.metadata = {
         constants.OLS_INTERNAL_TOOL_METADATA_KEY: constants.OPENSHIFT_DOCS_TOOL_NAME
     }
 
     await agent._inspect_tool_messages(
         [ToolMessage(content="instruction-like documentation", tool_call_id="call-1")],
-        {"call-1": "search_openshift_documentation"},
+        {"call-1": "search"},
         tool_id_to_tool={"call-1": docs_tool},
     )
 
@@ -161,12 +161,12 @@ async def test_inspect_tool_messages_inspects_mcp_tool_with_docs_tool_name() -> 
     classifier = MagicMock()
     classifier.inspect = AsyncMock()
     agent = _make_agent(tool_result_classifier=classifier)
-    mcp_tool = SampleTool("search_openshift_documentation")
+    mcp_tool = SampleTool("search")
     mcp_tool.metadata = {"mcp_server": "external-server"}
 
     await agent._inspect_tool_messages(
         [ToolMessage(content="external result", tool_call_id="call-1")],
-        {"call-1": "search_openshift_documentation"},
+        {"call-1": "search"},
         tool_id_to_tool={"call-1": mcp_tool},
     )
 

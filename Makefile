@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify check-unused-deps verify-hermetic-requirements get-embeddings get-embeddings-byok get-embeddings-okp tls-scan bump test-resolver-image
+.PHONY: test test-unit test-e2e test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify check-unused-deps verify-hermetic-requirements get-embeddings get-embeddings-byok tls-scan bump test-resolver-image
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -159,21 +159,13 @@ requirements.txt:	pyproject.toml uv.lock ## Generate requirements.txt file conta
 verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
 	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
 
-get-embeddings: get-embeddings-byok get-embeddings-okp ## Download all embedding model binaries
+get-embeddings: get-embeddings-byok ## Download the BYOK embedding model binary
 
 get-embeddings-byok: ## Download and split BYOK/FAISS embedding model binary
 	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
 		-o embeddings_model/all-mpnet-base-v2/model.safetensors \
 		"https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors"
 	cd embeddings_model/all-mpnet-base-v2 && \
-		rm -f model.safetensors.tar.gz.* && \
-		tar czf - model.safetensors | split -b 95M - model.safetensors.tar.gz.
-
-get-embeddings-okp: ## Download and split OKP/RAG embedding model binary
-	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
-		-o embeddings_model/granite-embedding-30m-english/model.safetensors \
-		"https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors"
-	cd embeddings_model/granite-embedding-30m-english && \
 		rm -f model.safetensors.tar.gz.* && \
 		tar czf - model.safetensors | split -b 95M - model.safetensors.tar.gz.
 
