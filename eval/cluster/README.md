@@ -3,14 +3,14 @@
 Compare models and settings on the hybrid inference stack (OLS, Praxis and a CPU-served model) by
 running the same evaluation many ways and comparing the results.
 
-Experiments live in [`eval/experiments.yaml`](../experiments.yaml); a Job runs them one at a time.
+Experiments live in [`experiments.yaml`](experiments.yaml); a Job runs them one at a time.
 Per experiment it patches the `cpu-small` InferenceService (model, parsers, thinking, CPU pinning and
 resources), waits for vLLM, checks the CPU binding, runs `lightspeed-eval` with your judges, writes
 `run_meta.json` and rebuilds the dashboard. It never touches `gpu-large`.
 
 | File | Purpose |
 |---|---|
-| `eval/experiments.yaml` | Models, judges and experiments |
+| `eval/cluster/experiments.yaml` | Models, judges and experiments |
 | `eval/scripts/run_experiments.py` | The runner |
 | `eval/scripts/build_dashboard.py` | Builds the dashboard from a results folder |
 | `eval/system_hybrid_ask_streaming_cluster.yaml` | Eval config: OLS address, ask header, metrics, judge template (in the image) |
@@ -46,10 +46,10 @@ From the repository root.
      --from-literal=HOSTED_VLLM_API_BASE="$HOSTED_VLLM_API_BASE"
    ```
 
-3. **Edit `eval/experiments.yaml`**, then publish it and start the Job:
+3. **Edit `experiments.yaml`**, then publish it and start the Job:
    ```bash
    oc create configmap experiments -n openshift-lightspeed \
-     --from-file=experiments.yaml=eval/experiments.yaml \
+     --from-file=experiments.yaml=eval/cluster/experiments.yaml \
      --dry-run=client -o yaml | oc apply -f -
 
    oc create -f eval/cluster/job.yaml

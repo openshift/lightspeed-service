@@ -6,7 +6,7 @@ the cluster.
 
 ## Running evaluations
 
-[`experiments.yaml`](experiments.yaml) lists what to run, and
+[`experiments.yaml`](cluster/experiments.yaml) lists what to run, and
 [`cluster/README.md`](cluster/README.md) has the quick start. The Job patches the `cpu-small`
 InferenceService, waits for vLLM, runs `lightspeed-eval` against OLS scored by your judges, records
 how each run was served, and builds a dashboard comparing the runs.
@@ -19,7 +19,7 @@ how each run was served, and builds a dashboard comparing the runs.
 | `eval_data.yaml` | 797 general OpenShift questions |
 | `eval_data_cluster_updates.yaml` | 19 cluster-update conversations |
 
-Point `eval_data:` in `experiments.yaml` at any of them.
+Point `eval_data:` in `eval/cluster/experiments.yaml` at any of them.
 
 `system_hybrid_ask_streaming_cluster.yaml` is the config the Job passes to `lightspeed-eval`: OLS's
 in-cluster address, the `ask`-mode header so Praxis routes to `cpu-small`, the correctness metric and

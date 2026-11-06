@@ -7,7 +7,7 @@
 # They run as a Job on the cluster, one experiment at a time (see eval/cluster/README.md):
 #
 #   oc create configmap experiments -n openshift-lightspeed \
-#     --from-file=experiments.yaml=eval/experiments.yaml --dry-run=client -o yaml | oc apply -f -
+#     --from-file=experiments.yaml=eval/cluster/experiments.yaml --dry-run=client -o yaml | oc apply -f -
 #   oc create -f eval/cluster/job.yaml
 #
 # Any key in `defaults` can be overridden inside an experiment.

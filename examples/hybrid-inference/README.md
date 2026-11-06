@@ -48,7 +48,7 @@ models need nothing, and a `401`/`403` during download means the token is missin
 oc create secret generic hf-token -n openshift-lightspeed --from-literal=HF_TOKEN="$HF_TOKEN"
 ```
 
-Experiments mark such a model `gated: true` in `eval/experiments.yaml`
+Experiments mark such a model `gated: true` in `eval/cluster/experiments.yaml`
 ([eval/cluster/README.md](../../eval/cluster/README.md)).
 
 ## Custom OLS image

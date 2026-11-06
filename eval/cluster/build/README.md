@@ -11,7 +11,7 @@ needed to run experiments (see [`../README.md`](../README.md)).
 The image carries the runner scripts, the system config, the datasets and `lightspeed-evaluation`
 from [RMalone8/lightspeed-evaluation](https://github.com/RMalone8/lightspeed-evaluation) at `EVAL_REF`
 (currently `fix/support-ols-streaming-responses-in-streaming-parser`), with the commit recorded in
-`/opt/lightspeed-evaluation/BUILD_REF`.
+`/opt/lightspeed-evaluation/BUILD_REF`. `experiments.yaml` comes from the ConfigMap, not the image.
 
 ## One-time setup
 

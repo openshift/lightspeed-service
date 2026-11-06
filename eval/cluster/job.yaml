@@ -1,4 +1,4 @@
-# Publish eval/experiments.yaml to the `experiments` ConfigMap first (see README.md), then:
+# Publish eval/cluster/experiments.yaml to the `experiments` ConfigMap first (see README.md), then:
 #   oc create -f eval/cluster/job.yaml
 # (generateName, so each start is a new Job; Jobs cannot be edited once created.)
 apiVersion: batch/v1
@@ -30,10 +30,10 @@ spec:
       containers:
         - name: runner
           image: quay.io/rmalone/lightspeed-eval-runner:latest
-          # Paths, the system config and the eval command come from `defaults:` in
-          # eval/experiments.yaml, which the `experiments` ConfigMap mounts.
+          # Paths, the system config and the eval command come from `defaults:` in the
+          # experiments file, which the `experiments` ConfigMap mounts here as a directory.
           args:
-            - eval/experiments.yaml
+            - /opt/hybrid/experiments/experiments.yaml
             - --run
           securityContext:
             allowPrivilegeEscalation: false
@@ -52,8 +52,7 @@ spec:
             - name: results
               mountPath: /results
             - name: experiments
-              mountPath: /opt/hybrid/eval/experiments.yaml
-              subPath: experiments.yaml
+              mountPath: /opt/hybrid/experiments
               readOnly: true
       volumes:
         - name: results
