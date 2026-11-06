@@ -1,0 +1,31 @@
+# Mounts the results volume so you can copy results out after the Job finishes:
+#   oc create -f eval/cluster/results-reader.yaml
+#   oc rsync -n openshift-lightspeed results-reader:/results/experiments/ ~/results_experiments/
+#   oc delete pod results-reader -n openshift-lightspeed
+# The volume is ReadWriteOnce: start this only after the Job has finished.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: results-reader
+  namespace: openshift-lightspeed
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: reader
+      image: quay.io/rmalone/lightspeed-eval-runner:latest
+      command: [sleep, "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      volumeMounts:
+        - name: results
+          mountPath: /results
+  volumes:
+    - name: results
+      persistentVolumeClaim:
+        claimName: eval-results

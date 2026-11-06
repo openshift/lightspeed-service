@@ -1,0 +1,64 @@
+# Publish eval/experiments.yaml to the `experiments` ConfigMap first (see README.md), then:
+#   oc create -f eval/cluster/job.yaml
+# (generateName, so each start is a new Job; Jobs cannot be edited once created.)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: eval-experiments-
+  namespace: openshift-lightspeed
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  template:
+    metadata:
+      labels:
+        app: eval-runner
+    spec:
+      serviceAccountName: eval-runner
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: inference
+                    operator: DoesNotExist
+      containers:
+        - name: runner
+          image: quay.io/rmalone/lightspeed-eval-runner:latest
+          # Paths, the system config and the eval command come from `defaults:` in
+          # eval/experiments.yaml, which the `experiments` ConfigMap mounts.
+          args:
+            - eval/experiments.yaml
+            - --run
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          envFrom:
+            - secretRef:
+                name: eval-credentials
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              memory: 4Gi
+          volumeMounts:
+            - name: results
+              mountPath: /results
+            - name: experiments
+              mountPath: /opt/hybrid/eval/experiments.yaml
+              subPath: experiments.yaml
+              readOnly: true
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: eval-results
+        - name: experiments
+          configMap:
+            name: experiments

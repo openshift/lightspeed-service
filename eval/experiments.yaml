@@ -1,0 +1,215 @@
+# Experiments to run against the cpu-small InferenceService.
+#
+# Each entry under `experiments` is one test: the runner patches the base
+# manifest with that entry's settings, applies it, waits for the model to load,
+# runs the eval, then records run_meta.json (with the name) for the dashboard.
+#
+# They run as a Job on the cluster, one experiment at a time (see eval/cluster/README.md):
+#
+#   oc create configmap experiments -n openshift-lightspeed \
+#     --from-file=experiments.yaml=eval/experiments.yaml --dry-run=client -o yaml | oc apply -f -
+#   oc create -f eval/cluster/job.yaml
+#
+# Any key in `defaults` can be overridden inside an experiment.
+
+defaults:
+  # Where things live, inside the runner image (see eval/cluster/build/Dockerfile).
+  base_manifest: examples/hybrid-inference/cpu-small/inferenceservice.yaml
+  isvc: cpu-small
+  namespace: openshift-lightspeed
+  eval_repo: /opt/hybrid
+  eval_cmd: lightspeed-eval
+  system_config: eval/system_hybrid_ask_streaming_cluster.yaml
+  eval_data: eval/eval_data.yaml
+  max_conversations: 100
+  results_dir: /results/experiments
+  dashboard_output: /results/experiments/dashboard.html   # rebuilt after every experiment
+  ready_timeout_minutes: 120
+
+  # What gets served (patched into the InferenceService). The model itself, and its
+  # parsers, are chosen per experiment from the `models:` section below.
+  served_model_name: hybrid-model
+  max_model_len: 32768
+  # The same pod resources for every model, so size them for the largest model you test.
+  # CPU: 24/28 covered up to 15 compute threads with no throttling. Memory: vLLM on CPU reserves 92%
+  # of the limit and needs it free at startup (a 20Gi limit failed to start: stay at 32Gi or more),
+  # and the limit must cover the weights, about checkpoint x 1.25 + 8 GiB. 128Gi fits a model with
+  # a checkpoint up to ~96 GiB. The plan prints a memory check. Raise these for a larger model.
+  cpu_request: "24"
+  cpu_limit: "28"
+  memory_request: 300Gi
+  memory_limit: 300Gi
+
+  # VLLM_CPU_OMP_THREADS_BIND:
+  #   "16-22"  pin compute threads to these CPUs (explicit list)
+  #   auto     let vLLM choose (one thread per physical core, minus 1 reserved)
+  #   omit     leave whatever the base manifest has
+  omp_threads_bind: auto
+
+  # Thinking (reasoning) mode: ON unless you set `thinking: false`. Sets enable_thinking in vLLM's
+  # --default-chat-template-kwargs. Some models have no such switch (the plan warns). A model that never
+  # reasons (Llama 4) should be set to `thinking: false` so the dashboard labels it correctly. A model that
+  # always reasons (gpt-oss: effort is low, medium or high, but never off) should be left on and run once;
+  # a "no thinking" experiment for it would run the same reasoning model under a wrong label.
+  thinking: true
+
+  # The judge panel for an experiment: names defined under the top-level `judges:` section.
+  # Several names means every answer is scored by each judge. Every judge's score is saved
+  # separately; the dashboard combines them (average, max, majority vote) or shows each one.
+  # (The eval's own summary files use the average of the judges.)
+  judges: [glm-5-3, deepseek]
+
+  # An experiment is skipped when a finished run in results_dir matches on ALL of these.
+  # The name is not compared. Available: model, cores (which CPUs, not just how many),
+  # max_model_len, dataset (file name + content), extra_args, extra_env, cpu_limit, judges, thinking, tool_call_parser, reasoning_parser.
+  # Runs made before thinking and the parsers were recorded count as thinking: false,
+  # tool_call_parser: qwen3_coder, reasoning_parser: qwen3 (what every earlier run used).
+  dedupe_on: [model, cores, max_model_len, dataset, judges, thinking, tool_call_parser, reasoning_parser]
+
+# Every model you want to test must be defined here. The runner refuses to start if a model is
+# missing a required value, or if an experiment names a model that is not defined.
+#   model              (required) Hugging Face id that vLLM serves
+#   tool_call_parser   (required) vLLM --tool-call-parser value (adds --enable-auto-tool-choice), or `none`
+#   reasoning_parser   (optional) vLLM --reasoning-parser value. Leave it out if the model has no
+#                      reasoning parser: the flag is then not passed to vLLM at all.
+#   gated              (optional) true if the model is gated on Hugging Face (Llama, for example). The
+#                      model pod then gets the token from the `hf-token` secret; see the README. Models
+#                      that are not gated never receive the token.
+# Take the parser values from each model's card. Parsers available in your vLLM build
+# include: tool - qwen3_coder, qwen3_xml, hermes, pythonic; reasoning - qwen3, deepseek_r1.
+models:
+  agentworld:
+    model: Qwen/Qwen-AgentWorld-35B-A3B
+    tool_call_parser: qwen3_coder
+    reasoning_parser: qwen3
+
+  qwen3.5-4b:
+    model: Qwen/Qwen3.5-4B
+    tool_call_parser: qwen3_coder
+    reasoning_parser: qwen3
+
+  granite4.2-3b:
+    model: ibm-granite/granite-4.2-3b
+    tool_call_parser: qwen3_coder
+    reasoning_parser: nemotron_v3
+
+  granite4.2-8b:
+    model: ibm-granite/granite-4.2-8b
+    tool_call_parser: qwen3_coder
+    reasoning_parser: nemotron_v3
+
+  gpt-oss:
+    model: openai/gpt-oss-20b
+    tool_call_parser: openai
+    reasoning_parser: openai_gptoss
+
+  meta-llama:
+    model: meta-llama/Llama-4-Scout-17B-16E-Instruct
+    tool_call_parser: llama4_pythonic
+    gated: true
+
+  gemma:
+    model: google/gemma-4-26B-A4B-it
+    tool_call_parser: gemma4
+    reasoning_parser: gemma4
+
+
+# Every judge you want to use is defined here with its provider and model (optional:
+# temperature, max_completion_tokens). The runner refuses to start if one is missing
+# `provider` or `model`, or if an experiment names a judge that is not defined.
+# Each provider needs its own credentials in the environment (cluster: the eval-credentials
+# secret): hosted_vllm -> HOSTED_VLLM_API_KEY + HOSTED_VLLM_API_BASE, openai -> OPENAI_API_KEY.
+# The runner checks these before it touches the cluster.
+judges:
+  glm-5-3:
+    provider: hosted_vllm
+    model: rits/zai-org/glm-5-3
+    temperature: 0.0
+  deepseek:
+    provider: hosted_vllm
+    model: rits/deepseek-ai/DeepSeek-V4.1-Flash-1017
+    temperature: 0.0
+  
+
+experiments:
+  - name: "AgentWorld"
+    model: agentworld
+    omp_threads_bind: "16-30"
+    thinking: true
+
+  - name: "AgentWorld - no thinking"
+    model: agentworld
+    omp_threads_bind: "16-30"
+    thinking: false
+
+  - name: "Qwen3.5-4B"
+    model: qwen3.5-4b
+    omp_threads_bind: "16-30"
+    thinking: true
+
+  - name: "Qwen3.5-4B - no thinking"
+    model: qwen3.5-4b
+    omp_threads_bind: "16-30"
+    thinking: false
+
+  - name: "granite4.2-3b"
+    model: granite4.2-3b
+    omp_threads_bind: "16-30"
+    thinking: true
+
+  - name: "granite4.2-3b - no thinking"
+    model: granite4.2-3b
+    omp_threads_bind: "16-30"
+    thinking: false
+
+  - name: "granite4.2-8b"
+    model: granite4.2-8b
+    omp_threads_bind: "16-30"
+    thinking: true
+
+  - name: "granite4.2-8b - no thinking"
+    model: granite4.2-8b
+    omp_threads_bind: "16-30"
+    thinking: false
+
+  - name: "gpt-oss"
+    model: gpt-oss
+    omp_threads_bind: "16-30"
+    thinking: true
+
+  - name: "meta-llama - no thinking"
+    model: meta-llama
+    omp_threads_bind: "16-30"
+    thinking: false
+
+  - name: "gemma"
+    model: gemma
+    omp_threads_bind: "16-30"
+    thinking: true
+
+  - name: "gemma - no thinking"
+    model: gemma
+    omp_threads_bind: "16-30"
+    thinking: false
+
+  # Examples of other things you can vary (uncomment and edit):
+  #
+  # - name: "Qwen3.5-4B, thinking on, 15 compute"
+  #   model: qwen3.5-4b
+  #   omp_threads_bind: "16-30"
+  #   thinking: true
+  #
+  # - name: "AgentWorld, two judges"
+  #   model: agentworld
+  #   omp_threads_bind: "16-30"
+  #   judges: [glm-5-3, gpt-4o-mini]      # both must be defined under `judges:` above
+  #
+  # - name: "Other model, 15 compute"
+  #   model: other-model          # must be defined under `models:` above
+  #   served_model_name: hybrid-model
+  #   max_model_len: 16384
+  #   omp_threads_bind: "16-30"
+  #   extra_args:                        # appended to the vLLM args
+  #     - --dtype=bfloat16
+  #   extra_env:                         # added to the container env
+  #     VLLM_CPU_KVCACHE_SPACE: "40"
