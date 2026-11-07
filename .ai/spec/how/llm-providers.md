@@ -10,6 +10,32 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 - `resolve_provider_config(provider, model, providers_config)` -- Validates that the provider name exists in config and that the model is listed under that provider. Returns `ProviderConfig`.
 - Exception hierarchy: `LLMConfigurationError` (base), `UnknownProviderError`, `UnsupportedProviderError`, `ModelConfigMissingError`.
 
+### `ols/utils/audit_support.py` -- Native connectivity observation
+
+After construction, `load_llm` passes supported real chat models through `audit_model`.
+The same instance delegates to native model methods under execution-only metadata scopes;
+no scope stays active while a caller consumes a yielded chunk. Explicit caller purpose
+can override the construction default without changing the loader's public signature.
+Fake models and non-inference helpers produce no connection attempts.
+
+Consolidated HTTPX/HTTPX2, Google HTTPX/aiohttp, Bedrock urllib3, and IBM HTTPcore adapters
+observe actual dispatch/stream boundaries without replacing clients, mounts, retry loops,
+TLS policy or SDK-selected backends. IBM observation sits below its RetryTransport and
+follows replacement pools during native TLS fallback. These instance-local private hooks
+are version-sensitive; keep real SDK tests at controlled boundaries and reject public DNS
+in native provider tests. Leave unsupported custom IBM transports unchanged.
+
+The shared utility module owns metadata, ordinary INFO logging, and locked process-local
+attempt matching for LLM, MCP and supported credential transports; MCP utilities never
+import the LLM provider layer.
+Normal imports ensure one canonical state owner, outside provider discovery. Trace/span IDs
+are optional local metadata only; no OTel lookup or new telemetry pipeline is involved.
+Azure credential methods, Google Vertex credentials and AWS STS selection additionally use
+sandbox-derived native credential scopes/adapters, emitting separate `auth.request.*` records.
+They preserve existing acquisition/cache policy and do not audit local signing/static keys.
+Watsonx IAM and arbitrary MCP OAuth exchanges remain explicit credential coverage gaps.
+See `../what/audit-logging.md` for fields, exclusions, lifecycle limitations and exact scope.
+
 ### `ols/src/llms/providers/registry.py` -- Provider registry
 
 - `LLMProvidersRegistry` -- Class-level dict (`llm_providers`) mapping string type names (e.g. `"openai"`, `"watsonx"`) to `LLMProvider` subclasses.

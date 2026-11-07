@@ -9,6 +9,7 @@ execution with retry/backoff, and token-budget-aware result truncation.
 | File | Key symbols | Responsibility |
 |---|---|---|
 | `ols/utils/mcp_utils.py` | `build_mcp_config`, `gather_mcp_tools`, `get_mcp_tools`, `resolve_header_value`, `_normalize_tool_schema` | MCP client lifecycle: builds per-server transport configs with placeholder resolution, connects to servers via `MultiServerMCPClient`, gathers tools with fault isolation (one failing server does not block others), deduplicates by name (first-seen wins), and normalizes schemas for OpenAI compatibility. Optionally routes through ToolsRAG for query-based filtering. |
+| `ols/utils/audit_support.py` | `MCPServerMetadata`, `mcp_client_factory`, `instrument_mcp_http_client`, `mcp_operation` | Observe owned native MCP HTTP attempts through the shared metadata-only audit lifecycle. Preserve original client factories, authentication, TLS, retries and stream ownership. |
 | `ols/src/tools/tools.py` | `execute_tool_calls_stream`, `enforce_tool_token_budget`, `execute_tool_call`, `_execute_with_retries`, `_extract_text_from_tool_output` | Tool execution engine: runs tool calls in parallel via `aiostream.merge`, applies retry/backoff for transient errors, extracts text from both string and content-block outputs, and enforces tool-result budgets. |
 | `ols/src/tools/tool_result_inspection.py` | `ToolResultClassifier`, `ToolResultInspectionDecision`, `WatsonxToolResultInspectionDecision`, `ToolResultInspectionError` | Sends structured classifier requests. It selects the Watsonx-specific schema by provider type. The shared decision model rejects inconsistent responses from every provider. |
 | `ols/src/tools/approval.py` | `need_validation`, `get_approval_decision`, `set_approval_decision`, `register_pending_approval`, `InMemoryPendingApprovalStore` | Approval state machine: determines whether a tool call requires user approval (based on config strategy and tool annotations), registers pending approvals in an in-memory store backed by `asyncio.Event`, waits for decisions with configurable timeout, and cleans up state on completion. |
@@ -121,6 +122,15 @@ OLS wraps it with fault isolation: `gather_mcp_tools` connects to each server
 individually so one unreachable server does not block others. Tool schemas are
 normalized post-collection to ensure OpenAI compatibility (adding empty
 `properties` dict to no-arg tools).
+
+For HTTP/SSE connections, `gather_mcp_tools` copies each connection configuration and
+wraps its native `httpx_client_factory` with shared connectivity observation. Discovery
+and tool interceptors provide purpose metadata without reading arguments or results.
+MCP Apps instrument their existing HTTP clients for resource/tool requests. Native SDK
+background tasks retain the owning connection's metadata; each HTTP attempt has its own
+ID, including initialization, SSE streams, retries and session termination. Authentication
+helper traffic, stdio, cache-only paths and header-resolution preflight failures emit no
+MCP HTTP attempts. See `../what/audit-logging.md`.
 
 ### Approval State Machine
 
