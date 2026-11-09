@@ -1,15 +1,24 @@
 """Unit tests for the offloaded_content module."""
 
+import asyncio
+import io
 import os
 import re
 import shutil
+import subprocess
+import sys
+import threading
+import time
 from unittest.mock import patch
 
 import pytest
 
+from ols import constants
+from ols.src.tools import offload_search_worker
 from ols.src.tools.offloaded_content import (
     OffloadManager,
     _build_placeholder,
+    _find_matches_in_subprocess,
     _read_offloaded,
     _search_offloaded,
     cleanup_offload_storage,
@@ -245,7 +254,7 @@ class TestSearchOffloaded:
         ref_id = next(iter(manager._allowlist.keys()))
 
         with patch(
-            "ols.src.tools.offloaded_content._find_matches_with_timeout",
+            "ols.src.tools.offloaded_content._find_matches_in_subprocess",
             return_value=(
                 None,
                 "Error: search pattern 'bad' timed out. Try a simpler pattern.",
@@ -256,6 +265,28 @@ class TestSearchOffloaded:
             )
         assert "timed out" in result
         assert "simpler pattern" in result
+
+    def test_search_offloaded_succeeds_in_worker_thread(self, manager):
+        """Test search succeeds when the request runs outside the main thread."""
+        text = _large_text(100)
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
+        ref_id = next(iter(manager._allowlist.keys()))
+        outcome: dict[str, object] = {}
+
+        async def call() -> None:
+            outcome["result"] = _search_offloaded(
+                manager, ref_id=ref_id, pattern="line 42", context_lines=0
+            )
+
+        def run_in_worker() -> None:
+            asyncio.run(call())
+
+        thread = threading.Thread(target=run_in_worker)
+        thread.start()
+        thread.join(timeout=30)
+        assert not thread.is_alive(), "search thread did not finish"
+
+        assert "line 42" in str(outcome["result"])
 
 
 class TestReadOffloaded:
@@ -387,45 +418,170 @@ class TestSearchThenRead:
         assert "line 200:" in r2
 
 
-class TestFindMatchesWithTimeout:
-    """Tests for _find_matches_with_timeout."""
+class TestFindMatchesInSubprocess:
+    """Tests for _find_matches_in_subprocess."""
 
-    def test_successful_match(self):
-        """Test normal regex matching returns indices."""
-        from ols.src.tools.offloaded_content import _find_matches_with_timeout
+    @pytest.fixture
+    def file_path(self, tmp_path):
+        """Return a small file to search."""
+        path = tmp_path / "content.txt"
+        path.write_text("foo\nbar\nfoo\n", encoding="utf-8")
+        return str(path)
 
-        lines = ["foo\n", "bar\n", "foo\n"]
-        compiled = re.compile("foo")
-        indices, error = _find_matches_with_timeout(lines, compiled, "foo")
-        assert error is None
-        assert indices == [0, 2]
+    def test_returns_matching_line_indices(self, file_path):
+        """Test matching lines are returned as 0-based indices."""
+        assert _find_matches_in_subprocess(file_path, "ref", "fo+") == ([0, 2], None)
 
-    def test_no_match(self):
-        """Test no matches returns empty list."""
-        from ols.src.tools.offloaded_content import _find_matches_with_timeout
+    def test_no_match_returns_empty_list(self, file_path):
+        """Test a pattern with no matches returns an empty list."""
+        assert _find_matches_in_subprocess(file_path, "ref", "baz") == ([], None)
 
-        lines = ["foo\n", "bar\n"]
-        compiled = re.compile("baz")
-        indices, error = _find_matches_with_timeout(lines, compiled, "baz")
-        assert error is None
-        assert indices == []
-
-    def test_timeout_returns_error(self):
-        """Test that a timeout in regex matching returns an error string."""
-        from ols.src.tools.offloaded_content import _find_matches_with_timeout
-
-        class TimeoutPattern:
-            """Fake compiled pattern that triggers TimeoutError on search."""
-
-            def search(self, text):
-                raise TimeoutError()
-
-        indices, error = _find_matches_with_timeout(
-            ["line\n"] * 10, TimeoutPattern(), "line"  # type: ignore[arg-type]
-        )
+    def test_invalid_pattern_reports_re_error(self, file_path):
+        """Test an invalid pattern returns the re compile error."""
+        indices, error = _find_matches_in_subprocess(file_path, "ref", "[x")
         assert indices is None
         assert error is not None
-        assert "timed out" in error
+        assert error.startswith("Error: invalid search pattern '[x': ")
+        assert "unterminated character set" in error
+
+    def test_timeout_stops_slow_pattern_off_main_thread(self, tmp_path):
+        """Test a slow pattern is stopped at the deadline outside the main thread."""
+        path = tmp_path / "slow.txt"
+        path.write_text(("a" * 40 + "b\n") * 3, encoding="utf-8")
+        outcome: dict[str, object] = {}
+
+        def run_search() -> None:
+            started = time.monotonic()
+            outcome["value"] = _find_matches_in_subprocess(
+                str(path), "ref", r"(a|aa)+$"
+            )
+            outcome["elapsed"] = time.monotonic() - started
+
+        with patch.object(constants, "OFFLOAD_REGEX_TIMEOUT_SECONDS", 0.2):
+            thread = threading.Thread(target=run_search)
+            thread.start()
+            thread.join(timeout=30)
+            assert not thread.is_alive(), "search thread did not finish"
+
+        assert outcome["value"] == (
+            None,
+            "Error: search pattern '(a|aa)+$' timed out. Try a simpler pattern.",
+        )
+        assert outcome["elapsed"] < 5  # type: ignore[operator]
+
+    def test_memory_over_limit_returns_error(self, file_path):
+        """Test a search exceeding the memory budget fails without harming the caller."""
+        pattern = "a" * (64 * 1024 * 1024)
+        with patch.object(
+            constants, "OFFLOAD_SEARCH_MEMORY_LIMIT_BYTES", 8 * 1024 * 1024
+        ):
+            indices, error = _find_matches_in_subprocess(file_path, "ref", pattern)
+
+        assert indices is None
+        assert error is not None
+        assert error.endswith("needs too much memory. Try a simpler pattern.")
+
+    def test_child_launch_failure_returns_error(self, file_path):
+        """Test a child process that cannot start returns a tool error."""
+        with patch(
+            "ols.src.tools.offloaded_content.subprocess.run",
+            side_effect=OSError("cannot start"),
+        ):
+            indices, error = _find_matches_in_subprocess(file_path, "ref", "foo")
+
+        assert indices is None
+        assert error == "Error: search failed for 'ref'."
+
+    def test_unexpected_child_exit_returns_error(self, file_path):
+        """Test an unrecognized child exit code returns a tool error."""
+        failed = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="", stderr="boom"
+        )
+        with patch(
+            "ols.src.tools.offloaded_content.subprocess.run",
+            return_value=failed,
+        ):
+            indices, error = _find_matches_in_subprocess(file_path, "ref", "foo")
+
+        assert indices is None
+        assert error == "Error: search failed for 'ref'."
+
+
+class TestOffloadSearchWorker:
+    """Tests for the stdlib-only child process entrypoint."""
+
+    @pytest.fixture
+    def content_file(self, tmp_path):
+        """Return a small file to search."""
+        path = tmp_path / "content.txt"
+        path.write_text("foo\nbar\nfoo\n", encoding="utf-8")
+        return str(path)
+
+    def _run_main(self, content_file, stdin):
+        """Run the worker entrypoint with resource limits and stdio patched."""
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            patch.object(offload_search_worker, "_set_limit"),
+            patch.object(sys, "argv", ["worker", content_file, "8000000", "6"]),
+            patch.object(sys, "stdin", io.StringIO(stdin)),
+            patch.object(sys, "stdout", stdout),
+            patch.object(sys, "stderr", stderr),
+        ):
+            return_code = offload_search_worker.main()
+        return return_code, stdout.getvalue(), stderr.getvalue()
+
+    def test_main_prints_matching_line_indices(self, content_file):
+        """Test the entrypoint prints 0-based indices of matching lines."""
+        assert self._run_main(content_file, "fo+") == (0, "0\n2\n", "")
+
+    def test_main_prints_nothing_without_matches(self, content_file):
+        """Test the entrypoint prints no indices when nothing matches."""
+        assert self._run_main(content_file, "baz") == (0, "", "")
+
+    def test_main_reports_invalid_pattern(self, content_file):
+        """Test the entrypoint reports invalid patterns on stderr."""
+        return_code, stdout, stderr = self._run_main(content_file, "[x")
+        assert return_code == offload_search_worker.EXIT_INVALID_PATTERN
+        assert stdout == ""
+        assert "unterminated character set" in stderr
+
+    def test_main_reports_memory_error(self, content_file):
+        """Test the entrypoint reports a memory error through its exit code."""
+        with patch.object(offload_search_worker.re, "compile", side_effect=MemoryError):
+            return_code, stdout, stderr = self._run_main(content_file, "foo")
+        assert return_code == offload_search_worker.EXIT_OUT_OF_MEMORY
+        assert (stdout, stderr) == ("", "")
+
+    @pytest.mark.skipif(sys.platform != "linux", reason="reads /proc/self/status")
+    def test_current_virtual_size_reads_proc_status(self):
+        """Test the child reports a positive virtual size on Linux."""
+        assert offload_search_worker._current_virtual_size() > 0
+
+    def test_current_virtual_size_returns_zero_without_proc(self):
+        """Test the child falls back to zero when /proc is unavailable."""
+        with patch("builtins.open", side_effect=OSError):
+            assert offload_search_worker._current_virtual_size() == 0
+
+    def test_set_limit_clamps_to_hard_limit(self):
+        """Test a budget above the hard limit is clamped to the hard limit."""
+        rlimit = offload_search_worker.resource
+        with (
+            patch.object(rlimit, "getrlimit", return_value=(0, 2048)),
+            patch.object(rlimit, "setrlimit") as setrlimit,
+        ):
+            offload_search_worker._set_limit(rlimit.RLIMIT_AS, 4096)
+        setrlimit.assert_called_once_with(rlimit.RLIMIT_AS, (2048, 2048))
+
+    def test_set_limit_keeps_request_without_hard_limit(self):
+        """Test the requested budget is kept when the hard limit is unbounded."""
+        rlimit = offload_search_worker.resource
+        with (
+            patch.object(rlimit, "getrlimit", return_value=(0, rlimit.RLIM_INFINITY)),
+            patch.object(rlimit, "setrlimit") as setrlimit,
+        ):
+            offload_search_worker._set_limit(rlimit.RLIMIT_CPU, 6)
+        setrlimit.assert_called_once_with(rlimit.RLIMIT_CPU, (6, 6))
 
 
 class TestRetrievalToolRegistration:

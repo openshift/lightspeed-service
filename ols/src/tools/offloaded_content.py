@@ -1,10 +1,12 @@
 """Offload large tool outputs to disk with search + read retrieval."""
 
+import asyncio
 import logging
+import math
 import os
-import re
 import shutil
-import signal
+import subprocess
+import sys
 import tempfile
 from typing import Optional
 from uuid import uuid4
@@ -13,8 +15,11 @@ from langchain_core.tools.structured import StructuredTool
 from pydantic import BaseModel, Field
 
 from ols import constants
+from ols.src.tools import offload_search_worker
 
 logger = logging.getLogger(__name__)
+
+_SEARCH_WORKER_PATH = offload_search_worker.__file__
 
 
 def cleanup_offload_storage(storage_path: str) -> None:
@@ -202,7 +207,9 @@ class OffloadManager:
             return _search_offloaded(manager, **kwargs)
 
         async def _search_async(**kwargs: object) -> str:
-            return _search_offloaded(manager, **kwargs)
+            # The search waits on a child process for up to the regex timeout;
+            # wait in a thread so the event loop keeps serving other requests.
+            return await asyncio.to_thread(_search_offloaded, manager, **kwargs)
 
         def _read_sync(**kwargs: object) -> str:
             return _read_offloaded(manager, **kwargs)
@@ -274,29 +281,62 @@ def _load_lines_or_error(
         return None, f"Error: could not read offloaded content for '{ref_id}': {e}"
 
 
-def _find_matches_with_timeout(
-    lines: list[str], compiled: re.Pattern[str], pattern: str
+def _find_matches_in_subprocess(
+    file_path: str, ref_id: str, pattern: str
 ) -> tuple[Optional[list[int]], Optional[str]]:
-    """Run regex search with SIGALRM timeout. Return (indices, None) or (None, error)."""
+    """Run the regex search in a resource-limited child process.
 
-    def _timeout_handler(signum: int, frame: object) -> None:
-        raise TimeoutError()
-
-    match_indices: list[int] = []
-    old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-    signal.alarm(constants.OFFLOAD_REGEX_TIMEOUT_SECONDS)
+    Return (indices, None) or (None, error). The child is killed at the
+    deadline, so this works from any thread and a runaway pattern cannot
+    exhaust the service's CPU or memory.
+    """
+    timeout = constants.OFFLOAD_REGEX_TIMEOUT_SECONDS
+    timeout_error = (
+        f"Error: search pattern '{pattern}' timed out. Try a simpler pattern."
+    )
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        _SEARCH_WORKER_PATH,
+        file_path,
+        str(constants.OFFLOAD_SEARCH_MEMORY_LIMIT_BYTES),
+        str(math.ceil(timeout) + 1),
+    ]
     try:
-        for i, line in enumerate(lines):
-            if compiled.search(line):
-                match_indices.append(i)
-    except TimeoutError:
-        return None, (
-            f"Error: search pattern '{pattern}' timed out. Try a simpler pattern."
+        completed = subprocess.run(  # noqa: S603
+            command,
+            input=pattern,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=timeout,
+            check=False,
         )
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-    return match_indices, None
+    except subprocess.TimeoutExpired:
+        return None, timeout_error
+    except (OSError, ValueError):
+        logger.warning("Failed to run offloaded content search", exc_info=True)
+        return None, f"Error: search failed for '{ref_id}'."
+
+    if completed.returncode == 0:
+        return [int(index) for index in completed.stdout.split()], None
+    error: Optional[str] = None
+    if completed.returncode == offload_search_worker.EXIT_INVALID_PATTERN:
+        error = f"Error: invalid search pattern '{pattern}': {completed.stderr}"
+    elif completed.returncode == offload_search_worker.EXIT_OUT_OF_MEMORY:
+        error = (
+            f"Error: search pattern '{pattern}' needs too much memory. "
+            "Try a simpler pattern."
+        )
+    else:
+        logger.warning(
+            "Offloaded content search exited with code %d: %s",
+            completed.returncode,
+            completed.stderr,
+        )
+        error = f"Error: search failed for '{ref_id}'."
+    return None, error
 
 
 def _format_search_results(
@@ -347,14 +387,11 @@ def _search_offloaded(manager: OffloadManager, **kwargs: object) -> str:
     if error is not None or lines is None:
         return error or f"Error: unknown reference '{ref_id}'."
 
-    try:
-        compiled = re.compile(pattern)
-    except re.error as e:
-        return f"Error: invalid search pattern '{pattern}': {e}"
-
-    match_indices, timeout_error = _find_matches_with_timeout(lines, compiled, pattern)
-    if timeout_error is not None or match_indices is None:
-        return timeout_error or f"Error: search failed for '{ref_id}'."
+    match_indices, error = _find_matches_in_subprocess(
+        manager._allowlist[ref_id], ref_id, pattern
+    )
+    if error is not None or match_indices is None:
+        return error or f"Error: search failed for '{ref_id}'."
 
     if len(match_indices) == 0:
         return (

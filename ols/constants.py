@@ -284,6 +284,8 @@ OFFLOAD_MAX_SEARCH_MATCHES = 50
 OFFLOAD_MAX_READ_LINES = 500
 OFFLOAD_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 OFFLOAD_REGEX_TIMEOUT_SECONDS = 5
+# Extra address space one search child process may use beyond its startup size
+OFFLOAD_SEARCH_MEMORY_LIMIT_BYTES = 256 * 1024 * 1024
 
 # MCP authorization header placeholders
 MCP_KUBERNETES_PLACEHOLDER = "kubernetes"
