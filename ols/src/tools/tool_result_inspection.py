@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -130,12 +131,65 @@ class WatsonxToolResultInspectionDecision(ToolResultInspectionDecision):
 CLASSIFIER_OUTPUT_TOKEN_LIMIT = DEFAULT_MAX_TOKENS_FOR_RESPONSE
 
 
+_SAFE_PROVIDER_CODE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
+
+
+def _safe_provider_code(value: object) -> str | None:
+    """Return a provider code only when it is a short identifier."""
+    if value is None:
+        return None
+    if isinstance(value, str) and _SAFE_PROVIDER_CODE.fullmatch(value):
+        return value
+    return "unsafe"
+
+
+def _provider_error_metadata(
+    error: BaseException,
+) -> tuple[str | None, str | None, str | None, list[str]]:
+    """Extract provider error codes and filtered categories, never messages.
+
+    OpenAI-compatible providers put a machine-readable code in the error body.
+    Azure content-filter rejections also add an inner code and the filter
+    categories that blocked the request.
+    """
+    try:
+        code = _safe_provider_code(getattr(error, "code", None))
+        param = _safe_provider_code(getattr(error, "param", None))
+        body = getattr(error, "body", None)
+    except Exception:
+        return None, None, None, []
+    inner_code = None
+    filtered: list[str] = []
+    if isinstance(body, dict):
+        if code is None:
+            code = _safe_provider_code(body.get("code"))
+        if param is None:
+            param = _safe_provider_code(body.get("param"))
+        inner = body.get("innererror")
+        if isinstance(inner, dict):
+            inner_code = _safe_provider_code(inner.get("code"))
+            results = inner.get("content_filter_result")
+            if isinstance(results, dict):
+                filtered = [
+                    name
+                    for name, result in results.items()
+                    if isinstance(result, dict)
+                    and result.get("filtered") is True
+                    and _safe_provider_code(name) == name
+                ]
+    return code, param, inner_code, filtered
+
+
 def _log_temporary_classifier_failure(
     stage: str, attempt: int, error: Exception
 ) -> None:
     """Log classifier failure metadata without provider or tool content."""
     error_types: list[str] = []
     status_code: int | None = None
+    provider_code: str | None = None
+    provider_param: str | None = None
+    provider_inner_code: str | None = None
+    filtered_categories: list[str] = []
     current_error: BaseException | None = error
     visited: set[int] = set()
     for _ in range(4):
@@ -159,6 +213,11 @@ def _log_temporary_classifier_failure(
             ):
                 status_code = candidate
                 break
+        code, param, inner_code, filtered = _provider_error_metadata(current_error)
+        provider_code = provider_code or code
+        provider_param = provider_param or param
+        provider_inner_code = provider_inner_code or inner_code
+        filtered_categories = filtered_categories or filtered
         if current_error.__cause__ is not None:
             current_error = current_error.__cause__
         elif current_error.__suppress_context__:
@@ -169,12 +228,18 @@ def _log_temporary_classifier_failure(
     cause_types = ",".join(error_types[1:]) or "none"
     logger.debug(
         "TEMPORARY tool_result_classifier_failure stage=%s attempt=%d/3 "
-        "error_type=%s cause_types=%s status_code=%s",
+        "error_type=%s cause_types=%s status_code=%s "
+        "provider_error_code=%s provider_error_param=%s provider_inner_code=%s "
+        "filtered_categories=%s",
         stage,
         attempt,
         error_types[0] if error_types else "Unknown",
         cause_types,
         status_code if status_code is not None else "unknown",
+        provider_code or "unknown",
+        provider_param or "unknown",
+        provider_inner_code or "unknown",
+        ",".join(filtered_categories) or "none",
     )
 
 
