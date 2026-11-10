@@ -4,7 +4,7 @@ The conversation history subsystem preserves prior exchanges within a conversati
 
 ## Behavioral Rules
 
-1. Every cache operation requires both a user_id and a conversation_id. The conversation_id must be a valid UUID; the user_id is an externally-provided opaque string checked by the User Identity Contract rules in `auth.md` (rule 32). Operations with an invalid ID must be rejected with a validation error before reaching the storage backend.
+1. Every cache operation requires both a user_id and a conversation_id. The conversation_id must be a valid UUID; the user_id is an externally-provided opaque string checked by the User Identity Contract rules in `auth.md` (rule 32). Operations that build the compound storage key must reject an invalid ID with a validation error before reaching the storage backend. The in-memory backend validates the IDs on every operation; the PostgreSQL backend validates them on reads, while its write operations rely on the endpoint layer having validated the inputs.
 
 2. When a query-response exchange is stored, the system must either append it to an existing conversation (if one exists for the given user_id + conversation_id) or create a new conversation. Each stored exchange contains the user query (HumanMessage), the AI response (AIMessage), any attachments submitted with the query, any tool calls requested by the model, and any tool results returned from tool execution.
 
@@ -83,7 +83,7 @@ _The `@connection` pre-check reconnect, `connected()` liveness check, and per-in
 
 1. **User isolation is a security invariant.** A user must never be able to read, modify, list, or delete another user's conversations. Every cache operation must scope access by the authenticated user_id. There is no administrative bypass for cross-user access.
 
-2. The conversation_id must be a valid UUID (with or without dashes). The user_id must be a bounded opaque string (User Identity Contract rule 32 in `auth.md`): non-empty, at most 256 characters, no whitespace, no non-printable characters, and no `:`. Rejecting `:` prevents a user whose ID is itself a `"<other>:..."` prefix from enumerating another user's compound cache keys when listing. Operations with malformed IDs must be rejected before any storage access occurs.
+2. The conversation_id must be a valid UUID (with or without dashes). The user_id must be a bounded opaque string (User Identity Contract rule 32 in `auth.md`): non-empty, at most 256 characters, no whitespace, no non-printable characters, and no `:`. Rejecting `:` prevents a user whose ID is itself a `"<other>:..."` prefix from enumerating another user's compound cache keys when listing. Operations that build the compound cache key must reject malformed IDs before any storage access occurs.
 
 3. Capacity is measured in total message entries across all conversations, not in number of conversations.
 
