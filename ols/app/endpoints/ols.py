@@ -752,6 +752,11 @@ def redact_attachments(
 
 # filesystems commonly limit a single path component to 255 bytes
 _MAX_PATH_COMPONENT_BYTES = 255
+# Prefix used for filesystem-safe digest directories. Must be checked
+# when deciding whether to digest-map a user ID so that an ID whose
+# literal value *starts with* this prefix can never occupy that
+# directory without itself being digest-mapped.
+_DIGEST_DIR_PREFIX = "sha256-"
 
 
 def _transcripts_user_directory(user_id: str) -> str:
@@ -760,17 +765,27 @@ def _transcripts_user_directory(user_id: str) -> str:
     User IDs are validated as bounded opaque strings, not just UUIDs, so
     some accepted IDs cannot be used directly as one path component: they
     are too long (up to USER_ID_MAX_LENGTH characters, possibly
-    multi-byte) or are rewritten by path normalization (e.g. "." or
-    ".." would collapse to the storage root). Such IDs are replaced by
-    the hexadecimal SHA-256 digest of the user ID, which is deterministic
-    (so transcripts stay associated with the original user ID) and always
-    fits within the component length limit.
+    multi-byte), are rewritten by path normalization (e.g. "." or
+    ".." would collapse to the storage root), contain a "/" character
+    (which would create nested directories), or start with the reserved
+    "sha256-" prefix used for digest directories. Such IDs are replaced
+    by a directory named ``sha256-<hex SHA-256 digest of the user ID>``,
+    which is deterministic (so transcripts stay associated with the
+    original user ID) and always fits within the component length limit.
     """
     # this normalization is required by Snyk as it detects
     # this Path sanitization pattern
     uid = os.path.normpath("/" + user_id).lstrip("/")
-    if uid != user_id or len(user_id.encode("utf-8")) > _MAX_PATH_COMPONENT_BYTES:
-        return hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    if (
+        uid != user_id
+        or len(user_id.encode("utf-8")) > _MAX_PATH_COMPONENT_BYTES
+        or "/" in user_id
+        or user_id.startswith(_DIGEST_DIR_PREFIX)
+    ):
+        return (
+            f"{_DIGEST_DIR_PREFIX}"
+            f"{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+        )
     return uid
 
 
@@ -802,7 +817,7 @@ def store_transcript(
     """Store transcript in the local filesystem.
 
     Args:
-        user_id: The user ID (UUID).
+        user_id: The user ID (opaque string, not necessarily a UUID).
         conversation_id: The conversation ID (UUID).
         redacted_query: The redacted query (without attachments).
         llm_request: The request containing a query.

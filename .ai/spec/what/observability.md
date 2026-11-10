@@ -68,7 +68,7 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 15. Each transcript file must contain: metadata (provider, model, user ID, conversation ID, query mode, ISO 8601 timestamp), the redacted user query, the LLM response, RAG chunks (as dicts), a truncation flag, merged tool calls and results, and attachments.
 
-16. Transcripts are organized under `{transcripts_storage}/{user_id}/{conversation_id}/{suid}.json`. The user directory is the user ID as-is, except when the ID cannot serve as a single filesystem path component (its UTF-8 encoding exceeds 255 bytes, or path normalization would rewrite it, e.g. `.` or `..`); such IDs are replaced by their hexadecimal SHA-256 digest, which is deterministic and keeps transcripts associated with the original user ID.
+16. Transcripts are organized under `{transcripts_storage}/{user_id}/{conversation_id}/{suid}.json`. The user directory is the user ID as-is, except when it cannot serve as a single filesystem path component: its UTF-8 encoding exceeds 255 bytes, path normalization would rewrite it (e.g. `.` or `..`), it contains `/`, or it starts with the reserved `sha256-` prefix; such IDs are replaced by the directory `sha256-<hex SHA-256 digest of the user ID>`, which is deterministic and keeps transcripts associated with the original user ID.
 
 17. Transcript recording is independently enabled or disabled. When disabled, no files are written and a debug log message is emitted. [PLANNED: OLS-1805 -- enhance transcripts with per-request token usage data]
 
