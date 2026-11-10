@@ -1,7 +1,7 @@
 # 0002 -- Opaque User ID Format
 
 - **GitHub:** [lightspeed-service#3185](https://github.com/openshift/lightspeed-service/issues/3185)
-- **Status:** Accepted.
+- **Status:** Proposed.
 - **Date:** 2026-11-10
 
 ## Context

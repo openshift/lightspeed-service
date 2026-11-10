@@ -87,7 +87,7 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `utils/redactor.py` | `Redactor` -- applies configured query filters (regex-based PII redaction) to queries and attachments before logging or LLM submission. |
 | `utils/token_handler.py` | `TokenHandler` -- tiktoken-based token counting and RAG context truncation. `TokenBudgetTracker` -- per-request token budget management across categories (prompt, RAG, history, skill, tool definitions, tool results, AI rounds). `PromptTooLongError` exception. |
 | `utils/mcp_utils.py` | `build_mcp_config()` and `get_mcp_tools()` -- resolves MCP server configurations, applies tool filtering via `ToolsRAG`, and fetches tools from MCP servers using `langchain-mcp-adapters`. |
-| `utils/suid.py` | UUID generation and validation for conversation/user IDs. |
+| `utils/suid.py` | UUID generation and conversation-ID validation (`check_suid`); bounded opaque user-ID validation (`check_user_id`, `USER_ID_MAX_LENGTH`). |
 | `utils/environments.py` | `configure_gradio_ui_envs()` and `configure_hugging_face_envs()` -- sets environment variables before other imports. |
 | `utils/checks.py` | `InvalidConfigurationError` and validation helpers. |
 | `utils/errors_parsing.py` | `parse_generic_llm_error()` and `handle_known_errors()` -- translates LLM provider exceptions into HTTP status codes and user-facing messages. |
