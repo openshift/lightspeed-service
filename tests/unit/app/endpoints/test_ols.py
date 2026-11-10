@@ -866,7 +866,9 @@ def test_construct_transcripts_path_with_reserved_prefix_user_id(transcripts_loc
     assert path.name == conversation_id
     # the parent is the prefixed digest of the *entire* ID string,
     # which is different from the ID itself (proving it was remapped)
-    expected = f"{ols._DIGEST_DIR_PREFIX}{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+    expected = (
+        f"{ols._DIGEST_DIR_PREFIX}{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+    )
     assert path.parent.name == expected
     assert path.parent.name != user_id
 

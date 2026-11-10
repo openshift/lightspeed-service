@@ -921,9 +921,7 @@ _operations = {
 cache_operations = [pytest.param(op, id=name) for name, op in _operations.items()]
 # every operation except list() addresses a conversation by ID
 operations_with_conversation_id = [
-    pytest.param(op, id=name)
-    for name, op in _operations.items()
-    if name != "list"
+    pytest.param(op, id=name) for name, op in _operations.items() if name != "list"
 ]
 
 # all SQL statements accessing the cache storage
