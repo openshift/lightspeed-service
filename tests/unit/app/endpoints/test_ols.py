@@ -793,13 +793,16 @@ def test_construct_transcripts_path(transcripts_location):
 
 
 def test_construct_transcripts_path_with_long_user_id(transcripts_location):
-    """Test that too-long user IDs are replaced by their digest."""
+    """Test that too-long user IDs are replaced by their prefixed digest."""
     # accepted by check_user_id, but too long for common filesystems
     user_id = "a" * 256
     conversation_id = "11111111-1111-1111-1111-111111111111"
     path = ols.construct_transcripts_path(user_id, conversation_id)
     assert path.name == conversation_id
-    assert path.parent.name == hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    assert (
+        path.parent.name
+        == f"{ols._DIGEST_DIR_PREFIX}{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+    )
     # the digest directory must be creatable and deterministic
     expected = Path(transcripts_location) / path.parent.name / conversation_id
     assert path == expected
@@ -815,10 +818,13 @@ def test_construct_transcripts_path_with_multibyte_user_id(transcripts_location)
     assert len(fits.encode("utf-8")) == 254
     path = ols.construct_transcripts_path(fits, conversation_id)
     assert path.parent.name == fits
-    # 128 two-byte characters exceed it and get digest-encoded
+    # 128 two-byte characters exceed it and get prefixed-digest-encoded
     too_long = "ш" * 128
     path = ols.construct_transcripts_path(too_long, conversation_id)
-    assert path.parent.name == hashlib.sha256(too_long.encode("utf-8")).hexdigest()
+    assert (
+        path.parent.name
+        == f"{ols._DIGEST_DIR_PREFIX}{hashlib.sha256(too_long.encode('utf-8')).hexdigest()}"
+    )
 
 
 def test_construct_transcripts_path_with_unsafe_user_id(transcripts_location):
@@ -829,7 +835,40 @@ def test_construct_transcripts_path_with_unsafe_user_id(transcripts_location):
         assert path.name == conversation_id
         # the digest keeps transcripts associated with the original user ID
         # and prevents collapsing into the transcripts storage root
-        assert path.parent.name == hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+        assert path.parent.name == (
+            f"{ols._DIGEST_DIR_PREFIX}"
+            f"{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+        )
+
+
+def test_construct_transcripts_path_with_slash_in_user_id(transcripts_location):
+    """Test that user IDs containing '/' are prefixed-digest-encoded."""
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    for user_id in ("foo/bar", "a/b/c"):
+        path = ols.construct_transcripts_path(user_id, conversation_id)
+        assert path.name == conversation_id
+        assert path.parent.name.startswith(ols._DIGEST_DIR_PREFIX)
+        expected_digest = (
+            f"{ols._DIGEST_DIR_PREFIX}"
+            f"{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+        )
+        assert path.parent.name == expected_digest
+        # ensure flat layout: only user dir + conversation dir
+        assert len(path.relative_to(transcripts_location).parts) == 2
+
+
+def test_construct_transcripts_path_with_reserved_prefix_user_id(transcripts_location):
+    """Test that a literal ID matching the digest prefix is itself digest-mapped."""
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    # a literal ID that equals "sha256-" + 64 hex chars — must be digest-mapped
+    user_id = "sha256-" + "0" * 64
+    path = ols.construct_transcripts_path(user_id, conversation_id)
+    assert path.name == conversation_id
+    # the parent is the prefixed digest of the *entire* ID string,
+    # which is different from the ID itself (proving it was remapped)
+    expected = f"{ols._DIGEST_DIR_PREFIX}{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
+    assert path.parent.name == expected
+    assert path.parent.name != user_id
 
 
 def test_store_transcript(transcripts_location):

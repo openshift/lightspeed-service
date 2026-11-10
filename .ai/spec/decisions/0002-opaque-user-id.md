@@ -84,7 +84,7 @@ The implementation lives in three files:
 |------|--------|
 | `ols/utils/suid.py` | `check_user_id()` + `USER_ID_MAX_LENGTH` constant implementing the bounded opaque string check |
 | `ols/src/cache/cache.py` | `Cache._check_user_id` uses `check_user_id` instead of `check_suid`; error message unchanged |
-| `ols/app/endpoints/ols.py` | `construct_transcripts_path()` uses a filesystem-safe user directory: the ID as-is when it fits one path component and survives normalization, else its SHA-256 hex digest |
+| `ols/app/endpoints/ols.py` | `construct_transcripts_path()` uses a filesystem-safe user directory: the ID as-is when it fits one path component and survives normalization, else `sha256-<hex SHA-256 digest>`; triggers for digest-mapping are normalization rewrite, UTF-8 over 255 bytes, containing `/`, or starting with the reserved `sha256-` prefix |
 
 Test coverage in `tests/unit/utils/test_suid.py` (accept/reject tables),
 `tests/unit/cache/test_in_memory_cache.py` (rejection fixture plus a
@@ -103,8 +103,8 @@ round-trip test that a non-UUID opaque user ID is accepted end to end), and
   and for URN-formatted UUIDs (`urn:uuid:...`) that the previous check
   accepted only by accident of `uuid.UUID()` parsing.
 - With transcripts enabled, user IDs that cannot serve as a single
-  filesystem path component (too long, or rewritten by normalization) are
-  stored under their SHA-256 hex digest directory name; see
-  `what/observability.md` rule 16.
+  filesystem path component (too long, rewritten by normalization, containing
+  `/`, or starting with the reserved `sha256-` prefix) are stored under a
+  directory `sha256-<hex SHA-256 digest>`; see `what/observability.md` rule 16.
 - Existing rows in PostgreSQL caches are unaffected: the `user_id` column is
   already `text`.
