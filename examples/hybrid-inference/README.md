@@ -57,7 +57,11 @@ Experiments mark such a model `gated: true` in `eval/cluster/experiments.yaml`
 deployed image must contain that change; the operator passes `--service-image=` to
 `lightspeed-app-server`.
 
-Build it on the cluster (`build/buildconfig.yaml` clones `ref` from GitHub, so push first):
+A GitHub Actions workflow (`.github/workflows/build-ols-image.yaml`) builds the image for every PR
+to `main` without pushing it, and on merge pushes `ghcr.io/rmalone8/lightspeed-service:latest` plus
+a tag for the commit SHA.
+
+To build on the cluster instead (`build/buildconfig.yaml` clones `ref` from GitHub, so push first):
 
 ```bash
 oc apply -f examples/hybrid-inference/build/buildconfig.yaml
@@ -69,7 +73,7 @@ With OLM, patch the CSV instead of the Deployment, selecting the
 
 ```bash
 NS=openshift-lightspeed
-IMG=image-registry.openshift-image-registry.svc:5000/$NS/lightspeed-service:hybrid
+IMG=ghcr.io/rmalone8/lightspeed-service:latest   # or, for the on-cluster build: image-registry.openshift-image-registry.svc:5000/$NS/lightspeed-service:hybrid
 CSV=$(oc get csv -n $NS -o name | grep lightspeed-operator | head -1 | cut -d/ -f2)
 DEP=$(oc get csv $CSV -n $NS -o json | jq \
   '.spec.install.spec.deployments | map(.name == "lightspeed-operator-controller-manager") | index(true)')
@@ -84,7 +88,14 @@ oc patch csv $CSV -n $NS --type=json -p "[
 
 The operator then updates `lightspeed-app-server`; if it does not, force a reconcile with
 `oc annotate olsconfig cluster -n $NS touch=$(date +%s) --overwrite`. An operator upgrade replaces the
-CSV, so re-apply the patch. Confirm the pod runs the new digest:
+CSV, so re-apply the patch. A new image under the same tag is not picked up by itself: the pull
+policy is `Always`, but only when the pod restarts, so restart the app server after each build:
+
+```bash
+oc delete pod -n $NS -l app.kubernetes.io/name=lightspeed-service-api
+```
+
+Confirm the pod runs the new digest:
 
 ```bash
 oc get pods -n $NS -o json | jq -r '.items[]
