@@ -180,7 +180,7 @@ class PostgresCache(Cache, PostgresBase):
         Returns:
             The value associated with the key, or None if not found.
         """
-        # just check if user_id and conversation_id are UUIDs
+        # just check if user_id and conversation_id are valid
         super().construct_key(user_id, conversation_id, skip_user_id_check)
 
         with self._tx_lock:
@@ -212,6 +212,10 @@ class PostgresCache(Cache, PostgresBase):
             skip_user_id_check: Skip user_id suid check.
 
         """
+        # check the IDs before any storage access
+        super()._check_user_id(user_id, skip_user_id_check)
+        super()._check_conversation_id(conversation_id)
+
         value = cache_entry.to_dict()
         # autocommit=True makes each execute() its own transaction, so
         # pg_advisory_xact_lock would be released immediately after the first
@@ -287,6 +291,10 @@ class PostgresCache(Cache, PostgresBase):
             bool: True if the conversation was deleted, False if not found.
 
         """
+        # check the IDs before any storage access
+        super()._check_user_id(user_id, skip_user_id_check)
+        super()._check_conversation_id(conversation_id)
+
         with self._tx_lock:
             # This transaction status check is required for evaluation tests that use
             # multi-turn conversations. Without it, rapid cache writes (appending each
@@ -338,6 +346,9 @@ class PostgresCache(Cache, PostgresBase):
             topic_summary, last_message_timestamp, and message_count.
 
         """
+        # check the ID before any storage access
+        super()._check_user_id(user_id, skip_user_id_check)
+
         with self._tx_lock:
             with self.connection.cursor() as cursor:
                 try:
@@ -374,6 +385,10 @@ class PostgresCache(Cache, PostgresBase):
             topic_summary: The topic summary to store.
             skip_user_id_check: Skip user_id suid check.
         """
+        # check the IDs before any storage access
+        super()._check_user_id(user_id, skip_user_id_check)
+        super()._check_conversation_id(conversation_id)
+
         with self._tx_lock:
             with self.connection.cursor() as cursor:
                 try:

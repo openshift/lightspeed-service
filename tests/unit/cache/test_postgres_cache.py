@@ -906,3 +906,80 @@ def test_ready_returns_false_when_reconnect_fails():
         # simulate a dead connection detected by the SELECT 1 health probe
         with patch.object(cache, "connected", return_value=False):
             assert not cache.ready()
+
+
+# user IDs violating the bounded opaque string contract of check_user_id
+improper_user_ids = ["", " ", ":", "foo:bar", "a" * 257]
+
+_operations = {
+    "get": lambda c, uid, cid: c.get(uid, cid),
+    "insert_or_append": lambda c, uid, cid: c.insert_or_append(uid, cid, cache_entry_1),
+    "delete": lambda c, uid, cid: c.delete(uid, cid),
+    "list": lambda c, uid, cid: c.list(uid),
+    "set_topic_summary": lambda c, uid, cid: c.set_topic_summary(uid, cid, "topic"),
+}
+cache_operations = [pytest.param(op, id=name) for name, op in _operations.items()]
+# every operation except list() addresses a conversation by ID
+operations_with_conversation_id = [
+    pytest.param(op, id=name)
+    for name, op in _operations.items()
+    if name != "list"
+]
+
+# all SQL statements accessing the cache storage
+storage_statements = {
+    getattr(PostgresCache, name)
+    for name in dir(PostgresCache)
+    if name.endswith("_STATEMENT")
+}
+
+
+def _mocked_cache():
+    """Construct a PostgresCache backed by mocked psycopg2, return both."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+    mock_cursor.fetchall.return_value = []
+    mock_cursor.rowcount = 1
+    mock_connect = patch("psycopg2.connect").start()
+    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+    return PostgresCache(PostgresConfig()), mock_cursor
+
+
+def _executed_statements(mock_cursor):
+    """Return the set of SQL statements executed on the mocked cursor."""
+    return {call_.args[0] for call_ in mock_cursor.execute.call_args_list}
+
+
+@pytest.mark.parametrize("operation", cache_operations)
+@pytest.mark.parametrize("bad_user_id", improper_user_ids)
+def test_operations_reject_improper_user_id(operation, bad_user_id):
+    """Test that every operation rejects improper user ID before storage access."""
+    cache, mock_cursor = _mocked_cache()
+    with pytest.raises(ValueError, match="Invalid user ID"):
+        operation(cache, bad_user_id, conversation_id)
+    # rejection must happen before any storage statement is executed
+    assert _executed_statements(mock_cursor).isdisjoint(storage_statements)
+    patch.stopall()
+
+
+@pytest.mark.parametrize("operation", operations_with_conversation_id)
+def test_operations_reject_improper_conversation_id(operation):
+    """Test that operations reject a malformed conversation ID."""
+    cache, mock_cursor = _mocked_cache()
+    with pytest.raises(ValueError, match="Invalid conversation ID"):
+        operation(cache, user_id, "not-a-uuid")
+    assert _executed_statements(mock_cursor).isdisjoint(storage_statements)
+    patch.stopall()
+
+
+def test_write_operations_honor_skip_user_id_check():
+    """Test that skip_user_id_check bypasses the user ID check on writes."""
+    cache, mock_cursor = _mocked_cache()
+    # "foo:bar" would be rejected by check_user_id
+    cache.list("foo:bar", True)
+    cache.delete("foo:bar", conversation_id, True)
+    cache.insert_or_append("foo:bar", conversation_id, cache_entry_1, True)
+    cache.set_topic_summary("foo:bar", conversation_id, "topic", True)
+    # storage access happened, so statements were executed
+    assert not _executed_statements(mock_cursor).isdisjoint(storage_statements)
+    patch.stopall()
