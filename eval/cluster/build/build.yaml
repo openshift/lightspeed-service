@@ -1,0 +1,22 @@
+# Maintainer only: builds the eval-runner image on the cluster and pushes it to Quay.
+# Users do not need this file; they pull the published image. See README.md in this folder.
+# Needs the `quay-push` secret (a Quay robot account with write access to the repository).
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: eval-runner
+  namespace: openshift-lightspeed
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      # The build context is the repository root, so the Dockerfile lives inside it.
+      dockerfilePath: eval/cluster/build/Dockerfile
+  output:
+    to:
+      kind: DockerImage
+      name: quay.io/rmalone/lightspeed-eval-runner:latest
+    pushSecret:
+      name: quay-push

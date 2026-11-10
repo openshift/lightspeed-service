@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: praxis
+  namespace: openshift-lightspeed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: praxis
+  template:
+    metadata:
+      labels:
+        app: praxis
+    spec:
+      containers:
+        - name: praxis
+          image: ghcr.io/praxis-proxy/ai:latest
+          args:
+            - -c
+            - /etc/praxis/config.yaml
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/praxis
+      volumes:
+        - name: config
+          configMap:
+            name: praxis-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: praxis
+  namespace: openshift-lightspeed
+spec:
+  selector:
+    app: praxis
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

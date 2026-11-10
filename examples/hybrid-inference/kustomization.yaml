@@ -8,17 +8,19 @@ resources:
   - gpu-large/pvc.yaml
   - gpu-large/servingruntime.yaml
   - gpu-large/inferenceservice.yaml
+  - praxis/deployment.yaml
   - ols/olsconfig.yaml
 
-generatorOptions:
-  disableNameSuffixHash: true
+configMapGenerator:
+  - name: praxis-config
+    namespace: openshift-lightspeed
+    files:
+      - config.yaml=praxis/config.yaml
 
 secretGenerator:
-  - name: llmcreds-cpu-small
+  - name: llmcreds-praxis
     namespace: openshift-lightspeed
-    literals:
-      - apitoken=unused
-  - name: llmcreds-gpu-large
-    namespace: openshift-lightspeed
+    options:
+      disableNameSuffixHash: true
     literals:
       - apitoken=unused

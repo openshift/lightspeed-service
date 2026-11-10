@@ -1,0 +1,118 @@
+# lightspeed-evaluation v0.10.0 system config: OLS ask mode on the hybrid-inference stack.
+# Ask requests carry X-OLS-Mode: ask, so Praxis routes them to the cpu-small backend.
+#
+# This is a template, not the config the eval runs with: the runner rewrites the judge panel
+# for each experiment and writes the result to rendered_configs/ in the results folder.
+# It runs inside the eval-runner Job, which reaches OLS on its in-cluster service and gets the
+# bearer token from the Job's service account.
+
+core:
+  max_threads: 1
+  fail_on_invalid_data: true
+  skip_on_failure: false
+  cache_enabled: false
+
+llm_pool:
+  defaults:
+    timeout: 300
+    num_retries: 3
+    parameters:
+      temperature: 0.0
+      max_completion_tokens: 1024
+  models:
+    judge:
+      description: "Judge model scoring the hybrid-model answers"
+      provider: hosted_vllm
+      model: rits/zai-org/glm-5-3
+
+judge_panel:
+  judges:
+    - judge
+  enabled_metrics:
+    - "custom:answer_correctness"
+  aggregation_strategy: max
+
+embedding:
+  provider: "openai"
+  model: "text-embedding-3-small"
+  provider_kwargs: {}
+
+agents:
+  enabled: true
+  default:
+    agent: ols_hybrid
+    agent_config:
+      timeout: 900
+      num_retries: 1
+  ols_hybrid:
+    type: http_api
+    description: "OLS on OpenShift, ask mode, routed to the CPU backend by Praxis"
+    api_base: https://lightspeed-app-server.openshift-lightspeed.svc:8443
+    version: v1
+    endpoint_type: streaming
+    timeout: 900
+    provider: "praxis"
+    model: "hybrid-model"
+    system_prompt: null
+    extra_request_params:
+      mode: ask
+      media_type: application/json
+
+metrics_metadata:
+  turn_level:
+    "custom:answer_correctness":
+      threshold: 0.75
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true
+
+storage:
+  - type: "file"
+    output_dir: "./eval_output"
+    base_filename: "evaluation"
+    enabled_outputs:
+      - csv
+      - json
+      - txt
+    csv_columns:
+      - "conversation_group_id"
+      - "turn_id"
+      - "metric_identifier"
+      - "result"
+      - "score"
+      - "threshold"
+      - "reason"
+      - "query"
+      - "response"
+      - "expected_response"
+      - "api_input_tokens"
+      - "api_output_tokens"
+      - "agent_latency"
+      - "time_to_first_token"
+      - "streaming_duration"
+      - "tokens_per_second"
+      - "judge_scores"
+      - "tool_calls"
+      - "contexts"
+    summary_config_sections:
+      - core
+      - llm_pool
+      - judge_panel
+      - agents
+
+visualization:
+  figsize: [12, 8]
+  dpi: 150
+  enabled_graphs:
+    - "pass_rates"
+    - "score_distribution"
+    - "status_breakdown"
+
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  LITELLM_LOG: ERROR
+
+logging:
+  source_level: INFO
+  package_level: ERROR
+  show_timestamps: true

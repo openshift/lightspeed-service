@@ -1,47 +1,125 @@
 # Hybrid inference example
 
-Two KServe `InferenceService`s behind one `OLSConfig`, exposed as two OLS providers:
+Two KServe `InferenceService`s behind a [Praxis](https://github.com/praxis-proxy/ai) gateway,
+exposed to OLS as one provider. OLS tags each request with `X-OLS-Mode` and Praxis routes on it:
 
-| OLS provider / model | Model | ServingRuntime | Image | Hardware |
+| OLS `mode` | `X-OLS-Mode` | Backend | Model | Hardware |
 |---|---|---|---|---|
-| `cpu-small` | `ibm-granite/granite-4.2-3b-fp8` | `cpu-small-runtime` | `registry.redhat.io/rhaii/vllm-cpu-rhel9:3.5` | CPU |
-| `gpu-large` | `ibm-granite/granite-4.2-8b-fp8` | `gpu-large-runtime` | `registry.redhat.io/rhaii/vllm-cuda-rhel9:3.5` | 1 GPU |
+| `ask` | `ask` | `cpu-small` | `Qwen/Qwen-AgentWorld-35B-A3B` | CPU |
+| `troubleshooting` | `troubleshooting` or absent | `gpu-large` | `ibm-granite/granite-4.2-8b-fp8` | 1 GPU |
 
-Each InferenceService sets `--served-model-name`, so `/v1/models` returns
-`cpu-small` / `gpu-large` and OLS sends those names upstream.
+Both serve `--served-model-name=hybrid-model --max-model-len=32768`, so OLS sees one model and the routing
+is invisible to it. Only an explicit `X-OLS-Mode: ask` reaches `cpu-small`; requests without the
+header, such as the readiness check, go to `gpu-large`, whose 30s timeout the CPU model cannot meet.
+Praxis answers `GET /healthz` and `GET /v1/models` itself, and OLS uses one placeholder credential
+(`llmcreds-praxis`). The `praxis-config` ConfigMap carries a content-hash suffix, so `oc apply -k`
+after editing `praxis/config.yaml` rolls the Deployment.
 
 ## Prerequisites
 
-- Lightspeed operator in `openshift-lightspeed`.
-- RHOAI/KServe installed.
-- A node labeled `inference=cpu-small` for `cpu-small`, and a node labeled
-  `inference=gpu-large` with one GPU for `gpu-large`. The manifests also tolerate an
-  `inference=<value>:NoSchedule` taint on those nodes.
+Lightspeed operator and RHOAI/KServe installed, a node labeled `inference=cpu-small`, and one labeled
+`inference=gpu-large` with a GPU. The manifests tolerate the matching `NoSchedule` taints:
+
+```bash
+oc label node <cpu-node> inference=cpu-small
+oc adm taint nodes <cpu-node> inference=cpu-small:NoSchedule
+oc label node <gpu-node> inference=gpu-large
+oc adm taint nodes <gpu-node> inference=gpu-large:NoSchedule
+```
 
 ## Apply and verify
 
 ```bash
 oc apply -k examples/hybrid-inference
-
 oc get servingruntime,inferenceservice -n openshift-lightspeed
-oc get pods -n openshift-lightspeed -l serving.kserve.io/inferenceservice
-
+oc get deploy,svc -n openshift-lightspeed praxis
 oc run curl-test --rm -it --restart=Never -n openshift-lightspeed \
   --image=curlimages/curl -- \
-  curl -s http://gpu-large-predictor.openshift-lightspeed.svc.cluster.local:8080/v1/models
+  curl -s http://praxis.openshift-lightspeed.svc.cluster.local:8080/v1/models
 ```
 
-Query through OLS:
+## Gated models
+
+Models such as Llama need a Hugging Face token: accept the licence on the model page, create a read
+token, and store it as `hf-token`/`HF_TOKEN`. Both manifests read it as `optional: true`, so ungated
+models need nothing, and a `401`/`403` during download means the token is missing or not approved.
 
 ```bash
-curl -sk -H "Authorization: Bearer $(oc whoami -t)" \
-  -H 'Content-Type: application/json' \
-  "https://<ols-route>/v1/query" \
-  -d '{"query":"what is a deployment?","provider":"gpu-large","model":"gpu-large"}'
+oc create secret generic hf-token -n openshift-lightspeed --from-literal=HF_TOKEN="$HF_TOKEN"
 ```
 
-## Routing by mode
+Experiments mark such a model `gated: true` in `eval/cluster/experiments.yaml`
+([eval/cluster/README.md](../../eval/cluster/README.md)).
 
-OLS does not map `mode` to a provider/model; `mode` only selects the system prompt.
-To send ASK traffic to `cpu-small` and TROUBLESHOOTING traffic to `gpu-large`, have
-the client send `provider`/`model` per request, or put a proxy in front of OLS.
+## Custom OLS image
+
+`X-OLS-Mode` is sent by the OLS service itself (`DocsSummarizer`) for `rhoai_vllm` providers, so the
+deployed image must contain that change; the operator passes `--service-image=` to
+`lightspeed-app-server`.
+
+Build it on the cluster (`build/buildconfig.yaml` clones `ref` from GitHub, so push first):
+
+```bash
+oc apply -f examples/hybrid-inference/build/buildconfig.yaml
+oc start-build lightspeed-service -n openshift-lightspeed --follow
+```
+
+With OLM, patch the CSV instead of the Deployment, selecting the
+`lightspeed-operator-controller-manager` deployment:
+
+```bash
+NS=openshift-lightspeed
+IMG=image-registry.openshift-image-registry.svc:5000/$NS/lightspeed-service:hybrid
+CSV=$(oc get csv -n $NS -o name | grep lightspeed-operator | head -1 | cut -d/ -f2)
+DEP=$(oc get csv $CSV -n $NS -o json | jq \
+  '.spec.install.spec.deployments | map(.name == "lightspeed-operator-controller-manager") | index(true)')
+IDX=$(oc get csv $CSV -n $NS -o json | jq \
+  ".spec.install.spec.deployments[$DEP].spec.template.spec.containers[0].args
+   | map(startswith(\"--service-image=\")) | index(true)")
+oc patch csv $CSV -n $NS --type=json -p "[
+  {\"op\":\"replace\",
+   \"path\":\"/spec/install/spec/deployments/$DEP/spec/template/spec/containers/0/args/$IDX\",
+   \"value\":\"--service-image=$IMG\"}]"
+```
+
+The operator then updates `lightspeed-app-server`; if it does not, force a reconcile with
+`oc annotate olsconfig cluster -n $NS touch=$(date +%s) --overwrite`. An operator upgrade replaces the
+CSV, so re-apply the patch. Confirm the pod runs the new digest:
+
+```bash
+oc get pods -n $NS -o json | jq -r '.items[]
+  | select(.metadata.name | startswith("lightspeed-app-server"))
+  | .metadata.name as $p | .status.containerStatuses[]
+  | "\($p) \(.name) \(.imageID)"'
+```
+
+## Test the routing
+
+Send one request per mode to Praxis, then through OLS:
+
+```bash
+for MODE in ask troubleshooting; do
+  oc run curl-$MODE --rm -it --restart=Never -n openshift-lightspeed \
+    --image=curlimages/curl -- \
+    curl -s -H "X-OLS-Mode: $MODE" -H 'Content-Type: application/json' \
+    http://praxis.openshift-lightspeed.svc.cluster.local:8080/v1/chat/completions \
+    -d '{"model":"hybrid-model","messages":[{"role":"user","content":"hi"}],"max_tokens":8}'
+done
+
+ROUTE=$(oc get route -n openshift-lightspeed -o jsonpath='{.items[0].spec.host}')
+for MODE in ask troubleshooting; do
+  curl -sk -H "Authorization: Bearer $(oc whoami -t)" -H 'Content-Type: application/json' \
+    "https://$ROUTE/v1/query" -d "{\"query\":\"what is a deployment?\",\"mode\":\"$MODE\"}"
+done
+```
+
+Follow both vLLM logs and confirm `ask` appears only in `cpu-small` and `troubleshooting` only in
+`gpu-large` (a troubleshooting query makes several calls):
+
+```bash
+oc logs -f -n openshift-lightspeed -l serving.kserve.io/inferenceservice=cpu-small -c kserve-container
+oc logs -f -n openshift-lightspeed -l serving.kserve.io/inferenceservice=gpu-large -c kserve-container
+```
+
+If everything lands on `cpu-small`, the header is not reaching Praxis: check that the app server runs
+your image and that the provider type is `rhoai_vllm`.

@@ -1,0 +1,111 @@
+# Everything a user needs on the cluster to run the experiments: the results volume, the
+# service account and its permissions, and the NetworkPolicy that lets the Job reach OLS.
+#   oc apply -f eval/cluster/eval-runner.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eval-results
+  namespace: openshift-lightspeed
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eval-runner
+  namespace: openshift-lightspeed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eval-runner
+  namespace: openshift-lightspeed
+rules:
+  - apiGroups: [serving.kserve.io]
+    resources: [inferenceservices]
+    verbs: [get, list, watch, create, patch, update]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [hf-token]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eval-runner
+  namespace: openshift-lightspeed
+subjects:
+  - kind: ServiceAccount
+    name: eval-runner
+    namespace: openshift-lightspeed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: eval-runner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: eval-runner-read-nodes
+rules:
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eval-runner-read-nodes
+subjects:
+  - kind: ServiceAccount
+    name: eval-runner
+    namespace: openshift-lightspeed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: eval-runner-read-nodes
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eval-runner-ols-query-access
+subjects:
+  - kind: ServiceAccount
+    name: eval-runner
+    namespace: openshift-lightspeed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: lightspeed-operator-query-access
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eval-runner-to-ols
+  namespace: openshift-lightspeed
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: lightspeed-service-api
+      app.kubernetes.io/part-of: openshift-lightspeed
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: eval-runner
+      ports:
+        - protocol: TCP
+          port: 8443

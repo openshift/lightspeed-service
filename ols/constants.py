@@ -52,6 +52,9 @@ class QueryMode(StrEnum):
     TROUBLESHOOTING = "troubleshooting"
 
 
+QUERY_MODE_HEADER = "X-OLS-Mode"
+
+
 class GenericLLMParameters:
     """Generic LLM parameters that can be mapped into LLM provider-specific parameters."""
 

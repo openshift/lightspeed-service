@@ -6,23 +6,17 @@ metadata:
 spec:
   llm:
     providers:
-      - name: cpu-small
+      - name: praxis
         type: rhoai_vllm
-        url: http://cpu-small-predictor.openshift-lightspeed.svc.cluster.local:8080/v1
+        url: http://praxis.openshift-lightspeed.svc.cluster.local:8080/v1
         credentialsSecretRef:
-          name: llmcreds-cpu-small
+          name: llmcreds-praxis
         models:
-          - name: cpu-small
+          - name: hybrid-model
             contextWindowSize: 16384
-      - name: gpu-large
-        type: rhoai_vllm
-        url: http://gpu-large-predictor.openshift-lightspeed.svc.cluster.local:8080/v1
-        credentialsSecretRef:
-          name: llmcreds-gpu-large
-        models:
-          - name: gpu-large
-            contextWindowSize: 32768
+            parameters:
+              maxTokensForResponse: 2048
   ols:
-    defaultProvider: gpu-large
-    defaultModel: gpu-large
+    defaultProvider: praxis
+    defaultModel: hybrid-model
     introspectionEnabled: false
