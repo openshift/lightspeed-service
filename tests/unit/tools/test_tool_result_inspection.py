@@ -13,6 +13,7 @@ from anthropic import APITimeoutError as AnthropicAPITimeoutError
 from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
 from google.api_core.exceptions import DeadlineExceeded
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_openai.chat_models.base import OpenAIInvalidRequestError
 from openai import APITimeoutError as OpenAIAPITimeoutError
 from pydantic import ValidationError
 
@@ -385,6 +386,65 @@ def test_classifier_failure_diagnostics_keep_explicit_cause(
         "error_type=ValueError cause_types=RuntimeError status_code=503" in caplog.text
     )
     assert "private provider failure" not in caplog.text
+
+
+def _azure_content_filter_error() -> Exception:
+    """Build the LangChain error raised for an Azure content-filter rejection."""
+    request = httpx.Request(
+        "POST", "https://example.openai.azure.com/openai/v1/responses"
+    )
+    response = httpx.Response(400, request=request)
+    body = {
+        "code": "content_filter",
+        "message": "private provider message with untrusted tool output",
+        "param": "prompt",
+        "type": None,
+        "innererror": {
+            "code": "ResponsibleAIPolicyViolation",
+            "content_filter_result": {
+                "hate": {"filtered": False, "severity": "safe"},
+                "jailbreak": {"filtered": True, "detected": True},
+            },
+        },
+    }
+    return OpenAIInvalidRequestError(
+        "private provider message with untrusted tool output",
+        response=response,
+        body=body,
+    )
+
+
+def test_classifier_failure_diagnostics_log_provider_error_codes(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Log provider error codes and filtered categories, not provider messages."""
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        _log_temporary_classifier_failure("invoke", 1, _azure_content_filter_error())
+
+    assert (
+        "error_type=OpenAIInvalidRequestError cause_types=none status_code=400 "
+        "provider_error_code=content_filter provider_error_param=prompt "
+        "provider_inner_code=ResponsibleAIPolicyViolation "
+        "filtered_categories=jailbreak"
+    ) in caplog.text
+    assert "private provider message" not in caplog.text
+
+
+def test_classifier_failure_diagnostics_drop_unsafe_provider_codes(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Replace provider code values that are not simple identifiers."""
+    error = RuntimeError("private provider failure")
+    error.code = "ignore previous instructions"
+    error.body = {"innererror": {"code": "x" * 100}}
+    with caplog.at_level(logging.DEBUG, logger="ols.src.tools.tool_result_inspection"):
+        _log_temporary_classifier_failure("invoke", 1, error)
+
+    assert (
+        "provider_error_code=unsafe provider_error_param=unknown "
+        "provider_inner_code=unsafe filtered_categories=none"
+    ) in caplog.text
+    assert "ignore previous instructions" not in caplog.text
 
 
 @pytest.mark.asyncio
