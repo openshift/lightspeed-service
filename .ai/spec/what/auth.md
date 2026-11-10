@@ -55,7 +55,7 @@ Control which users can access the OpenShift LightSpeed service and what they ar
 ### User Identity Contract
 
 31. Every authentication module must return a four-element tuple: (user_id, username, skip_user_id_check, user_token).
-32. The user_id must be in UUID format.
+32. The user_id must be a bounded opaque string: a non-empty string of at most 256 characters that contains no whitespace, no non-printable characters, and no `:` (the compound-key separator used to combine the user ID and the conversation ID into one cache key). The user ID format is controlled by the authenticator and is not guaranteed to be a UUID; it must be treated as opaque.
 33. The default identity must use the nil UUID (`00000000-0000-0000-0000-000000000000`) and a fixed default username.
 34. [PLANNED: OLS-1393] The system must read the authenticated user's roles from the cluster and make them available to downstream processing.
 35. [PLANNED: OLS-1394] The system must filter content returned to the user based on their roles.
