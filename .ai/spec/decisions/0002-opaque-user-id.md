@@ -29,8 +29,9 @@ customize UUID enforcement.
 
 **Rationale:** The skip flag (`skip_user_id_check`) is derived from the auth
 module and is only set by the `noop`/`noop-with-token` devel modules, which
-drop the user token and grant caller-controlled identity; reusing it via a
-config toggle would weaken authentication. A new config field would have to
+grant caller-controlled identity (and `noop`, or `noop-with-token` with
+authentication disabled, also drops the user token); reusing it via a config
+toggle would weaken authentication. A new config field would have to
 be threaded through the operator's OLSConfig CRD as well, for a check whose
 only practical values are "strict UUID" or "whatever the IdP issued". Since
 the value is opaque input from a trusted authenticator, a bounded sanity
@@ -59,6 +60,13 @@ the already-existing rejection of Kubernetes service account UIDs
 (`system:serviceaccount:<ns>:<sa>`), which the previous UUID check rejected
 too.
 
+One form did change behavior: URN-formatted UUIDs (`urn:uuid:<uuid>`) were
+accepted by the previous check as an accident of `uuid.UUID()` parsing that
+spelling; they are rejected now. The TokenReview `uid` is passed through from
+authenticator claims verbatim and no authenticator is known to emit URN-form
+identifiers; deployments mapping such values should fix the claim mapping
+rather than have the service special-case the spelling.
+
 ### 4. Conversation IDs stay SUID-formatted
 
 **Decision:** Only the user ID check is relaxed. Conversation IDs continue to
@@ -70,16 +78,18 @@ in the same way user IDs are not.
 
 ## Implementation
 
-The implementation lives in two files:
+The implementation lives in three files:
 
 | File | Change |
 |------|--------|
 | `ols/utils/suid.py` | `check_user_id()` + `USER_ID_MAX_LENGTH` constant implementing the bounded opaque string check |
 | `ols/src/cache/cache.py` | `Cache._check_user_id` uses `check_user_id` instead of `check_suid`; error message unchanged |
+| `ols/app/endpoints/ols.py` | `construct_transcripts_path()` uses a filesystem-safe user directory: the ID as-is when it fits one path component and survives normalization, else its SHA-256 hex digest |
 
-Test coverage in `tests/unit/utils/test_suid.py` (accept/reject tables) and
+Test coverage in `tests/unit/utils/test_suid.py` (accept/reject tables),
 `tests/unit/cache/test_in_memory_cache.py` (rejection fixture plus a
-round-trip test that a non-UUID opaque user ID is accepted end to end).
+round-trip test that a non-UUID opaque user ID is accepted end to end), and
+`tests/unit/app/endpoints/test_ols.py` (transcript path encoding).
 
 ## Consequences
 
@@ -87,8 +97,14 @@ round-trip test that a non-UUID opaque user ID is accepted end to end).
   can use conversation history, feedback, and quota tracking.
 - User IDs are treated as opaque everywhere; no code may parse them as UUIDs.
 - The rejection set of the previous check is preserved for empty strings,
-  whitespace-only strings, strings containing `:` (including
-  `system:serviceaccount:<ns>:<sa>` uids), and now also strings longer than
-  256 characters or containing control characters.
+  whitespace-only strings, and strings containing `:` (including
+  `system:serviceaccount:<ns>:<sa>` uids); rejection is added for strings
+  longer than 256 characters or containing whitespace/control characters,
+  and for URN-formatted UUIDs (`urn:uuid:...`) that the previous check
+  accepted only by accident of `uuid.UUID()` parsing.
+- With transcripts enabled, user IDs that cannot serve as a single
+  filesystem path component (too long, or rewritten by normalization) are
+  stored under their SHA-256 hex digest directory name; see
+  `what/observability.md` rule 16.
 - Existing rows in PostgreSQL caches are unaffected: the `user_id` column is
   already `text`.
