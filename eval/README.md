@@ -4,6 +4,11 @@ Evaluate OLS answer quality with
 [lightspeed-evaluation](https://github.com/lightspeed-core/lightspeed-evaluation), run as a Job on
 the cluster.
 
+The runner image installs `lightspeed-evaluation` from the
+[RMalone8 fork](https://github.com/RMalone8/lightspeed-evaluation), not from upstream, and is
+published as `quay.io/rmalone/lightspeed-eval-runner:latest`
+([build details](cluster/build/README.md)).
+
 ## Running evaluations
 
 [`experiments.yaml`](cluster/experiments.yaml) lists what to run, and
