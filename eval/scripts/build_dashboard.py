@@ -295,6 +295,11 @@ details{margin-left:14px}summary{cursor:pointer;color:var(--muted)}
 .txt{white-space:pre-wrap;background:#0d0d0d;border:1px solid var(--line);border-radius:4px;padding:10px;font-size:13px;max-height:260px;overflow:auto}
 .metadata{padding:12px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:24px}
 .metadata pre{margin:6px 0 0;white-space:pre-wrap}
+.qtools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 12px}
+.qtools input[type=search]{background:#0b0b0b;color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:inherit;font-size:12px;min-width:260px}
+tr.qrow{cursor:pointer}tr.qrow:hover td{background:#1d1d1d}
+.bar{display:inline-block;height:8px;background:#6fdc8c;border-radius:2px;vertical-align:middle;margin-left:6px}
+.qpie{height:340px}
 </style>
 </head>
 <body>
@@ -385,7 +390,7 @@ const HOME=[
  ["Request latency mean (s)",T("agent_latency","mean"),"s",2],
  ["Output tokens per turn (mean)",T("api_output_tokens","mean"),"tokens",0],
 ];
-const PAGES=[{id:"home",title:"Home"}].concat(TABS.map(t=>({id:t.id,title:t.title}))).concat([{id:"runs",title:"Runs"}]);
+const PAGES=[{id:"home",title:"Home"}].concat(TABS.map(t=>({id:t.id,title:t.title}))).concat([{id:"questions",title:"Questions"},{id:"runs",title:"Runs"}]);
 let page="home",sub=0;
 const nav=document.getElementById("nav");
 nav.innerHTML=PAGES.map(p=>`<button data-id="${p.id}">${p.title}</button>`).join("");
@@ -470,6 +475,8 @@ function render(){
     HOME.forEach((h,i)=>plotItem("h"+i,...h));
   } else if(page==="runs"){
     renderRuns(el);
+  } else if(page==="questions"){
+    renderQuestions(el);
   } else {
     const t=TABS.find(x=>x.id===page),[name,get,unit,d,q]=t.subs[sub];
     el.innerHTML=`<div class="desc"><h3>${t.title}: ${name}</h3>${t.desc}</div>
@@ -479,6 +486,74 @@ function render(){
     el.querySelector(".subtabs").onclick=e=>{if(e.target.dataset.i!=null){sub=+e.target.dataset.i;render();}};
     plotItem("one",t.title+": "+name,get,unit,d,q);
   }
+}
+
+const QSORT={order:["Question order",null],hard:["Hardest first (lowest correctness)",(a,b)=>(a.rate??101)-(b.rate??101)],
+  easy:["Easiest first (highest correctness)",(a,b)=>(b.rate??-1)-(a.rate??-1)]};
+let qSort="order",qText="",qList=[];
+function questionStats(){
+  const map=new Map();
+  visible.forEach(i=>R[i].scored.forEach((r,n)=>{
+    const key=r.conversation+"|"+r.turn+"|"+r.query;
+    if(!map.has(key)) map.set(key,{conversation:r.conversation,turn:r.turn,query:r.query,expected:r.expected,rows:[]});
+    map.get(key).rows.push({run:i,n,result:r.result,score:r.score});
+  }));
+  return [...map.values()].map(q=>{
+    const count=name=>q.rows.filter(x=>x.result===name).length;
+    const pass=count("PASS"),fail=count("FAIL"),err=count("ERROR"),answered=pass+fail;
+    const scores=q.rows.map(x=>x.score).filter(x=>x!=null);
+    return Object.assign(q,{pass,fail,err,answered,rate:answered?100*pass/answered:null,
+      score:scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:null});
+  });
+}
+function renderQuestions(el){
+  el.innerHTML=`<div class="desc"><h3>Questions: how well did the models answer each one?</h3>
+    Correctness is the share of the shown runs whose answer to that question passed the judge. Runs that errored
+    (no answer received) are left out of the rate and counted in the Errors column. Click a question for a pie chart
+    of its outcomes across models.</div>
+    <div class="panel"><div class="qtools">
+      <input type="search" id="qtext" placeholder="Filter questions or conversation id" value="${esc(qText)}">
+      <label class="chk">Sort <select id="qsort">${Object.entries(QSORT).map(([k,v])=>`<option value="${k}"${k===qSort?" selected":""}>${v[0]}</option>`).join("")}</select></label>
+      <span id="qcount" style="color:var(--muted);font-size:11px"></span></div>
+      <div class="scroll"><table id="qtable"></table></div></div>`;
+  document.getElementById("qtext").oninput=e=>{qText=e.target.value;drawQuestionTable();};
+  document.getElementById("qsort").onchange=e=>{qSort=e.target.value;drawQuestionTable();};
+  document.getElementById("qtable").onclick=e=>{
+    const row=e.target.closest("tr.qrow"); if(row) openQuestion(+row.dataset.q);
+  };
+  drawQuestionTable();
+}
+function drawQuestionTable(){
+  const all=questionStats(),needle=qText.trim().toLowerCase();
+  qList=all.filter(q=>!needle||(q.query+" "+q.conversation).toLowerCase().includes(needle));
+  const cmp=QSORT[qSort][1]; if(cmp) qList.sort(cmp);
+  const overall=(()=>{const a=all.filter(q=>q.rate!=null);return a.length?a.reduce((s,q)=>s+q.rate,0)/a.length:null;})();
+  document.getElementById("qcount").textContent=qList.length+" of "+all.length+" questions - average correctness across all questions: "+fmt(overall,1)+"%";
+  document.getElementById("qtable").innerHTML=
+   "<tr><th>Conv / turn</th><th class='l'>Question</th><th>Avg correctness</th><th>Passed / answered</th><th>Errors</th><th>Mean score</th></tr>"+
+   qList.map((q,k)=>`<tr class="qrow" data-q="${k}"><td>${esc(q.conversation)} / ${esc(q.turn)}</td>
+     <td class="l">${esc((q.query||"").slice(0,120))}</td>
+     <td>${q.rate==null?"-":fmt(q.rate,0)+"%"}${q.rate==null?"":`<span class="bar" style="width:${Math.round(q.rate*0.6)}px"></span>`}</td>
+     <td>${q.pass} / ${q.answered}</td><td>${q.err}</td><td>${fmt(q.score)}</td></tr>`).join("");
+}
+function openQuestion(k){
+  const q=qList[k]; if(!q) return;
+  document.getElementById("dlgbody").innerHTML=
+   `<h2>${esc(q.conversation)} / ${esc(q.turn)}</h2>
+    <h3>Question</h3><div class="txt">${esc(q.query)}</div>
+    <h3>Expected response</h3><div class="txt">${esc(q.expected)||"(none)"}</div>
+    <h3>Outcome breakdown across ${q.rows.length} run(s) - correctness ${q.rate==null?"n/a":fmt(q.rate,0)+"%"}</h3>
+    <div class="qpie" id="qpie"></div>
+    <h3>Each run</h3><div class="scroll"><table><tr><th class="l">Run</th><th>Result</th><th>Score</th><th class="l">Answer</th></tr>
+    ${q.rows.map(x=>`<tr><td class="l">${esc(nm(x.run))}</td><td class="${x.result==="PASS"?"pass":"fail"}">${esc(x.result)}</td>
+      <td>${fmt(x.score)}</td><td class="l"><a href="#" onclick="openTurn(${x.run},${x.n});return false">view answer and judge reasoning</a></td></tr>`).join("")}</table></div>`;
+  document.getElementById("dlg").showModal();
+  const slices=[["PASS",q.pass,"#6fdc8c"],["FAIL",q.fail,"#ff3b3b"],["ERROR",q.err,"#8a8a8a"]].filter(s=>s[1]>0);
+  Plotly.newPlot("qpie",[{type:"pie",labels:slices.map(s=>s[0]),values:slices.map(s=>s[1]),hole:0.45,sort:false,
+    marker:{colors:slices.map(s=>s[2]),line:{color:"#151515",width:2}},textinfo:"label+value+percent",
+    textfont:{color:"#000"},hovertemplate:"%{label}: %{value} run(s) (%{percent})<extra></extra>"}],
+    {paper_bgcolor:"rgba(0,0,0,0)",font:{color:C.fg,size:12},margin:{l:10,r:10,t:10,b:10},
+     legend:{font:{color:C.fg}}},{displaylogo:false,responsive:true});
 }
 
 function renderRuns(el){
