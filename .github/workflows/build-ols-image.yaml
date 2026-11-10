@@ -8,13 +8,14 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: build-ols-image-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  IMAGE: quay.io/rmalone/lightspeed-service
+  IMAGE: ghcr.io/rmalone8/lightspeed-service
 
 jobs:
   build:
@@ -34,13 +35,13 @@ jobs:
           username: ${{ vars.REDHAT_REGISTRY_USERNAME }}
           password: ${{ secrets.RED_HAT_REGISTRY_ACCESS }}
 
-      - name: Log in to Quay
+      - name: Log in to GitHub Container Registry
         if: github.event_name == 'push'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
-          registry: quay.io
-          username: ${{ vars.QUAY_USERNAME }}
-          password: ${{ secrets.LIGHTSPEED_QUAY }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build, and push on merge to main
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -53,5 +54,7 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
