@@ -1,5 +1,6 @@
 """Unit tests for OLS endpoint."""
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -789,6 +790,46 @@ def test_construct_transcripts_path(transcripts_location):
     path = ols.construct_transcripts_path(user_id, conversation_id)
 
     assert str(path.resolve()).endswith(f"{user_id}/{conversation_id}")
+
+
+def test_construct_transcripts_path_with_long_user_id(transcripts_location):
+    """Test that too-long user IDs are replaced by their digest."""
+    # accepted by check_user_id, but too long for common filesystems
+    user_id = "a" * 256
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    path = ols.construct_transcripts_path(user_id, conversation_id)
+    assert path.name == conversation_id
+    assert path.parent.name == hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    # the digest directory must be creatable and deterministic
+    expected = Path(transcripts_location) / path.parent.name / conversation_id
+    assert path == expected
+    path.mkdir(parents=True, exist_ok=True)
+    assert path.is_dir()
+
+
+def test_construct_transcripts_path_with_multibyte_user_id(transcripts_location):
+    """Test multibyte user IDs near the filesystem component byte limit."""
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    # 127 two-byte characters fit into the 255-byte component limit
+    fits = "ш" * 127
+    assert len(fits.encode("utf-8")) == 254
+    path = ols.construct_transcripts_path(fits, conversation_id)
+    assert path.parent.name == fits
+    # 128 two-byte characters exceed it and get digest-encoded
+    too_long = "ш" * 128
+    path = ols.construct_transcripts_path(too_long, conversation_id)
+    assert path.parent.name == hashlib.sha256(too_long.encode("utf-8")).hexdigest()
+
+
+def test_construct_transcripts_path_with_unsafe_user_id(transcripts_location):
+    """Test user IDs rewritten by path normalization get digest-encoded."""
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    for user_id in (".", "..", "./..", "foo/../.."):
+        path = ols.construct_transcripts_path(user_id, conversation_id)
+        assert path.name == conversation_id
+        # the digest keeps transcripts associated with the original user ID
+        # and prevents collapsing into the transcripts storage root
+        assert path.parent.name == hashlib.sha256(user_id.encode("utf-8")).hexdigest()
 
 
 def test_store_transcript(transcripts_location):

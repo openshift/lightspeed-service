@@ -1,6 +1,7 @@
 """Handlers for all OLS-related REST API endpoints."""
 
 import dataclasses
+import hashlib
 import json
 import logging
 import os
@@ -749,11 +750,35 @@ def redact_attachments(
         )
 
 
-def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
-    """Construct path to transcripts."""
-    # these two normalizations are required by Snyk as it detects
+# filesystems commonly limit a single path component to 255 bytes
+_MAX_PATH_COMPONENT_BYTES = 255
+
+
+def _transcripts_user_directory(user_id: str) -> str:
+    """Construct filesystem-safe user directory name for transcripts.
+
+    User IDs are validated as bounded opaque strings, not just UUIDs, so
+    some accepted IDs cannot be used directly as one path component: they
+    are too long (up to USER_ID_MAX_LENGTH characters, possibly
+    multi-byte) or are rewritten by path normalization (e.g. "." or
+    ".." would collapse to the storage root). Such IDs are replaced by
+    the hexadecimal SHA-256 digest of the user ID, which is deterministic
+    (so transcripts stay associated with the original user ID) and always
+    fits within the component length limit.
+    """
+    # this normalization is required by Snyk as it detects
     # this Path sanitization pattern
     uid = os.path.normpath("/" + user_id).lstrip("/")
+    if uid != user_id or len(user_id.encode("utf-8")) > _MAX_PATH_COMPONENT_BYTES:
+        return hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    return uid
+
+
+def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
+    """Construct path to transcripts."""
+    uid = _transcripts_user_directory(user_id)
+    # this normalization is required by Snyk as it detects
+    # this Path sanitization pattern
     cid = os.path.normpath("/" + conversation_id).lstrip("/")
     return Path(
         config.ols_config.user_data_collection.transcripts_storage,
