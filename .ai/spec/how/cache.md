@@ -47,6 +47,7 @@ Endpoint / HistorySupport
 ```
 ols.py endpoint
   -> config.conversation_cache.insert_or_append(user_id, conversation_id, cache_entry, ...)
+  -> validate IDs before storage access (check_user_id for user IDs, check_suid for conversation IDs)
   -> CacheEntry.to_dict() produces {"human_query": HumanMessage, "ai_response": AIMessage, ...}
   -> InMemory: append to dict list, promote in deque, increment total_entries,
                update ConversationData metadata, evict from tail if over capacity
