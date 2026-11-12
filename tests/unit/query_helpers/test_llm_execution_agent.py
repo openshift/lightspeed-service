@@ -1879,6 +1879,93 @@ async def test_collect_round_response_retries_suppressed_final_answer() -> None:
 
 
 @pytest.mark.asyncio
+async def test_collect_round_response_retries_after_streamed_preamble() -> None:
+    """Retry synthesis when a streamed preamble was followed by suppressed markup."""
+    agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
+    invocations = 0
+
+    async def _preamble_leak_then_answer(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        if invocations == 1:
+            yield AIMessageChunk(
+                content="I will check the pods.\n", response_metadata={}
+            )
+            yield AIMessageChunk(
+                content="<tool_call>\n<function=run>", response_metadata={}
+            )
+            yield AIMessageChunk(
+                content="", response_metadata={"finish_reason": "stop"}
+            )
+            return
+        yield AIMessageChunk(content="The pods are healthy.", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_preamble_leak_then_answer):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=[],
+                is_final_round=True,
+                token_counter=AsyncMock(),
+                round_index=5,
+                result=result,
+                synthesize=True,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert invocations == 2
+    assert "<tool_call>" not in text
+    assert text == "I will check the pods.\nThe pods are healthy."
+    assert result.final_answer_suppressed is False
+
+
+@pytest.mark.asyncio
+async def test_collect_round_response_falls_back_after_preamble_leak_retry() -> None:
+    """Return the fallback when both attempts leak markup after a preamble."""
+    agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
+    invocations = 0
+
+    async def _always_preamble_then_leak(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        yield AIMessageChunk(content="I will check.\n", response_metadata={})
+        yield AIMessageChunk(
+            content="<tool_call>\n<function=run>", response_metadata={}
+        )
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_always_preamble_then_leak):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=[],
+                is_final_round=True,
+                token_counter=AsyncMock(),
+                round_index=5,
+                result=result,
+                synthesize=True,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert invocations == 2
+    assert "<tool_call>" not in text
+    assert text.endswith(FINAL_SYNTHESIS_FAILURE)
+
+
+@pytest.mark.asyncio
 async def test_collect_round_response_returns_failure_after_suppressed_retry() -> None:
     """Return the synthesis fallback when the retry also emits a tool call."""
     agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)

@@ -859,6 +859,7 @@ class LLMExecutionAgent:
         round_messages = messages
 
         for attempt in range(1, max_attempts + 1):
+            has_answer = False
             result.should_stop = False
             result.final_answer_suppressed = False
             apply_final_answer_guard = is_final_round and (
@@ -885,7 +886,7 @@ class LLMExecutionAgent:
                 result.should_stop = True
                 break
 
-            if has_answer:
+            if has_answer and not result.final_answer_suppressed:
                 return
             if not synthesize:
                 if result.final_answer_suppressed:
@@ -906,8 +907,8 @@ class LLMExecutionAgent:
                     continue
             break
 
-        if synthesize and not has_answer:
-            logger.error("Final synthesis returned no text after retry")
+        if synthesize and (not has_answer or result.final_answer_suppressed):
+            logger.error("Final synthesis returned no usable text after retry")
             yield StreamedChunk(type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE)
 
     async def _collect_round_llm_chunks(  # noqa: C901  # pylint: disable=R0912
