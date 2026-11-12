@@ -1693,10 +1693,47 @@ def test_prepare_round_request_skips_instruction_without_tools() -> None:
 def test_final_answer_tool_call_guard_passes_normal_text() -> None:
     """Stream normal final-round text once it is not a tool-call prefix."""
     guard = _FinalAnswerToolCallGuard()
-    assert guard.feed("The answer") == ["The answer"]
-    assert guard.feed(" continues.") == [" continues."]
-    assert guard.finish() == []
+    streamed = guard.feed("The answer")
+    streamed += guard.feed(" continues.")
+    streamed += guard.finish()
+    assert "".join(streamed) == "The answer continues."
     assert guard.suppressed is False
+
+
+def test_final_answer_tool_call_guard_suppresses_markup_after_answer() -> None:
+    """Suppress tool-call markup that follows already streamed answer text."""
+    guard = _FinalAnswerToolCallGuard()
+    streamed = guard.feed("I will check.\n")
+    streamed += guard.feed("<tool_")
+    streamed += guard.feed("call>\n<function=search")
+    streamed += guard.finish()
+
+    text = "".join(streamed)
+    assert "<tool_call>" not in text
+    assert "<function=" not in text
+    assert text.strip() == "I will check."
+    assert guard.suppressed is True
+
+
+def test_final_answer_tool_call_guard_keeps_text_with_lone_angle_bracket() -> None:
+    """Do not treat ordinary text containing '<' as a tool-call leak."""
+    guard = _FinalAnswerToolCallGuard()
+    streamed = guard.feed("Use <none> as the value")
+    streamed += guard.feed(" or <auto>.")
+    streamed += guard.finish()
+
+    assert "".join(streamed) == "Use <none> as the value or <auto>."
+    assert guard.suppressed is False
+
+
+def test_final_answer_tool_call_guard_suppresses_truncated_marker_after_text() -> None:
+    """Suppress a truncated tool-call marker that trails ordinary text."""
+    guard = _FinalAnswerToolCallGuard()
+    streamed = guard.feed("The answer is 42.\n<tool_ca")
+    streamed += guard.finish()
+
+    assert "".join(streamed) == "The answer is 42.\n"
+    assert guard.suppressed is True
 
 
 def test_final_answer_tool_call_guard_suppresses_tool_call() -> None:
@@ -1761,6 +1798,40 @@ async def test_collect_round_llm_chunks_suppresses_tool_call_leak_on_final_round
         "Suppressed final-round tool-call leak" in record.message
         for record in caplog.records
     )
+
+
+@pytest.mark.asyncio
+async def test_collect_round_llm_chunks_suppresses_markup_after_streamed_text() -> None:
+    """Suppress markup that arrives after the answer has started streaming."""
+    agent = _make_agent()
+
+    async def _preamble_then_leak(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        yield AIMessageChunk(content="I will check the pods.\n", response_metadata={})
+        yield AIMessageChunk(content="<tool_", response_metadata={})
+        yield AIMessageChunk(content="call>\n<function=run>", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_preamble_then_leak):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_llm_chunks(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=True,
+                token_counter=AsyncMock(),
+                round_index=5,
+                result=result,
+                apply_final_answer_guard=True,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert text == "I will check the pods.\n"
+    assert result.final_answer_suppressed is True
 
 
 @pytest.mark.asyncio
@@ -1839,6 +1910,40 @@ async def test_collect_round_response_returns_failure_after_suppressed_retry() -
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert "<function=" not in text
     assert text == FINAL_SYNTHESIS_FAILURE
+
+
+@pytest.mark.asyncio
+async def test_collect_round_response_emits_fallback_without_synthesis() -> None:
+    """Return the fallback when a non-synthesis final round is fully suppressed."""
+    agent = _make_agent(provider_type=constants.PROVIDER_OPENAI)
+
+    async def _always_leak(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        yield AIMessageChunk(
+            content="<tool_call>\n<function=search>", response_metadata={}
+        )
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_always_leak):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=True,
+                token_counter=AsyncMock(),
+                round_index=5,
+                result=result,
+                synthesize=False,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert text == FINAL_SYNTHESIS_FAILURE
+    assert result.final_answer_suppressed is True
 
 
 @pytest.mark.asyncio

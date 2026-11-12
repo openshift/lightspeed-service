@@ -133,6 +133,7 @@ def skip_special_chunk(
 
 
 _TOOL_CALL_ANSWER_PREFIXES = ("<tool_call>", "<function=")
+_TOOL_CALL_MARKER_LEAD = "<"
 
 
 class _FinalAnswerToolCallGuard:
@@ -155,41 +156,75 @@ class _FinalAnswerToolCallGuard:
         """Return True when a tool call was detected and suppressed."""
         return self._suppressed
 
+    @staticmethod
+    def _find_marker(text: str) -> int:
+        """Return the index of the first tool-call marker in text, or -1."""
+        indexes = [
+            index
+            for prefix in _TOOL_CALL_ANSWER_PREFIXES
+            if (index := text.find(prefix)) != -1
+        ]
+        return min(indexes) if indexes else -1
+
     def feed(self, text: str) -> list[str]:
         """Return text that is safe to stream, buffering while undecided."""
-        if self._decided:
-            return [] if self._suppressed else [text]
-        self._buffer += text
-        stripped = self._buffer.lstrip()
-        if not stripped:
+        if self._suppressed:
             return []
-        if any(stripped.startswith(prefix) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
+        self._buffer += text
+        if not self._decided:
+            stripped = self._buffer.lstrip()
+            if not stripped:
+                return []
+            if any(
+                stripped.startswith(prefix) for prefix in _TOOL_CALL_ANSWER_PREFIXES
+            ):
+                self._decided = True
+                self._suppressed = True
+                self._buffer = ""
+                return []
+            if any(
+                prefix.startswith(stripped) for prefix in _TOOL_CALL_ANSWER_PREFIXES
+            ):
+                return []
             self._decided = True
+        marker_index = self._find_marker(self._buffer)
+        if marker_index >= 0:
+            emitted = self._buffer[:marker_index]
             self._suppressed = True
             self._buffer = ""
-            return []
-        if any(prefix.startswith(stripped) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
-            return []
-        self._decided = True
-        emitted = [self._buffer]
-        self._buffer = ""
-        return emitted
+            return [emitted] if emitted else []
+        marker_start = self._buffer.rfind(_TOOL_CALL_MARKER_LEAD)
+        if marker_start != -1:
+            tail = self._buffer[marker_start:]
+            if any(prefix.startswith(tail) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
+                emitted = self._buffer[:marker_start]
+                self._buffer = tail
+                return [emitted] if emitted else []
+        emitted, self._buffer = self._buffer, ""
+        return [emitted] if emitted else []
 
     def finish(self) -> list[str]:
         """Return any buffered text once the stream is complete."""
-        if self._decided:
+        if self._suppressed:
             return []
         self._decided = True
-        stripped = self._buffer.lstrip()
-        if stripped and any(
-            prefix.startswith(stripped) for prefix in _TOOL_CALL_ANSWER_PREFIXES
-        ):
+        marker_index = self._find_marker(self._buffer)
+        if marker_index >= 0:
+            emitted = self._buffer[:marker_index]
             self._suppressed = True
             self._buffer = ""
-            return []
-        emitted = [self._buffer] if self._buffer else []
+            return [emitted] if emitted else []
+        marker_start = self._buffer.rfind(_TOOL_CALL_MARKER_LEAD)
+        if marker_start != -1:
+            tail = self._buffer[marker_start:]
+            if any(prefix.startswith(tail) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
+                emitted = self._buffer[:marker_start]
+                self._suppressed = True
+                self._buffer = ""
+                return [emitted] if emitted else []
+        buffered = self._buffer
         self._buffer = ""
-        return emitted
+        return [buffered] if buffered else []
 
 
 def tool_calls_from_tool_calls_chunks(
@@ -807,7 +842,7 @@ class LLMExecutionAgent:
             )
         return emitted
 
-    async def _collect_round_response(
+    async def _collect_round_response(  # noqa: C901
         self,
         messages: ChatPromptTemplate,
         llm_input_values: dict[str, str],
@@ -850,7 +885,17 @@ class LLMExecutionAgent:
                 result.should_stop = True
                 break
 
-            if has_answer or not synthesize:
+            if has_answer:
+                return
+            if not synthesize:
+                if result.final_answer_suppressed:
+                    logger.error(
+                        "Final-round tool-call output was suppressed without a "
+                        "synthesis retry"
+                    )
+                    yield StreamedChunk(
+                        type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE
+                    )
                 return
 
             if attempt < max_attempts and result.final_answer_suppressed:
