@@ -20,17 +20,20 @@ from ols.src.quota.token_usage_history import TokenUsageHistory
 # mypy a bit, hence the [attr-defined] bellow
 from ols.src.rag_index.index_loader import IndexLoader  # type: ignore [attr-defined]
 from ols.src.rag_index.solr_support import SolrHybridSearch
+from ols.src.redaction.query_filters import QueryFiltersRedactor
+from ols.src.redaction.rulesets.mcp import MCP_RULES
 from ols.src.skills.skills_rag import SkillsRAG, load_skills_from_directory
 from ols.src.tools.tools_rag.hybrid_tools_rag import ToolsRAG
-from ols.utils.redactor import Redactor
 
 logger = logging.getLogger(__name__)
+_TOOL_OUTPUT_RULES = MCP_RULES.compile()
 
 if TYPE_CHECKING:
     from io import TextIOBase
 
     from ols.src.cache.cache import Cache
     from ols.src.quota.quota_limiter import QuotaLimiter
+    from ols.src.redaction.engine import CompiledRuleSet
     from ols.src.tools.approval import PendingApprovalStoreBase
 
 
@@ -48,7 +51,7 @@ class AppConfig:
     def __init__(self) -> None:
         """Initialize the class instance."""
         self.config = config_model.Config()
-        self._query_filters: Optional[Redactor] = None
+        self._query_filters: Optional[QueryFiltersRedactor] = None
         self._rag_index_loader: Optional[IndexLoader] = None
         self._conversation_cache: Optional[Cache] = None
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
@@ -140,12 +143,17 @@ class AppConfig:
         return self._token_usage_history
 
     @property
-    def query_redactor(self) -> Redactor:
+    def query_redactor(self) -> QueryFiltersRedactor:
         """Return the query redactor."""
         # TODO: OLS-380 Config object mirrors configuration
         if self._query_filters is None:
-            self._query_filters = Redactor(self.ols_config.query_filters)
+            self._query_filters = QueryFiltersRedactor(self.ols_config.query_filters)
         return self._query_filters
+
+    @property
+    def tool_output_redaction_rules(self) -> CompiledRuleSet | None:
+        """Return compiled MCP rules unless tool-output redaction is disabled."""
+        return _TOOL_OUTPUT_RULES if self.ols_config.tool_output_redaction else None
 
     @property
     def rag_index(self) -> Optional[list[Any]]:

@@ -69,6 +69,7 @@ The YAML file has four top-level sections:
 | `ols_config.tls_config` | object | -- | Service endpoint TLS certificate and key paths | see what/security.md |
 | `ols_config.proxy_config` | object | from env | HTTPS proxy URL, CA cert, no-proxy hosts | -- |
 | `ols_config.query_filters` | list | none | PII redaction patterns (name, regex, replacement) | see what/security.md |
+| `ols_config.tool_output_redaction` | bool | true | Enable chat execution-loop tool-result redaction, including offload read/search results; explicit false is preserved and non-booleans are rejected. MCP Apps resources and direct app tool calls are out of scope. | see what/tool-output-redaction.md |
 | `ols_config.logging_config` | object | INFO/WARNING | Log levels per component | see what/observability.md |
 | `ols_config.user_data_collection` | object | all disabled | Feedback and transcript collection settings | see what/observability.md |
 | `ols_config.tool_filtering` | object | none | Tool RAG filtering parameters | see what/tools.md |

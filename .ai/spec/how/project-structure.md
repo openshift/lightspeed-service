@@ -84,7 +84,8 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `utils/logging_configurator.py` | `configure_logging()` -- sets up Python logging from config. |
 | `utils/ssl.py` | `get_ssl_version()` and `get_ciphers()` -- resolves TLS security profile settings for Uvicorn. |
 | `utils/tls.py` | TLS utility functions for provider-level HTTPX clients: `ciphers_as_string()`, `min_tls_version()`, `ssl_tls_version()`. |
-| `utils/redactor.py` | `Redactor` -- applies configured query filters (regex-based PII redaction) to queries and attachments before logging or LLM submission. |
+| `src/redaction/query_filters.py` | `QueryFiltersRedactor` -- compiles administrator-defined query filters into a sequential ruleset once per cached redactor; applies `src/redaction/engine.py` to queries and attachments. Configuration reload invalidates the cached redactor. No built-in MCP rules are added to query filters. |
+| `src/redaction/tool_output.py` | Sanitize bounded tool text, structured projections, and references; return replacement metadata only for changed results. Used after execution size guards and before tool-result events, inspection, audit, or SSE. |
 | `utils/token_handler.py` | `TokenHandler` -- tiktoken-based token counting and RAG context truncation. `TokenBudgetTracker` -- per-request token budget management across categories (prompt, RAG, history, skill, tool definitions, tool results, AI rounds). `PromptTooLongError` exception. |
 | `utils/mcp_utils.py` | `build_mcp_config()` and `get_mcp_tools()` -- resolves MCP server configurations, applies tool filtering via `ToolsRAG`, and fetches tools from MCP servers using `langchain-mcp-adapters`. |
 | `utils/suid.py` | UUID generation and validation for conversation/user IDs. |

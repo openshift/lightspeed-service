@@ -2,6 +2,7 @@
 
 import asyncio
 import html
+import json
 import logging
 import re
 import time
@@ -19,12 +20,14 @@ from opentelemetry.trace import Span, use_span
 from ols import config
 from ols.app.metrics.metrics import gen_ai_execute_tool_duration_seconds
 from ols.app.models.models import StreamChunkType
+from ols.src.redaction.tool_output import redact_tool_output
 from ols.src.tools.approval import (
     get_approval_decision,
     need_validation,
     normalize_tool_annotation,
     register_pending_approval,
 )
+from ols.src.tools.tool_result_inspection import ToolResultInspectionError
 from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import TokenHandler
 
@@ -277,6 +280,7 @@ async def execute_tool_call(
         if offloaded is not raw_text:
             tool_output = offloaded
             was_truncated = False
+            structured_content = None
         else:
             tool_output, was_truncated = _extract_text_from_tool_output(
                 raw_text, tools_token_budget
@@ -320,6 +324,7 @@ def _tool_result_event(
     referenced_documents: list | None = None,
     duration_ms: int | None = None,
     audit_span: Span | None = None,
+    redaction_metadata: dict | None = None,
 ) -> ToolExecutionEvent:
     """Build a tool_result event payload.
 
@@ -333,11 +338,12 @@ def _tool_result_event(
         referenced_documents: Optional list of RagChunk objects for the API response.
         duration_ms: Wall-clock execution time in milliseconds.
         audit_span: Tool span retained until result inspection completes.
+        redaction_metadata: Replacement counts, present only for changed results.
 
     Returns:
         Tool result event containing a ToolMessage payload.
     """
-    additional_kwargs: dict = {"truncated": truncated}
+    additional_kwargs: dict = {"truncated": truncated, **(redaction_metadata or {})}
     if structured_content is not None:
         additional_kwargs["structured_content"] = structured_content
     if referenced_documents is not None:
@@ -567,6 +573,47 @@ async def _execute_with_retries(
     return "error", tool_output, False, None, None
 
 
+def _redact_tool_result(
+    tool_output: str,
+    structured_content: dict | None,
+    ref_docs: list | None,
+    tools_token_budget: int,
+    tool_span: Span | None,
+) -> tuple[str, dict | None, list | None, dict]:
+    """Sanitize bounded results before capture; fail closed on any processing error."""
+    metadata: dict = {}
+    try:
+        rules = config.tool_output_redaction_rules
+        if rules is not None:
+            tool_output, structured_content, ref_docs, metadata = redact_tool_output(
+                tool_output,
+                structured_content,
+                ref_docs,
+                rules,
+                max_metadata_chars=max(1, tools_token_budget)
+                * _CHARS_PER_TOKEN_ESTIMATE,
+            )
+    except Exception:
+        logger.error("Tool-output redaction failed")
+        raise ToolResultInspectionError("Tool-output redaction failed") from None
+    if metadata:
+        logger.info(
+            "Tool-output redaction count=%d rule_counts=%s",
+            metadata["redacted_count"],
+            sorted(metadata["redaction_counts"].items()),
+        )
+        if tool_span is not None:
+            tool_span.set_attribute("lightspeed.tool_output.redacted", True)
+            tool_span.set_attribute(
+                "lightspeed.tool_output.redacted_count", metadata["redacted_count"]
+            )
+            tool_span.set_attribute(
+                "lightspeed.tool_output.redaction_counts",
+                json.dumps(metadata["redaction_counts"], sort_keys=True),
+            )
+    return tool_output, structured_content, ref_docs, metadata
+
+
 async def _execute_single_tool_call_stream(
     tool_call: ToolCallDefinition,
     tools_token_budget: int,
@@ -653,6 +700,11 @@ async def _execute_single_tool_call_stream(
                     offload_manager=offload_manager,
                 )
             )
+        tool_output, structured_content, ref_docs, redaction_metadata = (
+            _redact_tool_result(
+                tool_output, structured_content, ref_docs, tools_token_budget, tool_span
+            )
+        )
         elapsed = time.monotonic() - t0
         duration_ms = int(elapsed * 1000)
         gen_ai_execute_tool_duration_seconds.labels(
@@ -669,6 +721,7 @@ async def _execute_single_tool_call_stream(
             duration_ms=duration_ms,
             tool_name=tool_name,
             audit_span=tool_span,
+            redaction_metadata=redaction_metadata,
         )
         result_span_transferred = tool_span is not None
         yield event

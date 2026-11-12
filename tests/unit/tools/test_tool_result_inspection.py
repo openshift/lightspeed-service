@@ -560,9 +560,9 @@ def test_vertex_anthropic_binds_native_json_schema_instead_of_tool_choice() -> N
 
 
 @pytest.mark.asyncio
-async def test_vertex_anthropic_classifier_sends_output_config_without_tool_choice() -> (
-    None
-):
+async def test_vertex_anthropic_classifier_sends_output_config_without_tool_choice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Send the native JSON-schema format and no forced tool choice."""
     import anthropic
     import httpx2 as httpx
@@ -604,25 +604,37 @@ async def test_vertex_anthropic_classifier_sends_output_config_without_tool_choi
             },
         )
 
-    client = anthropic.AsyncAnthropic(
-        api_key="test-token",
-        http_client=httpx.AsyncClient(
-            transport=httpx.MockTransport(respond), base_url="https://test"
-        ),
-    )
-    model = ChatAnthropicVertex(
-        model_name="claude-sonnet-5-5",
-        project="test-project",
-        location="us-east5",
-        credentials=FakeCredentials(),
-        max_output_tokens=512,
-    )
-    model.async_client = client
-    classifier = ToolResultClassifier(
-        model, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+    def reject_tls_setup(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Unit test must not create a real TLS transport")
+
+    monkeypatch.setattr(
+        "httpx2._transports.default.create_ssl_context", reject_tls_setup
     )
 
-    decision = await classifier.classify("get_pods", "result", 1, 1, "safe output")
+    with httpx.Client(transport=httpx.MockTransport(respond)) as sync_http_client:
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(respond), base_url="https://test"
+        ) as async_http_client:
+            client = anthropic.AsyncAnthropic(
+                api_key="test-token", http_client=async_http_client
+            )
+            model = ChatAnthropicVertex(
+                model_name="claude-sonnet-5-5",
+                project="test-project",
+                location="us-east5",
+                credentials=FakeCredentials(),
+                max_output_tokens=512,
+                http_client=sync_http_client,
+                async_http_client=async_http_client,
+            )
+            model.async_client = client
+            classifier = ToolResultClassifier(
+                model, provider_type=PROVIDER_GOOGLE_VERTEX_ANTHROPIC, sleep=AsyncMock()
+            )
+
+            decision = await classifier.classify(
+                "get_pods", "result", 1, 1, "safe output"
+            )
 
     assert decision.injection_detected is False
     assert decision.category == "none"

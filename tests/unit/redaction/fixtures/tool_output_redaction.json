@@ -1,0 +1,76 @@
+[
+  {
+    "name": "complete_configmap_ten_matches",
+    "input": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: firewall-config\n  namespace: operations\ndata:\n  rules: |\n    allow 192.0.2.0/24 -> 10.0.0.0/8; allow 2001:db8::/32\n    deny all other sources\n  incident-notes: |\n    Owner admin@example.com (US 415-555-0123, EU +44 20 7946 0958) investigated request 123-45-6789.\n    Reproduced with sk-abcdefghijklmnopqrst and ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.\n    AWS identity AKIAAAAAAAAAAAAAAAAA; session eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijklmnopqrstuvwxyz.\n    Authorization: Bearer abcdefghijklmnopqrst; password=MySecret123!\n",
+    "expected": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: firewall-config\n  namespace: operations\ndata:\n  rules: |\n    allow 192.0.2.0/24 -> 10.0.0.0/8; allow 2001:db8::/32\n    deny all other sources\n  incident-notes: |\n    Owner [REDACTED:email] (US [REDACTED:phone], EU [REDACTED:phone]) investigated request [REDACTED:ssn].\n    Reproduced with [REDACTED:api_key] and [REDACTED:github_token].\n    AWS identity [REDACTED:aws_access_key]; session [REDACTED:jwt].\n    Authorization: Bearer [REDACTED:oauth_token]; password=[REDACTED:credential]\n",
+    "redacted": true,
+    "redacted_count": 10,
+    "counts": {
+      "email": 1,
+      "phone": 2,
+      "ssn": 1,
+      "api_key": 1,
+      "github_token": 1,
+      "aws_access_key": 1,
+      "jwt": 1,
+      "oauth_token": 1,
+      "credential": 1
+    }
+  },
+  {
+    "name": "standalone_network_values_are_preserved",
+    "input": "allow 192.0.2.0/24 -> 10.0.0.0/8; IPv4 198.51.100.7; IPv6 2001:db8::1; CIDR 2001:db8::/32",
+    "expected": "allow 192.0.2.0/24 -> 10.0.0.0/8; IPv4 198.51.100.7; IPv6 2001:db8::1; CIDR 2001:db8::/32",
+    "redacted": false,
+    "redacted_count": 0,
+    "counts": {}
+  },
+  {
+    "name": "benign_kubernetes_yaml_is_preserved",
+    "input": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: api-server\n  namespace: operations\nspec:\n  containers:\n    - name: api-server\n      image: registry.example.test/api:1.2.3\n      ports:\n        - containerPort: 8443\n",
+    "expected": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: api-server\n  namespace: operations\nspec:\n  containers:\n    - name: api-server\n      image: registry.example.test/api:1.2.3\n      ports:\n        - containerPort: 8443\n",
+    "redacted": false,
+    "redacted_count": 0,
+    "counts": {}
+  },
+  {
+    "name": "credential_assignment_precedes_embedded_api_key",
+    "input": "password=sk-abcdefghijklmnopqrst",
+    "expected": "password=[REDACTED:credential]",
+    "redacted": true,
+    "redacted_count": 1,
+    "counts": {"credential": 1}
+  },
+  {
+    "name": "near_misses_are_preserved",
+    "input": "sk-short ghp_short AKIA123 user@localhost 4155550123 eyJabc.def",
+    "expected": "sk-short ghp_short AKIA123 user@localhost 4155550123 eyJabc.def",
+    "redacted": false,
+    "redacted_count": 0,
+    "counts": {}
+  },
+  {
+    "name": "email_before_sentence_ending_period",
+    "input": "mail admin@example.com. Done",
+    "expected": "mail [REDACTED:email]. Done",
+    "redacted": true,
+    "redacted_count": 1,
+    "counts": {"email": 1}
+  },
+  {
+    "name": "email_match_does_not_stop_before_domain_continuation",
+    "input": "mail admin@example.com.1",
+    "expected": "mail admin@example.com.1",
+    "redacted": false,
+    "redacted_count": 0,
+    "counts": {}
+  },
+  {
+    "name": "email_with_fullwidth_at_sign",
+    "input": "contact admin＠example.com today",
+    "expected": "contact [REDACTED:email] today",
+    "redacted": true,
+    "redacted_count": 1,
+    "counts": {"email": 1}
+  }
+]
