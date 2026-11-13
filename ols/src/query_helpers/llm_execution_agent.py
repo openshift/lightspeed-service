@@ -7,7 +7,14 @@ import logging
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Iterator,
+    Optional,
+    TypeAlias,
+)
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -166,65 +173,64 @@ class _FinalAnswerToolCallGuard:
         ]
         return min(indexes) if indexes else -1
 
+    def _decide(self) -> None:
+        """Decide whether the buffered text is a tool call, else mark as decided."""
+        stripped = self._buffer.lstrip()
+        if not stripped:
+            return
+        if any(stripped.startswith(prefix) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
+            self._decided = True
+            self._suppressed = True
+            self._buffer = ""
+            return
+        if any(prefix.startswith(stripped) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
+            return
+        self._decided = True
+
+    def _drain(self, *, drop_partial_marker: bool) -> list[str]:
+        """Return buffered text up to the first tool-call marker, if any.
+
+        When the buffer ends with a possible marker prefix the tail is held back
+        and kept buffered, unless ``drop_partial_marker`` is set (end of stream),
+        in which case it is suppressed instead.
+        """
+        marker_index = self._find_marker(self._buffer)
+        if marker_index >= 0:
+            emitted = self._buffer[:marker_index]
+            self._suppressed = True
+            self._buffer = ""
+            return [emitted] if emitted else []
+        marker_start = self._buffer.rfind(_TOOL_CALL_MARKER_LEAD)
+        if marker_start != -1:
+            tail = self._buffer[marker_start:]
+            if any(prefix.startswith(tail) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
+                emitted = self._buffer[:marker_start]
+                if drop_partial_marker:
+                    self._suppressed = True
+                    self._buffer = ""
+                else:
+                    self._buffer = tail
+                return [emitted] if emitted else []
+        emitted, self._buffer = self._buffer, ""
+        return [emitted] if emitted else []
+
     def feed(self, text: str) -> list[str]:
         """Return text that is safe to stream, buffering while undecided."""
         if self._suppressed:
             return []
         self._buffer += text
         if not self._decided:
-            stripped = self._buffer.lstrip()
-            if not stripped:
+            self._decide()
+            if not self._decided:
                 return []
-            if any(
-                stripped.startswith(prefix) for prefix in _TOOL_CALL_ANSWER_PREFIXES
-            ):
-                self._decided = True
-                self._suppressed = True
-                self._buffer = ""
-                return []
-            if any(
-                prefix.startswith(stripped) for prefix in _TOOL_CALL_ANSWER_PREFIXES
-            ):
-                return []
-            self._decided = True
-        marker_index = self._find_marker(self._buffer)
-        if marker_index >= 0:
-            emitted = self._buffer[:marker_index]
-            self._suppressed = True
-            self._buffer = ""
-            return [emitted] if emitted else []
-        marker_start = self._buffer.rfind(_TOOL_CALL_MARKER_LEAD)
-        if marker_start != -1:
-            tail = self._buffer[marker_start:]
-            if any(prefix.startswith(tail) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
-                emitted = self._buffer[:marker_start]
-                self._buffer = tail
-                return [emitted] if emitted else []
-        emitted, self._buffer = self._buffer, ""
-        return [emitted] if emitted else []
+        return self._drain(drop_partial_marker=False)
 
     def finish(self) -> list[str]:
         """Return any buffered text once the stream is complete."""
         if self._suppressed:
             return []
         self._decided = True
-        marker_index = self._find_marker(self._buffer)
-        if marker_index >= 0:
-            emitted = self._buffer[:marker_index]
-            self._suppressed = True
-            self._buffer = ""
-            return [emitted] if emitted else []
-        marker_start = self._buffer.rfind(_TOOL_CALL_MARKER_LEAD)
-        if marker_start != -1:
-            tail = self._buffer[marker_start:]
-            if any(prefix.startswith(tail) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
-                emitted = self._buffer[:marker_start]
-                self._suppressed = True
-                self._buffer = ""
-                return [emitted] if emitted else []
-        buffered = self._buffer
-        self._buffer = ""
-        return [buffered] if buffered else []
+        return self._drain(drop_partial_marker=True)
 
 
 def tool_calls_from_tool_calls_chunks(
@@ -825,6 +831,24 @@ class LLMExecutionAgent:
         retry_messages.append(HumanMessage(content=FINAL_SYNTHESIS_RETRY_INSTRUCTION))
         return retry_messages
 
+    @staticmethod
+    def _text_chunks(
+        texts: list[str], result: RoundLLMResult
+    ) -> Iterator[StreamedChunk]:
+        """Record and wrap answer text for streaming to the client."""
+        for text in texts:
+            result.collected_text.append(text)
+            yield StreamedChunk(type=StreamChunkType.TEXT, text=text)
+
+    def _guarded_text_chunks(
+        self,
+        guard: _FinalAnswerToolCallGuard | None,
+        text: str,
+        result: RoundLLMResult,
+    ) -> Iterator[StreamedChunk]:
+        """Record and wrap answer text after the final-answer guard."""
+        return self._text_chunks(guard.feed(text) if guard else [text], result)
+
     def _close_final_answer_guard(
         self,
         guard: _FinalAnswerToolCallGuard,
@@ -953,21 +977,8 @@ class LLMExecutionAgent:
 
                     # Fake-LLM (load tests) returns plain strings; emit and exit.
                     if isinstance(chunk, str):
-                        if guard is not None:
-                            for emitted in guard.feed(chunk):
-                                result.collected_text.append(emitted)
-                                yield StreamedChunk(
-                                    type=StreamChunkType.TEXT, text=emitted
-                                )
-                            for emitted in self._close_final_answer_guard(
-                                guard, result, round_index
-                            ):
-                                result.collected_text.append(emitted)
-                                yield StreamedChunk(
-                                    type=StreamChunkType.TEXT, text=emitted
-                                )
-                        else:
-                            yield StreamedChunk(type=StreamChunkType.TEXT, text=chunk)
+                        for sc in self._guarded_text_chunks(guard, chunk, result):
+                            yield sc
                         break
 
                     # Once finish_reason="stop" is seen we keep draining
@@ -993,23 +1004,19 @@ class LLMExecutionAgent:
                             case str() as text if text and not skip_special_chunk(
                                 text, chunk_counter, self.model, is_final_round
                             ):
-                                for emitted in (guard.feed(text) if guard else [text]):
-                                    result.collected_text.append(emitted)
-                                    yield StreamedChunk(
-                                        type=StreamChunkType.TEXT, text=emitted
-                                    )
+                                for sc in self._guarded_text_chunks(
+                                    guard, text, result
+                                ):
+                                    yield sc
                             case list() as blocks:
                                 for sc in self._streamed_chunks_from_list_content(
                                     blocks, chunk_counter, is_final_round
                                 ):
                                     if sc.type == StreamChunkType.TEXT:
-                                        for emitted in (
-                                            guard.feed(sc.text) if guard else [sc.text]
+                                        for text_chunk in self._guarded_text_chunks(
+                                            guard, sc.text, result
                                         ):
-                                            result.collected_text.append(emitted)
-                                            yield StreamedChunk(
-                                                type=StreamChunkType.TEXT, text=emitted
-                                            )
+                                            yield text_chunk
                                     else:
                                         if sc.type == StreamChunkType.REASONING:
                                             result.collected_thinking.append(sc.text)
@@ -1025,11 +1032,11 @@ class LLMExecutionAgent:
                     chunk_counter += 1
 
                 if guard is not None:
-                    for emitted in self._close_final_answer_guard(
-                        guard, result, round_index
+                    for sc in self._text_chunks(
+                        self._close_final_answer_guard(guard, result, round_index),
+                        result,
                     ):
-                        result.collected_text.append(emitted)
-                        yield StreamedChunk(type=StreamChunkType.TEXT, text=emitted)
+                        yield sc
         except TimeoutError:
             logger.error(
                 "Timed out waiting for LLM chunks in round %s after %s seconds",
