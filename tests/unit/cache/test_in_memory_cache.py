@@ -298,38 +298,55 @@ def test_ready(cache):
     assert cache.ready()
 
 
-improper_user_uuids = [
+improper_user_ids = [
     None,
     "",
     " ",
     "\t",
     ":",
     "foo:bar",
+    "a" * 257,  # longer than USER_ID_MAX_LENGTH
+]
+
+# user IDs that real authenticators may produce that are not UUID-parseable;
+# they must be accepted as bounded opaque strings
+opaque_user_ids = [
+    "305070630980550817",  # snowflake ID (OIDC sub mapped to user.uid)
+    "sha256~P1lT3example45",  # OpenShift internal OAuth subject format
     "ffffffff-ffff-ffff-ffff-fffffffffff",  # UUID-like string with missing chararacter
     "ffffffff-ffff-ffff-ffff-fffffffffffZ",  # UUID-like string, but with wrong character
-    "ffffffff:ffff:ffff:ffff:ffffffffffff",
 ]
 
 
-@pytest.mark.parametrize("uuid", improper_user_uuids)
-def test_list_improper_user_id(cache, uuid):
+@pytest.mark.parametrize("user_id", improper_user_ids)
+def test_list_improper_user_id(cache, user_id):
     """Test list with invalid user ID."""
-    with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
-        cache.list(uuid)
+    with pytest.raises(ValueError, match=f"Invalid user ID {user_id}"):
+        cache.list(user_id)
 
 
-@pytest.mark.parametrize("uuid", improper_user_uuids)
-def test_delete_improper_user_id(cache, uuid):
+@pytest.mark.parametrize("user_id", improper_user_ids)
+def test_delete_improper_user_id(cache, user_id):
     """Test delete with invalid user ID."""
-    with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
-        cache.delete(uuid, conversation_id)
+    with pytest.raises(ValueError, match=f"Invalid user ID {user_id}"):
+        cache.delete(user_id, conversation_id)
 
 
-@pytest.mark.parametrize("uuid", improper_user_uuids)
-def test_get_improper_user_id(cache, uuid):
+@pytest.mark.parametrize("user_id", improper_user_ids)
+def test_get_improper_user_id(cache, user_id):
     """Test how improper user ID is handled."""
-    with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
-        cache.get(uuid, conversation_id)
+    with pytest.raises(ValueError, match=f"Invalid user ID {user_id}"):
+        cache.get(user_id, conversation_id)
+
+
+@pytest.mark.parametrize("user_id", opaque_user_ids)
+def test_non_uuid_user_id_accepted(cache, user_id):
+    """Test that opaque non-UUID user IDs are accepted end-to-end."""
+    cache.insert_or_append(user_id, conversation_id, cache_entry_1)
+    assert cache.get(user_id, conversation_id) == [cache_entry_1]
+    assert len(cache.list(user_id)) == 1
+    cache.delete(user_id, conversation_id)
+    assert cache.get(user_id, conversation_id) is None
 
 
 def test_get_improper_conversation_id(cache):
