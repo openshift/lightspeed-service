@@ -38,12 +38,14 @@ async def test_summarize_entries_success():
             response=AIMessage(content="Use kubectl create pod command."),
         ),
     ]
-    mock_llm = MagicMock()
-    mock_llm.ainvoke = AsyncMock(
-        return_value=AIMessage(
+
+    async def invoke(_messages):
+        return AIMessage(
             content="Summary: Discussion about Kubernetes basics and pod creation."
         )
-    )
+
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(side_effect=invoke)
 
     summary = await summarize_entries(entries, mock_llm)
 

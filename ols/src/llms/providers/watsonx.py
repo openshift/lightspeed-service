@@ -12,6 +12,7 @@ from langchain_ibm import ChatWatsonx
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
+from ols.utils.audit_support import watsonx_auth_audit_scope
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +65,11 @@ class Watsonx(LLMProvider):
             self.url,
             self.project_id,
         )
-        return ChatWatsonx(
-            model_id=self.model,
-            url=self.url,
-            apikey=self.credentials,
-            project_id=self.project_id,
-            params=self.params,
-        )
+        with watsonx_auth_audit_scope():
+            return ChatWatsonx(
+                model_id=self.model,
+                url=self.url,
+                apikey=self.credentials,
+                project_id=self.project_id,
+                params=self.params,
+            )

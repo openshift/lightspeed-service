@@ -31,6 +31,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [prompts.md](what/prompts.md) | System prompts (full text), agent instructions, composition order, placeholders |
 | [mcp-apps.md](what/mcp-apps.md) | MCP apps UI integration: resource discovery, direct tool calls, client auth headers |
 | [audit-logging.md](what/audit-logging.md) | OTel-based audit logging: span hierarchy, GenAI attributes, content capture policy |
+| [outbound-request-audit.md](what/outbound-request-audit.md) | [IMPLEMENTED: OLS-4192] Metadata-only Python/SDK audit; Solr/OKP docs retrieval coverage deferred until PR #3178 merges |
 
 ### how/ -- Architecture Specifications
 
