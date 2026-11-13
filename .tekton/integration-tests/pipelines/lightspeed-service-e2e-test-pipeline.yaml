@@ -259,7 +259,10 @@ spec:
           #!/usr/bin/env bash
           set -euo pipefail
           mkdir -p "$ARTIFACT_DIR"
-          dnf -y install git make python3.12 python3.12-devel python3.12-pip gcc tar gzip jq shadow-utils
+          # shadow-utils is preinstalled in the image; naming it here makes dnf
+          # upgrade it, which needs CAP_SETFCAP (newuidmap file caps) that the
+          # Konflux pod lacks -> 'Error -1 running transaction'.
+          dnf -y install git make python3.12 python3.12-devel python3.12-pip gcc tar gzip jq
           python3.12 -m pip install --no-cache-dir uv
           export PATH="$HOME/.local/bin:$PATH"
           cp "$KUBECONFIG" /tmp/kubeconfig
