@@ -65,9 +65,9 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `src/quota/quota_exceed_error.py` | `QuotaExceedError` exception. |
 | `src/quota/token_usage_history.py` | `TokenUsageHistory` -- records per-user token consumption to PostgreSQL for analytics. |
 | `src/rag/hybrid_rag.py` | Hybrid RAG retrieval logic. |
-| `src/rag/stop_words.py` | `ENGLISH_STOP_WORDS` -- inlined English stop-word set for hybrid RAG tokenization and Solr query normalization (avoids an NLTK dependency). |
+| `src/rag/stop_words.py` | `ENGLISH_STOP_WORDS` -- inlined English stop-word set for hybrid RAG tokenization (avoids an NLTK dependency). |
 | `src/rag_index/index_loader.py` | `IndexLoader` -- loads LlamaIndex vector indexes from configured reference content paths. Provides `get_retriever()` and `embed_model` for reuse. Excluded from MyPy type checking. |
-| `src/rag_index/solr_support.py` | Solr hybrid-search client (`POST /hybrid-search`, lexical-primary edismax with KNN rerank). Dedupes hits by parent and truncates to a configured max. |
+| `src/rag_index/rhokp_mcp.py` | Dedicated RHOKP MCP docs-search adapter. Discovers and caches RHOKP's native `search` tool, applies cluster-derived product/version filters, and maps citation URLs into OLS references. |
 | `src/skills/skills_rag.py` | `SkillsRAG` -- hybrid BM25 + vector retrieval for skill selection. `load_skills_from_directory()` parses skill files with YAML frontmatter. |
 | `src/tools/tools.py` | `execute_tool_calls_stream()` -- runs resolved MCP tool calls with token budget enforcement and approval flow. `enforce_tool_token_budget()` truncates tool outputs that exceed remaining budget. |
 | `src/tools/offloaded_content.py` | Offloads oversized tool outputs to disk (search + read retrieval) instead of inlining them into the prompt. `cleanup_offload_storage()` clears the offload directory at startup (called from `app/main.py`). Storage path from `ols_config.offload_storage_path`. |
@@ -139,13 +139,13 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 
 8. **Query redactor init**: Accessing `config.query_redactor` triggers lazy initialization of the `Redactor` instance from configured query filters.
 
-9. **Pyroscope** (conditional): If `dev_config.pyroscope_url` is set, starts profiling.
+9. **Pyroscope** (conditional): If `dev_config.pyroscope_url` is set and reachable, `start_with_pyroscope_enabled()` starts profiling and Uvicorn from inside the profiling wrapper. That blocking path precedes `load_index()`.
 
-10. **RAG index loading** (background thread): `threading.Thread(target=load_index)` starts a thread that accesses `config.rag_index`, which triggers `IndexLoader` initialization. This runs in parallel with server startup so the service can begin accepting health checks before indexes are loaded.
+10. **RHOKP and RAG initialization** (standard path): `load_index()` awaits RHOKP `search` discovery when `ols_config.openshift_docs_mcp` is configured, then accesses `config.rag_index`. Discovery retries up to 36 times with a five-second backoff and caches the successful tool by endpoint. If the reachable-Pyroscope path has already started Uvicorn, `DocsSummarizer` performs this initialization during first tool resolution instead; later requests use the cache.
 
-11. **Quota scheduler** (background thread): `start_quota_scheduler(config)` spawns a daemon thread for periodic quota revocation (only if PostgreSQL-backed quotas are configured).
+11. **Quota scheduler** (standard path): `start_quota_scheduler(config)` spawns a daemon thread for periodic quota revocation (only if PostgreSQL-backed quotas are configured).
 
-12. **Uvicorn start**: `start_uvicorn(config)` starts the ASGI server with `workers=1`.
+12. **Uvicorn start** (standard path): `start_uvicorn(config)` starts the ASGI server with `workers=1`.
 
 ### Module-level initialization in `app/main.py`
 
@@ -184,7 +184,7 @@ ols.py: conversation_request()
   |     |-- DocsSummarizer(provider, model, system_prompt, mode, user_token, client_headers)
   |     |     |-- QueryHelper.__init__() -> resolves defaults, selects system prompt by mode
   |     |     |-- _prepare_llm() -> loads LLM via llm_loader.load_llm()
-  |     |     |-- build_mcp_config() -> resolves MCP server configs
+  |     |     |-- build_mcp_config() -> resolves generic MCP server configs
   |     |     |-- TokenBudgetTracker() -> initializes per-request token accounting
   |     |     |-- LLMExecutionAgent() -> instantiated with LLM + tracker
   |     |
@@ -193,7 +193,9 @@ ols.py: conversation_request()
   |           |-- skills_rag.retrieve_skill() -> optional skill injection
   |           |-- prepare_history() -> cache.get() + truncation
   |           |-- _build_final_prompt() -> GeneratePrompt().generate_prompt()
-  |           |-- get_mcp_tools() -> tool filtering via ToolsRAG, tool fetching from MCP servers
+  |           |-- get_mcp_tools() -> generic tool filtering via ToolsRAG and MCP discovery
+  |           |-- initialize_rhokp_mcp() -> cached startup discovery or first-request fallback
+  |           |-- append RHOKP `search` -> omit generic tools also named `search`
   |           |-- self._llm_agent.execute() -> delegates to LLMExecutionAgent
   |                 |-- _iterate_with_tools() -> multi-round tool-calling loop
   |                 |-- _invoke_llm() -> chain.astream() with optional bind_tools()
@@ -300,9 +302,9 @@ In `app/main.py`, the `GradioUI` import is inside an `if config.dev_config.enabl
 
 `runners/uvicorn.py` passes `workers=config.ols_config.max_workers` to `uvicorn.run()`. However, the comment says "use workers=1 so config loaded can be accessed from other modules." The singleton `AppConfig` is process-local; multiple workers would each have independent config instances. The RAG index loading thread would also be per-worker.
 
-### RAG index loads in background
+### RHOKP initialization and RAG index loading
 
-The RAG index thread (`threading.Thread(target=load_index)`) starts before Uvicorn so the server can accept liveness probes immediately. The readiness probe at `/readiness` checks `index_is_ready()` which returns `False` until the index is loaded. The `IndexLoader` is excluded from MyPy type checking (`# type: ignore [attr-defined]`).
+In the standard runner path, `load_index()` waits for RHOKP tool discovery before accessing `config.rag_index` and starting Uvicorn. When reachable Pyroscope starts Uvicorn from its wrapper first, the first request that resolves tools initializes RHOKP before exposing the docs tool. The standard path accesses `config.rag_index` before Uvicorn; the Pyroscope wrapper has separate RAG-index handling. The readiness probe at `/readiness` checks `index_is_ready()` and returns `False` until a configured index is loaded. The `IndexLoader` is excluded from MyPy type checking (`# type: ignore [attr-defined]`).
 
 ### Config reload resets cached properties differently
 

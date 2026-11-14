@@ -4,22 +4,25 @@ import logging
 import os
 import re
 from enum import StrEnum
-from typing import Any, Optional, Self
+from typing import Annotated, Any, Optional, Self
 
 from pydantic import (
     AnyHttpUrl,
+    AnyUrl,
     BaseModel,
-    ConfigDict,
     Field,
     FilePath,
     PositiveInt,
     PrivateAttr,
+    UrlConstraints,
     field_validator,
     model_validator,
 )
 
 from ols import constants
 from ols.utils import checks, tls
+
+HttpsUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
 
 
 def validate_tool_round_cap_fraction_config(v: float) -> float:
@@ -1044,9 +1047,8 @@ class ReferenceContentIndex(BaseModel):
     """One on-disk FAISS / vector index for BYOK RAG stores.
 
     Field names are historical: ``product_docs_*`` is used for any persisted
-    LlamaIndex vector store path. Managed OpenShift product docs are served
-    exclusively via ``ols_config.solr_hybrid`` (OKP); this class is only for
-    user-supplied BYOK indexes.
+    LlamaIndex vector store path. Managed OpenShift product docs are served via
+    RHOKP MCP; this class is only for user-supplied BYOK indexes.
     """
 
     product_docs_index_path: Optional[FilePath] = None
@@ -1078,7 +1080,7 @@ class ReferenceContent(BaseModel):
     """Local vector indexes (FAISS on disk) for BYOK.
 
     Omit or leave ``indexes`` empty when no on-disk indexes are needed.
-    Product documentation is served by Solr (see ``solr_hybrid``).
+    Product documentation is served by RHOKP MCP.
     """
 
     indexes: Optional[list[ReferenceContentIndex]] = None
@@ -1101,80 +1103,16 @@ class ReferenceContent(BaseModel):
                 index.validate_yaml()
 
 
-class SolrHybridSettings(BaseModel):
-    """Pydantic container for Solr hybrid RAG (portal-rag ``/hybrid-search``).
+class OpenShiftDocsMCPSettings(BaseModel):
+    """Configuration for the built-in OpenShift documentation MCP tool."""
 
-    Holds the Solr HTTP base URL, ranked hit count, optional ``fq`` filter, hybrid
-    rerank pool and vector weight, optional post-score cutoff, and HTTP client timeout.
-
-    Presence of the ``solr_hybrid`` section in the config enables the feature;
-    omit the section entirely to disable it.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    solr_http_base: str = Field(
-        default="http://localhost:8080",
-        description="Solr base URL without trailing /solr.",
-    )
+    url: HttpsUrl = Field(description="RHOKP MCP endpoint URL.")
     max_results: int = Field(
         default=constants.RAG_CONTENT_LIMIT,
         ge=1,
-        le=50,
-        description=(
-            "Target number of passages to return after parent dedupe; matches the "
-            "default index retriever chunk cap (``ols.constants.RAG_CONTENT_LIMIT`` / "
-            "``similarity_top_k``). Also scales how many rows Solr fetches for the hybrid "
-            "request pool before reranking."
-        ),
+        le=20,
+        description="Maximum search results to request from RHOKP MCP (up to 20).",
     )
-    hybrid_vector_boost: float = Field(
-        default=8.0,
-        ge=0.0,
-        description=(
-            "Solr rerank vector weight (``reRankWeight``): relative emphasis of dense "
-            "vector score versus lexical relevance in the hybrid reranker."
-        ),
-    )
-    hybrid_pool_docs: int = Field(
-        default=100,
-        ge=1,
-        le=500,
-        description=(
-            "Candidate document pool size (``reRankDocs``) passed to Solr's "
-            "``{!rerank}`` query for hybrid reranking."
-        ),
-    )
-    hybrid_score_threshold: float = Field(
-        default=0.0,
-        ge=0.0,
-        description=(
-            "Drop hits whose hybrid ``score`` is below this value after retrieval; "
-            "use ``0`` to keep all Solr-ranked docs."
-        ),
-    )
-    hybrid_solr_timeout_s: float = Field(
-        default=60.0,
-        ge=5.0,
-        description="Total HTTP timeout in seconds for each hybrid-search request.",
-    )
-    max_expansion_neighbors: int = Field(
-        default=2,
-        ge=0,
-        le=10,
-        description=(
-            "Maximum number of sibling chunks to include on each side of the "
-            "matched chunk during chunk expansion. ``0`` disables expansion."
-        ),
-    )
-
-    def validate_yaml(self) -> None:
-        """Validate Solr hybrid settings."""
-        if not checks.is_valid_http_url(self.solr_http_base):
-            raise checks.InvalidConfigurationError(
-                "solr_hybrid.solr_http_base must be a valid http or https URL with a "
-                f"host; got {self.solr_http_base!r}"
-            )
 
 
 class UserDataCollection(BaseModel):
@@ -1347,7 +1285,7 @@ class OLSConfig(BaseModel):
 
     audit: AuditConfig = AuditConfig()
 
-    solr_hybrid: Optional[SolrHybridSettings] = None
+    openshift_docs_mcp: Optional[OpenShiftDocsMCPSettings] = None
 
     tool_round_cap_fraction: float = constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
 
@@ -1411,8 +1349,10 @@ class OLSConfig(BaseModel):
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
         if data.get("skills", None) is not None:
             self.skills = SkillsConfig(**data.get("skills"))
-        if data.get("solr_hybrid", None) is not None:
-            self.solr_hybrid = SolrHybridSettings(**data.get("solr_hybrid"))
+        if data.get("openshift_docs_mcp", None) is not None:
+            self.openshift_docs_mcp = OpenShiftDocsMCPSettings(
+                **data.get("openshift_docs_mcp")
+            )
 
         self.audit = AuditConfig(**data.get("audit", {}))
 
@@ -1462,8 +1402,6 @@ class OLSConfig(BaseModel):
             self.authentication_config.validate_yaml()
         if self.proxy_config is not None:
             self.proxy_config.validate_yaml()
-        if self.solr_hybrid is not None:
-            self.solr_hybrid.validate_yaml()
 
 
 class DevConfig(BaseModel):
@@ -1567,7 +1505,8 @@ class Config(BaseModel):
     def _compute_tool_budgets(self) -> None:
         """Set tool token budget per model and ensure the context window fits reserved tokens."""
         reserve_tool_budget = (
-            bool(self.mcp_servers.servers) or self.ols_config.solr_hybrid is not None
+            bool(self.mcp_servers.servers)
+            or self.ols_config.openshift_docs_mcp is not None
         )
         for provider in self.llm_providers.providers.values():
             for model in provider.models.values():

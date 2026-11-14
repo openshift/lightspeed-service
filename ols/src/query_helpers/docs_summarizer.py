@@ -27,7 +27,10 @@ from ols.src.query_helpers.llm_execution_agent import (
     log_tool_loop_iteration,
 )
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.rag_index.solr_support import get_openshift_docs_tool
+from ols.src.rag_index.rhokp_mcp import (
+    get_openshift_docs_tool,
+    initialize_rhokp_mcp,
+)
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
 from ols.src.tools.tool_result_inspection import (
@@ -112,15 +115,12 @@ class DocsSummarizer(QueryHelper):
         self.mcp_servers = build_mcp_config(
             config.mcp_servers.servers, self.user_token, self.client_headers
         )
-        self._solr_hybrid = config.ols_config.solr_hybrid
-        self._solr_client = config.solr_hybrid_search
-        solr_docs_tool_active = (
-            self._solr_hybrid is not None and self._solr_client is not None
-        )
-        self._solr_docs_tool_prompt_guidance = solr_docs_tool_active
+        self._openshift_docs_mcp = config.ols_config.openshift_docs_mcp
+        docs_mcp_tool_active = self._openshift_docs_mcp is not None
+        self._openshift_docs_tool_prompt_guidance = docs_mcp_tool_active
         ref = config.config.ols_config.reference_content
         self._byok_active = ref is not None and bool(ref.indexes)
-        self._tool_calling_enabled = bool(self.mcp_servers) or solr_docs_tool_active
+        self._tool_calling_enabled = bool(self.mcp_servers) or docs_mcp_tool_active
         tool_result_inspection_enabled = (
             config.ols_config.guardrails.tool_result_inspection.enabled
         )
@@ -131,9 +131,9 @@ class DocsSummarizer(QueryHelper):
         )
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
-        elif self._tool_calling_enabled:
+        elif docs_mcp_tool_active:
             logger.info(
-                "Tool calling enabled for Solr hybrid OpenShift documentation search"
+                "Tool calling enabled for RHOKP MCP OpenShift documentation search"
             )
         else:
             logger.debug("No MCP servers provided, tool calling is disabled")
@@ -184,12 +184,26 @@ class DocsSummarizer(QueryHelper):
     async def _resolve_tools_for_request(
         self, mcp_tools_query: str
     ) -> list[StructuredTool]:
-        """Load MCP tools and append built-in Solr docs search when configured for tool-only."""
+        """Load generic MCP tools and append the dedicated RHOKP docs tool."""
+        if self._openshift_docs_mcp is not None:
+            await initialize_rhokp_mcp(self._openshift_docs_mcp)
         tools = await get_mcp_tools(
             mcp_tools_query, self.user_token, self.client_headers
         )
-        if self._solr_hybrid is not None and self._solr_client is not None:
-            tools.append(get_openshift_docs_tool(self._solr_client))
+        if self._openshift_docs_mcp is not None:
+            reserved_tool_name = constants.OPENSHIFT_DOCS_TOOL_NAME
+            generic_search_tools = [
+                tool for tool in tools if tool.name == reserved_tool_name
+            ]
+            if generic_search_tools:
+                logger.warning(
+                    "Ignoring %d generic MCP tool(s) named '%s'; the name is "
+                    "reserved for RHOKP documentation search",
+                    len(generic_search_tools),
+                    reserved_tool_name,
+                )
+                tools = [tool for tool in tools if tool.name != reserved_tool_name]
+            tools.append(get_openshift_docs_tool(self._openshift_docs_mcp))
         return tools
 
     def _prepare_llm(self) -> None:
@@ -227,7 +241,7 @@ class DocsSummarizer(QueryHelper):
             self._tool_calling_enabled,
             self._mode,
             self._cluster_version,
-            solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
+            openshift_docs_tool_guidance=self._openshift_docs_tool_prompt_guidance,
             byok_active=self._byok_active,
         ).generate_prompt(self.model)
         prompt_tokens = self._tracker.count_tokens(
@@ -337,7 +351,7 @@ class DocsSummarizer(QueryHelper):
             self._mode,
             self._cluster_version,
             skill_content=skill_content,
-            solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
+            openshift_docs_tool_guidance=self._openshift_docs_tool_prompt_guidance,
             byok_active=self._byok_active,
         ).generate_prompt(self.model)
 
