@@ -140,6 +140,12 @@ See `what/tools.md` for the full `mcp_servers.servers[]` configuration table.
    query endpoint. A user who cannot access `/ols-access` cannot use MCP
    Apps.
 
+7. **Outside chat tool-output redaction scope.** Resource fetches and direct
+   app tool calls do not apply `tool_output_redaction` or its UI replacement
+   metadata, even when chat results from the same server are redacted.
+   See `what/tool-output-redaction.md`, "Scope: chat tool results, not MCP
+   Apps", for the exclusion rationale and protection boundary.
+
 ## Planned Changes
 
 | Jira Key | Summary |

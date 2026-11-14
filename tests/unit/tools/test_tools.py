@@ -628,7 +628,7 @@ async def test_execute_tool_call_referenced_documents_in_additional_kwargs() -> 
     results = await _collect_tool_messages(tool_calls)
     assert len(results) == 1
     msg = results[0]
-    assert msg.additional_kwargs.get("referenced_documents") is sentinel
+    assert msg.additional_kwargs.get("referenced_documents") == sentinel
 
 
 def test_is_transient_tool_error_branches() -> None:

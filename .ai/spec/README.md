@@ -22,7 +22,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [rag.md](what/rag.md) | Document retrieval via FAISS, multi-index, BYOK, hybrid RAG (tool/skill filtering only) |
 | [auth.md](what/auth.md) | Three auth modules (k8s, noop, noop-with-token), permission scopes, user identity |
 | [tools.md](what/tools.md) | MCP tool integration: gathering, execution, token budget, filtering, approval workflow |
-| [tool-output-redaction.md](what/tool-output-redaction.md) | [PLANNED: OLS-3939] Default-on MCP result redaction, sanitized chat SSE and per-reply UI signal |
+| [tool-output-redaction.md](what/tool-output-redaction.md) | Default-on chat tool-result redaction, sanitized SSE/audit and replacement metadata; MCP Apps explicitly out of scope |
 | [skills.md](what/skills.md) | Skill discovery, selection via hybrid RAG, file concatenation, prompt injection |
 | [quota.md](what/quota.md) | Token usage limits per user and cluster, scheduler, usage history |
 | [config.md](what/config.md) | Configuration system: loading, validation, dynamic reload, all config sections |

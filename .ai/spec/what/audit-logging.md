@@ -79,19 +79,19 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 ### Tool Result Events
 
-14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean) and the raw, unwrapped tool output in an `output` attribute when the result passes inspection and audit logging is enabled.
+14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean) and the sanitized, unwrapped tool output from the per-tool size/redaction boundary in an `output` attribute when the result passes inspection and audit logging is enabled.
 
-14c. [PLANNED: OLS-3928] Tool-result inspection MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`. Emit the `tool.result` event only after that individual result passes inspection. The event MUST include the raw, unwrapped output.
+14c. [PLANNED: OLS-3928] Tool-result inspection MUST conform to `openshift/ols/.ai/spec/what/tool-result-inspection.md`. Emit the `tool.result` event only after that individual result passes inspection. The event MUST include the sanitized, unwrapped output. Explicitly disabling tool-output redaction retains raw bounded output; see `what/tool-output-redaction.md`.
 
 14d. The service MUST NOT emit a `tool.result` event or output attribute for a result rejected by inspection. Safe inspection-failure metadata MAY be recorded without rejected content.
 
-14e. Audit capture is per result, even when tool calls execute concurrently. If one result passes inspection and a sibling result fails, the service MUST record the passing result with its raw, unwrapped output and MUST NOT record the rejected result. This audit record does not make the passing result eligible for model reinjection, a `tool_result` SSE event, or conversation/transcript storage; the all-or-nothing concurrent-round rule still applies to those destinations.
+14e. Audit capture is per result, even when tool calls execute concurrently. If one result passes inspection and a sibling result fails, the service MUST record the passing result with its sanitized, unwrapped output and MUST NOT record the rejected result. This audit record does not make the passing result eligible for model reinjection, a `tool_result` SSE event, or conversation/transcript storage; the all-or-nothing concurrent-round rule still applies to those destinations.
 
-14f. The audit event MUST include the complete output from tool execution. Capture it before aggregate round-budget truncation. Preserve it separately from the model-facing copy.
+14f. The audit event MUST include the complete sanitized output from the per-tool size/redaction boundary. Capture it before aggregate round-budget truncation. Preserve it separately from the model-facing copy.
 
 ### Content Capture Policy
 
-14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) may contain PII or sensitive data. When audit logging is enabled, these content attributes MUST be captured at full fidelity. User-controlled content-capture settings are deferred; no `audit.capture_content` configuration is exposed.
+14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) may contain PII or sensitive data. When audit logging is enabled, completion and thinking attributes are captured at full fidelity. Tool output is captured after the per-tool size/redaction boundary, never from an earlier raw result when redaction is enabled. User-controlled content-capture settings are deferred; no `audit.capture_content` configuration is exposed.
 
 ### Single-Emission Rule
 

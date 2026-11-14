@@ -1,7 +1,6 @@
 """Unit tests for OLS endpoint."""
 
 import json
-import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,7 +15,7 @@ from ols.constants import QueryMode
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.endpoints import ols  # noqa:E402
-from ols.app.models.config import UserDataCollection  # noqa:E402
+from ols.app.models.config import QueryFilter, UserDataCollection  # noqa:E402
 from ols.app.models.models import (  # noqa:E402
     Attachment,
     CacheEntry,
@@ -25,6 +24,7 @@ from ols.app.models.models import (  # noqa:E402
     SummarizerResponse,
     TokenCounter,
 )
+from ols.src.redaction.query_filters import QueryFiltersRedactor  # noqa:E402
 from ols.src.tools.tool_result_inspection import (  # noqa:E402
     TOOL_RESULT_CLASSIFIER_FAILURE_MESSAGE,
     TOOL_RESULT_SAFETY_FAILURE_MESSAGE,
@@ -33,7 +33,6 @@ from ols.src.tools.tool_result_inspection import (  # noqa:E402
 )
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
-from ols.utils.redactor import Redactor, RegexFilter  # noqa:E402
 
 
 @pytest.fixture(scope="function")
@@ -338,14 +337,17 @@ def test_query_filter_with_one_redact_filter():
 
     # use one custom filter
     assert config.ols_config.query_filters is not None
-    q = Redactor(config.ols_config.query_filters)
-    q.regex_filters = [
-        RegexFilter(
-            pattern=re.compile(r"Kubernetes"),
-            name="kubernetes-filter",
-            replace_with="FooBar",
-        )
-    ]
+    q = QueryFiltersRedactor(
+        [
+            QueryFilter(
+                {
+                    "name": "kubernetes-filter",
+                    "pattern": "Kubernetes",
+                    "replace_with": "FooBar",
+                }
+            )
+        ]
+    )
     config._query_filters = q
 
     result = ols.redact_query(conversation_id, llm_request)
@@ -362,19 +364,20 @@ def test_query_filter_with_two_redact_filters():
 
     # use two custom filters
     assert config.ols_config.query_filters is not None
-    q = Redactor(config.ols_config.query_filters)
-    q.regex_filters = [
-        RegexFilter(
-            pattern=re.compile(r"Kubernetes"),
-            name="kubernetes-filter",
-            replace_with="FooBar",
-        ),
-        RegexFilter(
-            pattern=re.compile(r"FooBar"),
-            name="FooBar-filter",
-            replace_with="Baz",
-        ),
-    ]
+    q = QueryFiltersRedactor(
+        [
+            QueryFilter(
+                {
+                    "name": "kubernetes-filter",
+                    "pattern": "Kubernetes",
+                    "replace_with": "FooBar",
+                }
+            ),
+            QueryFilter(
+                {"name": "FooBar-filter", "pattern": "FooBar", "replace_with": "Baz"}
+            ),
+        ]
+    )
     config._query_filters = q
 
     result = ols.redact_query(conversation_id, llm_request)
@@ -389,7 +392,10 @@ def test_query_filter_on_redact_error():
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     with pytest.raises(HTTPException, match="Error while redacting query"):
-        with patch("ols.utils.redactor.Redactor.redact", side_effect=Exception):
+        with patch(
+            "ols.src.redaction.query_filters.QueryFiltersRedactor.redact",
+            side_effect=Exception,
+        ):
             ols.redact_query(conversation_id, llm_request)
 
 
@@ -437,14 +443,17 @@ def test_attachments_redact_with_one_filter_defined():
 
     # use two custom filters
     assert config.ols_config.query_filters is not None
-    q = Redactor(config.ols_config.query_filters)
-    q.regex_filters = [
-        RegexFilter(
-            pattern=re.compile(r"Kubernetes"),
-            name="kubernetes-filter",
-            replace_with="FooBar",
-        ),
-    ]
+    q = QueryFiltersRedactor(
+        [
+            QueryFilter(
+                {
+                    "name": "kubernetes-filter",
+                    "pattern": "Kubernetes",
+                    "replace_with": "FooBar",
+                }
+            )
+        ]
+    )
     config._query_filters = q
 
     # try to redact all attachments
@@ -484,19 +493,20 @@ def test_attachments_redact_with_two_filters_defined():
 
     # use two custom filters
     assert config.ols_config.query_filters is not None
-    q = Redactor(config.ols_config.query_filters)
-    q.regex_filters = [
-        RegexFilter(
-            pattern=re.compile(r"Kubernetes"),
-            name="kubernetes-filter",
-            replace_with="FooBar",
-        ),
-        RegexFilter(
-            pattern=re.compile(r"FooBar"),
-            name="FooBar-filter",
-            replace_with="Baz",
-        ),
-    ]
+    q = QueryFiltersRedactor(
+        [
+            QueryFilter(
+                {
+                    "name": "kubernetes-filter",
+                    "pattern": "Kubernetes",
+                    "replace_with": "FooBar",
+                }
+            ),
+            QueryFilter(
+                {"name": "FooBar-filter", "pattern": "FooBar", "replace_with": "Baz"}
+            ),
+        ]
+    )
     config._query_filters = q
 
     # try to redact all attachments
@@ -536,7 +546,10 @@ def test_attachments_redact_on_redact_error():
 
     # try to redact all attachments
     with pytest.raises(HTTPException, match="Error while redacting attachment"):
-        with patch("ols.utils.redactor.Redactor.redact", side_effect=Exception):
+        with patch(
+            "ols.src.redaction.query_filters.QueryFiltersRedactor.redact",
+            side_effect=Exception,
+        ):
             ols.redact_attachments(conversation_id, attachments)
 
 
