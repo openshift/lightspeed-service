@@ -7,8 +7,14 @@ failed, or was skipped. These tests run the script against a stubbed
 """
 
 import os
+import shutil
+import signal
 import subprocess
+import sys
+import time
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CODECOV_SCRIPT = REPO_ROOT / "scripts" / "codecov.sh"
@@ -18,6 +24,15 @@ count="$(cat "$STUB_CALL_COUNT_FILE" 2> /dev/null || echo 0)"
 count=$((count + 1))
 printf '%s\\n' "$count" > "$STUB_CALL_COUNT_FILE"
 printf '%s\\n' "$@" > "$STUB_ARGS_FILE"
+if [ -n "${STUB_CHILD_PID_FILE:-}" ]; then
+    sleep 30 &
+    child_pid=$!
+    printf '%s\\n' "$child_pid" > "$STUB_CHILD_PID_FILE"
+    wait "$child_pid"
+fi
+if [ -n "${STUB_SLEEP_SECONDS:-}" ]; then
+    sleep "$STUB_SLEEP_SECONDS"
+fi
 if [ "${STUB_FAIL_FIRST_CALL:-0}" = "1" ] && [ "$count" -eq 1 ]; then
     exit 1
 fi
@@ -45,6 +60,9 @@ def _run_codecov_script(
     stub_exit_code: str = "0",
     stub_fail_first_call: bool = False,
     max_attempts: str | None = "1",
+    timeout_seconds: str = "300",
+    stub_sleep_seconds: str = "",
+    child_pid_file: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run scripts/codecov.sh with a stubbed codecovcli on PATH.
 
@@ -57,6 +75,9 @@ def _run_codecov_script(
         stub_exit_code: exit code returned by the stubbed codecovcli.
         stub_fail_first_call: make the stubbed codecovcli fail on its first call.
         max_attempts: CODECOV_MAX_ATTEMPTS value, or None for the script default.
+        timeout_seconds: Deadline for each upload attempt.
+        stub_sleep_seconds: Delay used to simulate a stuck CLI.
+        child_pid_file: File used to record a spawned child process.
 
     Returns:
         The completed process with captured stdout and stderr.
@@ -86,6 +107,9 @@ def _run_codecov_script(
         "STUB_EXIT_CODE": stub_exit_code,
         "STUB_FAIL_FIRST_CALL": "1" if stub_fail_first_call else "0",
         "CODECOV_RETRY_SLEEP_SECONDS": "0",
+        "CODECOV_TIMEOUT_SECONDS": timeout_seconds,
+        "STUB_SLEEP_SECONDS": stub_sleep_seconds,
+        "STUB_CHILD_PID_FILE": str(child_pid_file) if child_pid_file else "",
     }
     if max_attempts is not None:
         env["CODECOV_MAX_ATTEMPTS"] = max_attempts
@@ -221,3 +245,202 @@ def test_missing_report_file_does_not_block_ci(tmp_path):
     assert result.returncode == 0
     assert not (tmp_path / "stub_args.txt").exists()
     assert "CODECOV UPLOAD FAILED" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "cancel_signal", [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]
+)
+def test_perl_helper_cancellation_kills_command_group(
+    tmp_path: Path, cancel_signal: signal.Signals
+) -> None:
+    """Stop the command and its descendants when the Perl helper is cancelled."""
+    pid_file = tmp_path / "pids.txt"
+    command = (
+        "import os, subprocess, sys, time\n"
+        "from pathlib import Path\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n"
+        "Path(sys.argv[1]).write_text(f'{os.getpid()} {child.pid}')\n"
+        "time.sleep(30)\n"
+    )
+    process = subprocess.Popen(  # noqa: S603
+        [  # noqa: S607
+            "perl",
+            str(REPO_ROOT / "scripts" / "run_with_timeout.pl"),
+            "30",
+            sys.executable,
+            "-c",
+            command,
+            str(pid_file),
+        ],
+        start_new_session=True,
+    )
+    pids: list[int] = []
+    try:
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if pid_file.exists():
+                pids = [int(pid) for pid in pid_file.read_text().split()]
+                if len(pids) == 2:
+                    break
+            time.sleep(0.02)
+        assert len(pids) == 2, "command and descendant did not start"
+
+        process.send_signal(cancel_signal)
+        assert process.wait(timeout=8) == 128 + cancel_signal
+        for pid in pids:
+            for _ in range(30):
+                status = subprocess.run(  # noqa: S603
+                    ["ps", "-o", "stat=", "-p", str(pid)],  # noqa: S607
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                ).stdout.strip()
+                if not status or status.startswith("Z"):
+                    break
+                time.sleep(0.1)
+            assert not status or status.startswith(
+                "Z"
+            ), f"process {pid} is still running"
+    finally:
+        if pids:
+            try:
+                os.killpg(pids[0], signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=5)
+
+
+def test_zero_timeout_disables_the_deadline(tmp_path):
+    """CODECOV_TIMEOUT_SECONDS=0 uploads instead of failing every attempt."""
+    result = _run_codecov_script(
+        tmp_path, "presubmit", _write_report_file(tmp_path), timeout_seconds="0"
+    )
+
+    assert result.returncode == 0
+    assert _stub_call_count(tmp_path) == 1
+    assert "upload succeeded" in result.stdout
+
+
+def _run_timeout_helper(
+    *args: str, env: dict[str, str] | None = None
+) -> tuple[int, float]:
+    """Run scripts/run_with_timeout.pl with the given arguments."""
+    started = time.monotonic()
+    completed = subprocess.run(  # noqa: S603
+        [  # noqa: S607
+            "perl",
+            str(REPO_ROOT / "scripts" / "run_with_timeout.pl"),
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, **(env or {})},
+    )
+    return completed.returncode, time.monotonic() - started
+
+
+def test_timeout_helper_treats_zero_as_no_deadline() -> None:
+    """A zero deadline disables the limit, as GNU timeout's zero does."""
+    exit_code, _ = _run_timeout_helper(
+        "0", sys.executable, "-c", "import sys, time; time.sleep(1); sys.exit(3)"
+    )
+
+    assert exit_code == 3
+
+
+def test_timeout_helper_accepts_fractional_deadline() -> None:
+    """A fractional deadline such as 0.5 expires instead of being rejected."""
+    exit_code, elapsed = _run_timeout_helper(
+        "0.5", sys.executable, "-c", "import time; time.sleep(30)"
+    )
+
+    assert exit_code == 124
+    assert elapsed < 5
+
+
+def test_timeout_helper_keeps_deadline_without_time_hires(tmp_path: Path) -> None:
+    """A perl without Time::HiRes still enforces the deadline.
+
+    Time::HiRes is a separate package on RHEL, so the prow image runs a perl
+    that lacks it. The helper must fall back to whole-second alarms instead of
+    failing at compile time and letting the upload run unbounded.
+    """
+    shadow = tmp_path / "shadow"
+    (shadow / "Time").mkdir(parents=True)
+    (shadow / "Time" / "HiRes.pm").write_text('die "Time::HiRes unavailable\n";\n1;\n')
+
+    exit_code, elapsed = _run_timeout_helper(
+        "0.5",
+        sys.executable,
+        "-c",
+        "import time; time.sleep(30)",
+        env={"PERL5LIB": str(shadow)},
+    )
+
+    assert exit_code == 124
+    assert elapsed < 5
+
+
+def test_upload_timeout_stops_cli_and_soft_fails(tmp_path):
+    """Stop a stuck Codecov CLI at the configured timeout."""
+    started = time.monotonic()
+    result = _run_codecov_script(
+        tmp_path,
+        "presubmit",
+        _write_report_file(tmp_path),
+        timeout_seconds="1",
+        stub_sleep_seconds="30",
+    )
+    elapsed = time.monotonic() - started
+
+    assert result.returncode == 0
+    assert _stub_call_count(tmp_path) == 1
+    assert elapsed < 8
+    assert "CODECOV UPLOAD FAILED" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "force_perl", [False, True], ids=["host-path", "perl-fallback"]
+)
+def test_upload_timeout_kills_cli_descendants(tmp_path, monkeypatch, force_perl):
+    """Stop descendants using the host backend or the explicitly selected Perl fallback."""
+    if force_perl:
+        bin_dir = tmp_path / "perl-bin"
+        bin_dir.mkdir()
+        for command in ("bash", "cat", "dirname", "perl", "ps", "sleep"):
+            executable = shutil.which(command)
+            assert executable is not None, f"required command {command} is unavailable"
+            (bin_dir / command).symlink_to(executable)
+        monkeypatch.setenv("PATH", str(bin_dir))
+
+    child_pid_file = tmp_path / "child_pid.txt"
+    result = _run_codecov_script(
+        tmp_path,
+        "presubmit",
+        _write_report_file(tmp_path),
+        timeout_seconds="1",
+        child_pid_file=child_pid_file,
+    )
+
+    assert result.returncode == 0
+    assert _stub_call_count(tmp_path) == 1
+    assert "CODECOV UPLOAD FAILED" in result.stdout
+    child_pid = int(child_pid_file.read_text().strip())
+
+    for _ in range(30):
+        status = subprocess.run(  # noqa: S603
+            ["ps", "-o", "stat=", "-p", str(child_pid)],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        if not status or status.startswith("Z"):
+            break
+        time.sleep(0.1)
+
+    assert not status or status.startswith(
+        "Z"
+    ), f"child process {child_pid} is still running"

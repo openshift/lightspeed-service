@@ -2,7 +2,6 @@
 
 import io
 import logging
-import re
 import traceback
 from typing import TypeVar
 from unittest.mock import patch
@@ -14,7 +13,6 @@ from yaml.parser import ParserError
 from ols import config
 from ols.app.models.config import Config
 from ols.utils.checks import InvalidConfigurationError
-from ols.utils.redactor import RegexFilter
 
 E = TypeVar("E", bound=Exception)
 
@@ -793,33 +791,35 @@ def test_config_file_without_logging_config():
 
 
 def test_valid_config_without_query_filter():
-    """Check if a valid configuration file without query filter creates empty regex filters."""
+    """Preserve queries unchanged when filters are absent."""
     config.reload_empty()
-    assert config.query_redactor is not None
-    assert config.query_redactor.regex_filters == []
+    query = "foo bar admin@example.com"
+    assert config.query_redactor.redact("conversation", query) == query
     config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
-    assert config.query_redactor.regex_filters == []
+    assert config.query_redactor.redact("conversation", query) == query
 
 
 def test_valid_config_with_query_filter():
-    """Check if a valid configuration file with query filter is handled correctly."""
-    config.reload_empty()
-    assert config.query_redactor is not None
-    assert config.query_redactor.regex_filters == []
+    """Cache compiled filters and refresh the policy when configuration is reloaded."""
     config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
-    assert config.query_redactor is not None
-    assert config.query_redactor.regex_filters == [
-        RegexFilter(
-            pattern=re.compile(r"\b(?:foo)\b"),
-            name="foo_filter",
-            replace_with="openshift",
-        ),
-        RegexFilter(
-            pattern=re.compile(r"\b(?:bar)\b"),
-            name="bar_filter",
-            replace_with="kubernetes",
-        ),
-    ]
+    redactor = config.query_redactor
+    assert config.query_redactor is redactor
+    assert redactor.redact("conversation", "foo bar") == "openshift kubernetes"
+
+    config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
+    assert config.query_redactor is not redactor
+    assert config.query_redactor.redact("conversation", "foo bar") == "foo bar"
+
+
+def test_tool_output_redaction_rules_respect_opt_out() -> None:
+    """Reuse the fixed compiled rules while reading the current enablement flag."""
+    rules = config.tool_output_redaction_rules
+    assert rules is not None
+    assert config.tool_output_redaction_rules is rules
+    config.ols_config.tool_output_redaction = False
+    assert config.tool_output_redaction_rules is None
+    config.reload_empty()
+    assert config.tool_output_redaction_rules is rules
 
 
 def test_valid_config_with_azure_openai():

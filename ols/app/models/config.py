@@ -1329,6 +1329,7 @@ class OLSConfig(BaseModel):
     expire_llm_is_ready_persistent_state: Optional[int] = -1
     max_workers: Optional[int] = None
     query_filters: Optional[list[QueryFilter]] = None
+    tool_output_redaction: bool = True
 
     user_data_collection: UserDataCollection = UserDataCollection()
     tls_security_profile: Optional[TLSSecurityProfile] = None
@@ -1374,6 +1375,12 @@ class OLSConfig(BaseModel):
         self.max_iterations = data.get("max_iterations")
         self.history_compression_enabled = data.get("history_compression_enabled", True)
         self.credential_hot_reload = data.get("credential_hot_reload", False)
+        tool_output_redaction = data.get("tool_output_redaction", True)
+        if not isinstance(tool_output_redaction, bool):
+            raise checks.InvalidConfigurationError(
+                "tool_output_redaction must be a boolean"
+            )
+        self.tool_output_redaction = tool_output_redaction
         self.max_workers = data.get("max_workers", 1)
         self.expire_llm_is_ready_persistent_state = data.get(
             "expire_llm_is_ready_persistent_state", -1

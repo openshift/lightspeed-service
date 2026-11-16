@@ -21,10 +21,25 @@
 set -o nounset
 set -o pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 CODECOV_CLI_VERSION="11.3.1"
 MAX_ATTEMPTS="${CODECOV_MAX_ATTEMPTS:-2}"
 RETRY_SLEEP_SECONDS="${CODECOV_RETRY_SLEEP_SECONDS:-15}"
 UPLOAD_TIMEOUT_SECONDS="${CODECOV_TIMEOUT_SECONDS:-300}"
+
+if command -v timeout > /dev/null 2>&1; then
+    run_with_timeout() { timeout "$@"; }
+elif command -v gtimeout > /dev/null 2>&1; then
+    run_with_timeout() { gtimeout "$@"; }
+elif command -v perl > /dev/null 2>&1; then
+    run_with_timeout() { perl "${SCRIPT_DIR}/run_with_timeout.pl" "$@"; }
+else
+    run_with_timeout() {
+        echo "[codecov] no timeout command or Perl available" >&2
+        return 127
+    }
+fi
 
 log() {
     echo "[codecov] $*"
@@ -114,7 +129,7 @@ fi
 attempt=1
 while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
     log "upload attempt ${attempt}/${MAX_ATTEMPTS} (flag: ${flag:-none}, branch: ${branch}${pr_note})"
-    if timeout "$UPLOAD_TIMEOUT_SECONDS" "${cli[@]}" "${cli_args[@]}" > "$upload_log" 2>&1; then
+    if run_with_timeout "$UPLOAD_TIMEOUT_SECONDS" "${cli[@]}" "${cli_args[@]}" > "$upload_log" 2>&1; then
         cat "$upload_log"
         log "upload succeeded - report available on codecov.io"
         exit 0

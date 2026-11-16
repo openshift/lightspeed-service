@@ -61,6 +61,7 @@ configure model, and connect to it.
   - [13. Configuration dump](#13-configuration-dump)
   - [14. Cluster introspection](#14-cluster-introspection)
   - [MCP Server Configuration](#mcp-server-configuration)
+    - [Chat Tool-Output Redaction](#chat-tool-output-redaction)
     - [Basic Configuration](#basic-configuration)
     - [MCP Server Authentication](#mcp-server-authentication)
       - [1. Static Tokens from Files (Recommended for Service Credentials)](#1-static-tokens-from-files-recommended-for-service-credentials)
@@ -711,6 +712,31 @@ OLS can gather real-time information from your cluster to assist with specific q
 ## MCP Server Configuration
 
 MCP servers provide tools and capabilities to the AI agents. Only MCP servers defined in the `olsconfig.yaml` configuration are available to the agents.
+
+### Chat Tool-Output Redaction
+
+Chat tool-result redaction is enabled by default:
+
+```yaml
+ols_config:
+  tool_output_redaction: true
+```
+
+The setting applies to results passing through the chat tool executor, including
+errors and offloaded-content read/search results. Redaction runs after existing
+size limits and before inspection, model context, result-content audit capture,
+and client delivery. Offloaded files retain their original content until cleanup;
+retrieved portions are redacted before delivery. Set the boolean to `false` to
+opt out. This is pattern-based redaction, not a guarantee that all sensitive data
+will be detected.
+
+**MCP Apps are out of scope.** Neither `/v1/mcp-apps/resources` nor
+`/v1/mcp-apps/tools/call` applies this policy. App servers may embed fetched data
+inside HTML/JS/CSS or return separate app data. Applying text regex replacements
+to application source or semantically significant data could break the app, and
+redacting a separate tool result would not cover data embedded in HTML. Enabling
+this setting therefore does not guarantee redaction of app responses or rendered
+iframe content, even if the same server's chat tool results are redacted.
 
 ### Basic Configuration
 

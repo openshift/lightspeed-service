@@ -2264,6 +2264,30 @@ def test_ols_config(tmpdir):
     assert ols_config.solr_hybrid is None
 
 
+@pytest.mark.parametrize("data", [None, {}])
+def test_ols_config_tool_output_redaction_defaults_to_enabled(data):
+    """Enable tool-output redaction when the operator setting is omitted."""
+    assert OLSConfig(data).tool_output_redaction is True
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_ols_config_tool_output_redaction_accepts_operator_key(enabled):
+    """Preserve the boolean published by the operator, including explicit opt-out."""
+    ols_config = OLSConfig({"tool_output_redaction": enabled})
+
+    assert ols_config.tool_output_redaction is enabled
+    assert ols_config.model_dump()["tool_output_redaction"] is enabled
+
+
+@pytest.mark.parametrize("value", [None, "false", "true", "invalid", 0, 1, [], {}])
+def test_ols_config_tool_output_redaction_rejects_non_boolean(value):
+    """Reject malformed settings rather than silently disable protection."""
+    with pytest.raises(
+        InvalidConfigurationError, match="tool_output_redaction must be a boolean"
+    ):
+        OLSConfig({"tool_output_redaction": value})
+
+
 def test_ols_config_tool_result_inspection_defaults_to_disabled():
     """Disable tool-result inspection when the guardrail is omitted."""
     ols_config = OLSConfig()

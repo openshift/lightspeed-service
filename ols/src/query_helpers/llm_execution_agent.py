@@ -893,6 +893,9 @@ class LLMExecutionAgent:
             "type": StreamChunkType.TOOL_RESULT.value,
             "round": round_index,
         }
+        if event_message.additional_kwargs.get("redacted"):
+            for key in ("redacted", "redacted_count", "redaction_counts"):
+                tool_result_data[key] = event_message.additional_kwargs[key]
         structured_content = event_message.additional_kwargs.get("structured_content")
         if structured_content:
             tool_result_data["structured_content"] = structured_content

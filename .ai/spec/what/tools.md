@@ -110,7 +110,7 @@ solely on general knowledge.
 
 18a. [PLANNED: OLS-3928] The service MUST conform to the normative contract in `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
 
-18b. The Classic interception point is the unwrapped result after aggregate tool-budget enforcement. Preserve the executor's raw result separately for audit.
+18b. Redact the executor result after retries and per-tool size limits, before result events or result-content capture. Inspection then operates on unwrapped model-facing copies after aggregate tool-budget enforcement. Preserve the sanitized pre-aggregate result separately for audit and SSE; see `what/tool-output-redaction.md`.
 
 18c. The service MUST inspect the complete concurrent result batch before it emits `tool_result`, reinjects content, or stores the conversation turn. If one result fails, the service MUST expose no passing subset.
 
@@ -136,7 +136,7 @@ solely on general knowledge.
 
 18k. Enforce the aggregate budget on unwrapped model-facing copies, then inspect
     those copies (SAFE-01), when enabled. Record passing audit events from the
-    preserved raw results. Escape closing-marker text and the source attribute,
+    preserved sanitized results. Escape closing-marker text and the source attribute,
     then wrap model-facing copies (SAFE-02). Wrapping remains active when
     inspection is disabled.
 
@@ -149,8 +149,9 @@ solely on general knowledge.
     content before it accepts the round.
 
 18n. The wrapper and aggregate budget truncation affect only model-facing
-    copies. `tool_result` SSE events and audit records MUST use the complete raw,
-    unwrapped execution result. Emit SSE events and store history or transcript
+    copies. `tool_result` SSE events and audit records MUST use the complete
+    sanitized, unwrapped result from the per-tool size/redaction boundary.
+    When redaction is explicitly disabled, that boundary retains raw content. Emit SSE events and store history or transcript
     results only after every result in the concurrent round passes inspection.
     If any result fails, expose no result from that round to the model, client,
     history, or transcript. Audit capture follows rule 14e in
@@ -243,6 +244,11 @@ For the full set of refinement decisions, see
 35. Structured content returned by tool calls (e.g., rich data for UI
     rendering) must be preserved in tool result metadata and forwarded to
     the client.
+
+36. MCP Apps resource fetches and direct app tool calls are outside chat
+    tool-output redaction scope; calls through the chat executor remain in
+    scope. See `what/tool-output-redaction.md` for the exclusion rationale
+    and `what/mcp-apps.md` for the proxy contract.
 
 ## Configuration Surface
 

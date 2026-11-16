@@ -1206,6 +1206,69 @@ def test_tool_result_chunk_counts_wrapper_but_streams_raw_content():
     assert chunk.data["content"] == raw_content
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("inspection_enabled", [True, False])
+async def test_tool_redaction_precedes_inspection_sse_and_audit(
+    otel_setup, caplog, inspection_enabled
+):
+    """Sanitize real executor output before any result capture or delivery."""
+    audit_ctx = make_audit_ctx(otel_setup)
+    classifier = MagicMock()
+    classifier.inspect = AsyncMock()
+    agent = _make_agent(
+        tool_result_classifier=classifier if inspection_enabled else None,
+        audit_ctx=audit_ctx,
+    )
+
+    async def execute():
+        return "contact admin@example.com"
+
+    tool = StructuredTool.from_function(
+        coroutine=execute, name="external", description="Test"
+    )
+    chunks = [
+        AIMessageChunk(
+            content="", tool_calls=[{"name": "external", "args": {}, "id": "call-1"}]
+        )
+    ]
+    messages = []
+    caplog.set_level(logging.DEBUG)
+    streamed = [
+        chunk
+        async for chunk in agent._process_tool_calls_for_round(
+            round_index=1,
+            tool_call_chunks=chunks,
+            all_chunks=[],
+            all_tools_dict={"external": tool},
+            duplicate_tool_names=set(),
+            messages=messages,
+        )
+    ]
+    result = next(
+        chunk.data for chunk in streamed if chunk.type == StreamChunkType.TOOL_RESULT
+    )
+    assert result["content"] == "contact [REDACTED:email]"
+    assert result["redacted"] is True
+    assert result["redacted_count"] == 1
+    assert result["redaction_counts"] == {"email": 1}
+    assert "admin@example.com" not in str(messages)
+    if inspection_enabled:
+        assert classifier.inspect.await_count == 1
+        assert "admin@example.com" not in str(classifier.inspect.await_args)
+    exporter, _ = otel_setup
+    assert "admin@example.com" not in str([span.attributes for span in exporter.spans])
+    assert "admin@example.com" not in caplog.text
+    tool_span = next(
+        span for span in exporter.spans if span.name.startswith("execute_tool")
+    )
+    assert tool_span.attributes["lightspeed.tool_output.redacted_count"] == 1
+    assert [
+        event.attributes["output"]
+        for event in tool_span.events
+        if event.name == "tool.result"
+    ] == ["contact [REDACTED:email]"]
+
+
 def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):
     """Test tool result chunk contains metadata enrichment and has_meta logging."""
     agent = _make_agent()
@@ -1229,6 +1292,9 @@ def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(capl
     assert chunk.type == StreamChunkType.TOOL_RESULT
     assert chunk.data["server_name"] == "server-a"
     assert chunk.data["tool_meta"] == {"app": "ui"}
+    assert not {"redacted", "redacted_count", "redaction_counts"}.intersection(
+        chunk.data
+    )
     assert '"has_meta": true' in caplog.text
 
 
