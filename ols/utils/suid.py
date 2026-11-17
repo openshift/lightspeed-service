@@ -7,6 +7,10 @@ import uuid
 _USER_UID_NAMESPACE = uuid.uuid5(
     uuid.NAMESPACE_URL, "https://redhat.com/openshift-lightspeed/user-uid/v1"
 )
+_USERNAME_UID_NAMESPACE = uuid.uuid5(
+    uuid.NAMESPACE_URL,
+    "https://redhat.com/openshift-lightspeed/user-uid-from-username/v1",
+)
 
 
 def get_suid() -> str:
@@ -58,4 +62,4 @@ def normalize_k8s_user_uid(uid: str | None, username: str) -> str:
     """
     if uid:
         return normalize_user_uid(uid)
-    return str(uuid.uuid5(_USER_UID_NAMESPACE, f"username:{username}"))
+    return str(uuid.uuid5(_USERNAME_UID_NAMESPACE, username))

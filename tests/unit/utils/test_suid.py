@@ -27,6 +27,13 @@ def test_normalize_k8s_user_uid_from_username_when_uid_missing():
     assert from_username == suid.normalize_k8s_user_uid(None, "valid-user")
 
 
+def test_missing_uid_identity_differs_from_opaque_username_prefix_uid():
+    """Username fallback must not collide with opaque uid string 'username:alice'."""
+    from_username = suid.normalize_k8s_user_uid(None, "alice")
+    from_opaque_uid = suid.normalize_user_uid("username:alice")
+    assert from_username != from_opaque_uid
+
+
 def test_normalize_user_uid_uses_uuid5_namespace():
     """Mapping is deterministic and namespaced."""
     namespace = uuid.uuid5(
