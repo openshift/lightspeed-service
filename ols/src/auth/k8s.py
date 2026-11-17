@@ -16,6 +16,7 @@ from ols.constants import (
     NO_USER_TOKEN,
     RUNNING_IN_CLUSTER,
 )
+from ols.utils import suid
 
 from .auth_dependency_interface import AuthDependencyInterface
 
@@ -335,6 +336,8 @@ class AuthDependency(AuthDependencyInterface):
             )
         if user_info.user.username == "kube:admin":
             user_info.user.uid = K8sClientSingleton.get_cluster_id()
+        else:
+            user_info.user.uid = suid.normalize_user_uid(user_info.user.uid)
         authorization_api = K8sClientSingleton.get_authz_api()
 
         sar = kubernetes.client.V1SubjectAccessReview(

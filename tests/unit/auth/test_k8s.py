@@ -18,6 +18,7 @@ from ols.src.auth.k8s import (
     ClusterVersionUnavailableError,
     K8sClientSingleton,
 )
+from ols.utils import suid
 from tests.mock_classes.mock_k8s_api import (
     MockK8sResponseStatus,
     mock_subject_access_review_response,
@@ -70,7 +71,7 @@ async def test_auth_dependency_valid_token():
         user_uid, username, skip_user_id_check, token = await auth_dependency(request)
 
         # Check if the correct user info has been returned
-        assert user_uid == "valid-uid"
+        assert user_uid == suid.normalize_user_uid("valid-uid")
         assert username == "valid-user"
         assert skip_user_id_check is False
         assert token == "valid-token"  # noqa: S105
@@ -106,6 +107,35 @@ async def test_auth_dependency_invalid_token():
 
         # Check if the correct status code is returned for unauthorized access
         assert exc_info.value.status_code == 403
+
+
+@pytest.mark.usefixtures("_setup")
+@pytest.mark.asyncio
+async def test_auth_dependency_normalizes_opaque_uid():
+    """Opaque Entra-style TokenReview uids are mapped to cache-safe UUIDs."""
+    opaque = "Pt6XrojL4L5iRK_MN8XCbpQNG5A-AUlhAM8SghjnI7E"
+    with (
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api,
+        patch(
+            "ols.src.auth.k8s.get_user_info",
+            return_value=MockK8sResponseStatus(
+                True, True, "valid-user", opaque, ["ols-group"]
+            ),
+        ),
+    ):
+        mock_authz_api.return_value.create_subject_access_review.side_effect = (
+            mock_subject_access_review_response
+        )
+        request = Request(
+            scope={
+                "type": "http",
+                "headers": [(b"authorization", b"Bearer valid-token")],
+            }
+        )
+        user_uid, username, _, _ = await auth_dependency(request)
+        assert username == "valid-user"
+        assert user_uid == suid.normalize_user_uid(opaque)
+        assert suid.check_suid(user_uid)
 
 
 @pytest.mark.usefixtures("_setup")

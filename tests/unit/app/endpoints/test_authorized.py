@@ -12,6 +12,7 @@ config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.endpoints.authorized import is_user_authorized  # noqa:E402
 from ols.app.models.models import AuthorizationResponse  # noqa:E402
+from ols.utils import suid  # noqa:E402
 from tests.mock_classes.mock_k8s_api import (  # noqa:E402
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -84,7 +85,9 @@ def test_is_user_authorized_valid_token():
 
         response = is_user_authorized(request)
         assert response == AuthorizationResponse(
-            user_id="valid-uid", username="valid-user", skip_user_id_check=False
+            user_id=suid.normalize_user_uid("valid-uid"),
+            username="valid-user",
+            skip_user_id_check=False,
         )
 
 

@@ -21,62 +21,63 @@ Control which users can access the OpenShift LightSpeed service and what they ar
 12. If the SubjectAccessReview denies access, the system must reject the request with HTTP 403.
 13. On successful authentication and authorization, the system must return the user's UID, username, bearer token, and a flag indicating that user ID override is not permitted.
 14. When the authenticated username is `kube:admin`, the system must replace the user ID with the cluster ID retrieved from the OpenShift ClusterVersion resource.
-15. The k8s module must never allow callers to override the authenticated user ID.
+15. When the TokenReview user UID is not RFC-4122 UUID-shaped, the k8s module must map it to a stable UUID (UUID5 in a fixed namespace) before returning identity to callers; UUID-shaped values must be returned unchanged.
+16. The k8s module must never allow callers to override the authenticated user ID.
 
 ### noop Module (Development)
 
-16. The system must skip all authentication and authorization checks.
-17. The system must accept an optional `user_id` query parameter; when absent, it must use the default nil UUID identity.
-18. The system must allow callers to override the user ID (the skip-user-ID-check flag must be true).
-19. The system must never provide a user token (the returned token must be empty).
+17. The system must skip all authentication and authorization checks.
+18. The system must accept an optional `user_id` query parameter; when absent, it must use the default nil UUID identity.
+19. The system must allow callers to override the user ID (the skip-user-ID-check flag must be true).
+20. The system must never provide a user token (the returned token must be empty).
 
 ### noop-with-token Module (Development with Token Forwarding)
 
-20. The system must not validate the bearer token against Kubernetes.
-21. The system must extract the bearer token from the `Authorization` header and return it for downstream use (e.g., MCP server requests that require a Kubernetes token).
-22. If the `Authorization` header is absent, the system must reject the request with HTTP 400.
-23. If the header is present but contains no valid bearer token, the system must reject the request with HTTP 400.
-24. The system must accept an optional `user_id` query parameter; when absent, it must use the default nil UUID identity.
-25. The system must allow callers to override the user ID (the skip-user-ID-check flag must be true).
+21. The system must not validate the bearer token against Kubernetes.
+22. The system must extract the bearer token from the `Authorization` header and return it for downstream use (e.g., MCP server requests that require a Kubernetes token).
+23. If the `Authorization` header is absent, the system must reject the request with HTTP 400.
+24. If the header is present but contains no valid bearer token, the system must reject the request with HTTP 400.
+25. The system must accept an optional `user_id` query parameter; when absent, it must use the default nil UUID identity.
+26. The system must allow callers to override the user ID (the skip-user-ID-check flag must be true).
 
 ### Dev Auth Override
 
-26. When the dev-config auth-disable flag is set, the k8s and noop-with-token modules must bypass all checks and return the default identity with no token, regardless of request headers.
-27. Bypassed auth checks must log a warning unless warning suppression is enabled in the logging configuration.
+27. When the dev-config auth-disable flag is set, the k8s and noop-with-token modules must bypass all checks and return the default identity with no token, regardless of request headers.
+28. Bypassed auth checks must log a warning unless warning suppression is enabled in the logging configuration.
 
 ### Permission Scopes
 
-28. The system must define two permission scopes, each mapped to a synthetic non-resource path for SubjectAccessReview evaluation:
+29. The system must define two permission scopes, each mapped to a synthetic non-resource path for SubjectAccessReview evaluation:
     - **ols-access**: guards all query, conversation, feedback, tool-approval, MCP, and authorization-check endpoints.
     - **metrics-access**: guards the Prometheus metrics endpoint.
-29. Each endpoint must declare exactly one permission scope at module load time.
-30. The synthetic paths are not real HTTP routes; they exist solely for Kubernetes RBAC policy evaluation.
+30. Each endpoint must declare exactly one permission scope at module load time.
+31. The synthetic paths are not real HTTP routes; they exist solely for Kubernetes RBAC policy evaluation.
 
 ### User Identity Contract
 
-31. Every authentication module must return a four-element tuple: (user_id, username, skip_user_id_check, user_token).
-32. The user_id must be in UUID format.
-33. The default identity must use the nil UUID (`00000000-0000-0000-0000-000000000000`) and a fixed default username.
-34. [PLANNED: OLS-1393] The system must read the authenticated user's roles from the cluster and make them available to downstream processing.
-35. [PLANNED: OLS-1394] The system must filter content returned to the user based on their roles.
+32. Every authentication module must return a four-element tuple: (user_id, username, skip_user_id_check, user_token).
+33. The user_id must be in UUID format.
+34. The default identity must use the nil UUID (`00000000-0000-0000-0000-000000000000`) and a fixed default username.
+35. [PLANNED: OLS-1393] The system must read the authenticated user's roles from the cluster and make them available to downstream processing.
+36. [PLANNED: OLS-1394] The system must filter content returned to the user based on their roles.
 
 ### Cluster Information
 
-36. The system must retrieve the cluster ID from the OpenShift ClusterVersion custom resource (`spec.clusterID`).
-37. When not running inside a Kubernetes cluster, the cluster ID must default to `"local"`.
-38. The cluster ID must be cached for the lifetime of the process after first retrieval.
-39. The system must retrieve the cluster version from the ClusterVersion resource (`status.desired.version`).
-40. If the cluster version cannot be retrieved, the system must fall back to `"unknown"` rather than failing.
-41. The cluster version must be cached for the lifetime of the process (OLS pods restart during cluster upgrades, bounding staleness).
-42. When not running inside a Kubernetes cluster, the cluster version must always be `"unknown"`.
+37. The system must retrieve the cluster ID from the OpenShift ClusterVersion custom resource (`spec.clusterID`).
+38. When not running inside a Kubernetes cluster, the cluster ID must default to `"local"`.
+39. The cluster ID must be cached for the lifetime of the process after first retrieval.
+40. The system must retrieve the cluster version from the ClusterVersion resource (`status.desired.version`).
+41. If the cluster version cannot be retrieved, the system must fall back to `"unknown"` rather than failing.
+42. The cluster version must be cached for the lifetime of the process (OLS pods restart during cluster upgrades, bounding staleness).
+43. When not running inside a Kubernetes cluster, the cluster version must always be `"unknown"`.
 
 ### Kubernetes Client Lifecycle
 
-43. The Kubernetes API client must be initialized at most once per process (singleton).
-44. The singleton must support three configuration sources in priority order: explicit cluster API URL and auth token from config, in-cluster service account credentials, and local kubeconfig file.
-45. The Kubernetes API host may be overridden via configuration.
-46. TLS verification for the Kubernetes API may be disabled via configuration.
-47. A custom CA certificate path for the Kubernetes API may be provided via configuration.
+44. The Kubernetes API client must be initialized at most once per process (singleton).
+45. The singleton must support three configuration sources in priority order: explicit cluster API URL and auth token from config, in-cluster service account credentials, and local kubeconfig file.
+46. The Kubernetes API host may be overridden via configuration.
+47. TLS verification for the Kubernetes API may be disabled via configuration.
+48. A custom CA certificate path for the Kubernetes API may be provided via configuration.
 
 ## Configuration Surface
 
