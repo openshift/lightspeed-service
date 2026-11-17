@@ -2,6 +2,10 @@
 
 Implementation spec for compliance audit logging in lightspeed-service (OLS). Parent spec: `ols/.ai/spec/what/audit-logging.md` (authoritative for cross-repo requirements, event semantics, correlation contract, and OTel GenAI attribute reference).
 
+## Separate Outbound Records [PLANNED: OLS-4192]
+
+[Outbound request audit](outbound-request-audit.md) defines an additional metadata-only JSON log type for Python transport attempts. Its dedicated emitter is a narrowly scoped exception to rules 15–18 for this record type only. Existing compliance spans, full content capture, `user_id`, and exporters remain unchanged. They MUST NOT be copied into the new records, whose field allowlist excludes personal identity and content.
+
 ## Behavioral Rules
 
 ### Per-Request Traces
