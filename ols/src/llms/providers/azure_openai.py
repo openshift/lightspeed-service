@@ -17,6 +17,7 @@ from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 from ols.src.llms.providers.utils import populate_openai_reasoning
+from ols.utils.audit_support import instrument_azure_credential
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,7 @@ class AzureOpenAI(LLMProvider):
                 if self._use_responses_api
                 else COGNITIVE_SERVICES_TOKEN_SCOPE
             )
+            instrument_azure_credential(credential)
             return credential.get_token(scope)
         except Exception as e:
             logger.error("Failed to acquire Azure Entra ID access token: %s", e)

@@ -1,13 +1,17 @@
 """Utilities for parsing and validating MCP client headers."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Optional, TypeAlias, TypedDict
 
 from langchain_core.tools.structured import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.interceptors import MCPToolCallRequest, MCPToolCallResult
+from mcp.shared._httpx_utils import McpHttpClientFactory
 
 from ols import config, constants
 from ols.app.models.config import MCPServerConfig, MCPServers
+from ols.utils.audit_support import mcp_client_factory, mcp_operation
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +23,7 @@ class MCPServerTransport(TypedDict, total=False):
     url: str
     headers: dict[str, str]
     timeout: int
+    httpx_client_factory: McpHttpClientFactory
 
 
 # Type aliases for clarity and reusability
@@ -182,6 +187,15 @@ def _normalize_tool_schema(tool: StructuredTool) -> None:
     schema.setdefault("required", [])
 
 
+async def _audit_mcp_tool_call(
+    request: MCPToolCallRequest,
+    handler: Callable[[MCPToolCallRequest], Awaitable[MCPToolCallResult]],
+) -> MCPToolCallResult:
+    """Carry tool purpose into native client creation without inspecting tool arguments."""
+    with mcp_operation(tool_name=request.name):
+        return await handler(request)
+
+
 async def gather_mcp_tools(
     mcp_servers: MCPServersDict, allowed_tool_names: Optional[set[str]] = None
 ) -> list[StructuredTool]:
@@ -200,11 +214,23 @@ async def gather_mcp_tools(
         Each tool has metadata indicating which MCP server it came from.
     """
     all_tools: list[StructuredTool] = []
-    mcp_client = MultiServerMCPClient(mcp_servers)
+    connections: MCPServersDict = {}
+    for server_name, connection in mcp_servers.items():
+        configured = connection.copy()
+        transport = connection.get("transport", "")
+        if transport in {"streamable_http", "streamable-http", "http", "sse"}:
+            configured["httpx_client_factory"] = mcp_client_factory(
+                connection.get("httpx_client_factory")
+            )
+        connections[server_name] = configured
+    mcp_client = MultiServerMCPClient(
+        connections, tool_interceptors=[_audit_mcp_tool_call]
+    )
 
     for server_name in mcp_servers:
         try:
-            server_tools = await mcp_client.get_tools(server_name=server_name)
+            with mcp_operation():
+                server_tools = await mcp_client.get_tools(server_name=server_name)
 
             # Filter immediately if we have an allowlist
             if allowed_tool_names:

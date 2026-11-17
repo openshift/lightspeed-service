@@ -23,6 +23,7 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.src.auth.auth import get_auth_dependency
+from ols.utils.audit_support import instrument_mcp_http_client, mcp_operation
 from ols.utils.mcp_utils import ClientHeaders, resolve_server_headers
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,8 @@ async def get_mcp_app_resource(
             headers=server_config["headers"],
             timeout=server_config["timeout"],
         ) as http_client:
+            with mcp_operation():
+                instrument_mcp_http_client(http_client)
             async with streamable_http_client(
                 url=server_config["url"],
                 http_client=http_client,
@@ -195,6 +198,8 @@ async def call_mcp_app_tool(
             headers=server_config["headers"],
             timeout=server_config["timeout"],
         ) as http_client:
+            with mcp_operation(tool_name=request.tool_name):
+                instrument_mcp_http_client(http_client)
             async with streamable_http_client(
                 url=server_config["url"],
                 http_client=http_client,

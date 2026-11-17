@@ -17,6 +17,10 @@ from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 from ols.src.llms.providers.utils import populate_openai_reasoning
+from ols.utils.audit_support import (
+    auth_request,
+    instrument_botocore_auth_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +94,11 @@ class Bedrock(LLMProvider):
         )
         if role_arn:
             sts = session.client("sts")
-            assumed = sts.assume_role(RoleArn=role_arn, RoleSessionName="ols-bedrock")[
-                "Credentials"
-            ]
+            instrument_botocore_auth_client(sts)
+            with auth_request("aws"):
+                assumed = sts.assume_role(
+                    RoleArn=role_arn, RoleSessionName="ols-bedrock"
+                )["Credentials"]
             session = boto3.Session(
                 aws_access_key_id=assumed["AccessKeyId"],
                 aws_secret_access_key=assumed["SecretAccessKey"],

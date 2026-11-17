@@ -8,6 +8,7 @@ from langchain_core.language_models.llms import LLM
 from ols import config, constants
 from ols.app.models.config import LLMProviders, ProviderConfig
 from ols.src.llms.providers.registry import LLMProvidersRegistry
+from ols.utils.audit_support import audit_model
 
 logger = logging.getLogger(__name__)
 
@@ -96,4 +97,18 @@ def load_llm(
     logger.debug("loading LLM model '%s' from provider '%s'", model, provider)
 
     llm_provider = llm_providers_reg.llm_providers[provider_config.type]
-    return llm_provider(model, provider_config, generic_llm_params or {}).load()
+    loaded = llm_provider(model, provider_config, generic_llm_params or {}).load()
+    audited_provider_types = {
+        constants.PROVIDER_WATSONX,
+        constants.PROVIDER_OPENAI,
+        constants.PROVIDER_AZURE_OPENAI,
+        constants.PROVIDER_ANTHROPIC,
+        constants.PROVIDER_RHOAI_VLLM,
+        constants.PROVIDER_RHELAI_VLLM,
+        constants.PROVIDER_GOOGLE_VERTEX,
+        constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
+        constants.PROVIDER_BEDROCK,
+    }
+    if provider_config.type in audited_provider_types:
+        return audit_model(loaded)
+    return loaded

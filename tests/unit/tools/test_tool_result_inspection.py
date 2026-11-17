@@ -203,16 +203,21 @@ async def test_classifier_retries_technical_failures_with_required_delays() -> N
     """Retry technical failures using the required backoff delays."""
     llm = MagicMock()
     llm.with_structured_output.return_value = llm
-    llm.ainvoke = AsyncMock(
-        side_effect=[
+    results = iter(
+        [
             RuntimeError("timeout"),
             ValueError("invalid"),
-            {
-                "injectionDetected": False,
-                "category": "none",
-            },
+            {"injectionDetected": False, "category": "none"},
         ]
     )
+
+    async def invoke(_messages):
+        result = next(results)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    llm.ainvoke = AsyncMock(side_effect=invoke)
     sleep = AsyncMock()
     classifier = ToolResultClassifier(llm, sleep=sleep)
 
