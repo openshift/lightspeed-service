@@ -1988,31 +1988,23 @@ async def test_collect_round_response_retries_suppressed_final_answer() -> None:
 
 
 @pytest.mark.asyncio
-async def test_collect_round_response_retries_after_streamed_preamble() -> None:
-    """Retry synthesis when a streamed preamble was followed by suppressed markup."""
+async def test_collect_round_response_keeps_streamed_preamble_without_retry() -> None:
+    """Do not retry once a preamble has been streamed to the client."""
     agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
     invocations = 0
 
-    async def _preamble_leak_then_answer(
+    async def _preamble_then_leak(
         *args: Any, **kwargs: Any
     ) -> AsyncGenerator[AIMessageChunk, None]:
         nonlocal invocations
         invocations += 1
-        if invocations == 1:
-            yield AIMessageChunk(
-                content="I will check the pods.\n", response_metadata={}
-            )
-            yield AIMessageChunk(
-                content="<tool_call>\n<function=run>", response_metadata={}
-            )
-            yield AIMessageChunk(
-                content="", response_metadata={"finish_reason": "stop"}
-            )
-            return
-        yield AIMessageChunk(content="The pods are healthy.", response_metadata={})
+        yield AIMessageChunk(content="I will check the pods.\n", response_metadata={})
+        yield AIMessageChunk(
+            content="<tool_call>\n<function=run>", response_metadata={}
+        )
         yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
 
-    with patch.object(agent, "_invoke_llm", side_effect=_preamble_leak_then_answer):
+    with patch.object(agent, "_invoke_llm", side_effect=_preamble_then_leak):
         result = RoundLLMResult()
         streamed = [
             chunk
@@ -2029,10 +2021,9 @@ async def test_collect_round_response_retries_after_streamed_preamble() -> None:
         ]
 
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
-    assert invocations == 2
-    assert "<tool_call>" not in text
-    assert text == "I will check the pods.\nThe pods are healthy."
-    assert result.final_answer_suppressed is False
+    assert invocations == 1
+    assert text == "I will check the pods.\n"
+    assert result.final_answer_suppressed is True
 
 
 @pytest.mark.asyncio
@@ -2072,23 +2063,23 @@ async def test_collect_round_response_keeps_answer_ending_in_partial_marker() ->
 
 
 @pytest.mark.asyncio
-async def test_collect_round_response_falls_back_after_preamble_leak_retry() -> None:
-    """Return the fallback when both attempts leak markup after a preamble."""
+async def test_collect_round_response_does_not_append_second_answer() -> None:
+    """Keep the streamed answer when a tool call follows it on the final round."""
     agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
     invocations = 0
 
-    async def _always_preamble_then_leak(
+    async def _answer_then_leak(
         *args: Any, **kwargs: Any
     ) -> AsyncGenerator[AIMessageChunk, None]:
         nonlocal invocations
         invocations += 1
-        yield AIMessageChunk(content="I will check.\n", response_metadata={})
+        yield AIMessageChunk(content="There are 3 pods,", response_metadata={})
         yield AIMessageChunk(
             content="<tool_call>\n<function=run>", response_metadata={}
         )
         yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
 
-    with patch.object(agent, "_invoke_llm", side_effect=_always_preamble_then_leak):
+    with patch.object(agent, "_invoke_llm", side_effect=_answer_then_leak):
         result = RoundLLMResult()
         streamed = [
             chunk
@@ -2105,9 +2096,9 @@ async def test_collect_round_response_falls_back_after_preamble_leak_retry() -> 
         ]
 
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
-    assert invocations == 2
-    assert "<tool_call>" not in text
-    assert text.endswith(FINAL_SYNTHESIS_FAILURE)
+    assert invocations == 1
+    assert text == "There are 3 pods,"
+    assert result.final_answer_suppressed is True
 
 
 @pytest.mark.asyncio

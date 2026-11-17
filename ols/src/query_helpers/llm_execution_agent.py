@@ -886,7 +886,12 @@ class LLMExecutionAgent:
         result: RoundLLMResult,
         synthesize: bool,
     ) -> AsyncGenerator[StreamedChunk, None]:
-        """Collect a response and retry a failed final synthesis once."""
+        """Collect a response and retry a failed final synthesis once.
+
+        A retry is only started when nothing usable was streamed: text already
+        sent to the client cannot be retracted, so a second attempt would append
+        a second, possibly contradictory answer.
+        """
         has_answer = False
         max_attempts = 2 if synthesize else 1
         round_messages = messages
@@ -919,7 +924,9 @@ class LLMExecutionAgent:
                 result.should_stop = True
                 break
 
-            if has_answer and not result.final_answer_suppressed:
+            if has_answer:
+                # Text already reached the client and cannot be taken back, so a
+                # retry would append a second answer to the first one.
                 return
             if not synthesize:
                 if result.final_answer_suppressed:
@@ -940,7 +947,7 @@ class LLMExecutionAgent:
                     continue
             break
 
-        if synthesize and (not has_answer or result.final_answer_suppressed):
+        if synthesize and not has_answer:
             logger.error("Final synthesis returned no usable text after retry")
             yield StreamedChunk(type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE)
 
