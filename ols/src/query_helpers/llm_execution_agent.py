@@ -78,6 +78,13 @@ _FINAL_ROUND_TOOL_STRIPPING_PROVIDERS = frozenset(
 ToolCallDefinition: TypeAlias = tuple[str, dict[str, object], StructuredTool]
 
 
+def _copy_prompt_template(messages: ChatPromptTemplate) -> ChatPromptTemplate:
+    """Return a deep copy of a prompt template so rounds do not mutate the original."""
+    if hasattr(messages, "model_copy"):
+        return messages.model_copy(deep=True)
+    return copy.deepcopy(messages)
+
+
 @dataclass(slots=True)
 class ToolTokenUsage:
     """Mutable holder for cumulative tool-token usage across helper boundaries."""
@@ -157,6 +164,7 @@ class _FinalAnswerToolCallGuard:
         self._buffer = ""
         self._decided = False
         self._suppressed = False
+        self._emitted_text = False
 
     @property
     def suppressed(self) -> bool:
@@ -191,8 +199,13 @@ class _FinalAnswerToolCallGuard:
         """Return buffered text up to the first tool-call marker, if any.
 
         When the buffer ends with a possible marker prefix the tail is held back
-        and kept buffered, unless ``drop_partial_marker`` is set (end of stream),
-        in which case it is suppressed instead.
+        and kept buffered. At end of stream (``drop_partial_marker``) the tail is
+        dropped instead: it is an incomplete marker and must not be streamed.
+
+        A dropped tail is not proof of a leak. A complete marker, or a dropped
+        tail that is the entire output (so nothing usable remains), sets
+        ``suppressed``; a benign answer that merely ends in ``<`` or ``<t`` does
+        not, so it never drives the retry/fallback path.
         """
         marker_index = self._find_marker(self._buffer)
         if marker_index >= 0:
@@ -205,11 +218,12 @@ class _FinalAnswerToolCallGuard:
             tail = self._buffer[marker_start:]
             if any(prefix.startswith(tail) for prefix in _TOOL_CALL_ANSWER_PREFIXES):
                 emitted = self._buffer[:marker_start]
-                if drop_partial_marker:
-                    self._suppressed = True
-                    self._buffer = ""
-                else:
+                if not drop_partial_marker:
                     self._buffer = tail
+                else:
+                    self._buffer = ""
+                    if not emitted.strip() and not self._emitted_text:
+                        self._suppressed = True
                 return [emitted] if emitted else []
         emitted, self._buffer = self._buffer, ""
         return [emitted] if emitted else []
@@ -223,7 +237,10 @@ class _FinalAnswerToolCallGuard:
             self._decide()
             if not self._decided:
                 return []
-        return self._drain(drop_partial_marker=False)
+        emitted = self._drain(drop_partial_marker=False)
+        if any(chunk.strip() for chunk in emitted):
+            self._emitted_text = True
+        return emitted
 
     def finish(self) -> list[str]:
         """Return any buffered text once the stream is complete."""
@@ -449,11 +466,7 @@ class LLMExecutionAgent:
             return messages, all_mcp_tools, False
 
         self._tracker.charge(TokenCategory.PROMPT, instruction_tokens)
-        round_messages = (
-            messages.model_copy(deep=True)
-            if hasattr(messages, "model_copy")
-            else copy.deepcopy(messages)
-        )
+        round_messages = _copy_prompt_template(messages)
         round_messages.append(HumanMessage(content=FINAL_SYNTHESIS_INSTRUCTION))
         round_tools = [] if synthesize else all_mcp_tools
         return round_messages, round_tools, synthesize
@@ -823,11 +836,7 @@ class LLMExecutionAgent:
             logger.warning("Insufficient context budget for final synthesis retry")
             return None
         self._tracker.charge(TokenCategory.PROMPT, retry_tokens)
-        retry_messages = (
-            messages.model_copy(deep=True)
-            if hasattr(messages, "model_copy")
-            else copy.deepcopy(messages)
-        )
+        retry_messages = _copy_prompt_template(messages)
         retry_messages.append(HumanMessage(content=FINAL_SYNTHESIS_RETRY_INSTRUCTION))
         return retry_messages
 

@@ -27,6 +27,7 @@ from ols.src.query_helpers.llm_execution_agent import (  # noqa: E402
     FINAL_SYNTHESIS_INSTRUCTION,
     LLMExecutionAgent,
     RoundLLMResult,
+    _copy_prompt_template,
     _FinalAnswerToolCallGuard,
 )
 from ols.src.tools.tool_result_inspection import (  # noqa: E402
@@ -1778,6 +1779,15 @@ def test_prepare_round_request_keeps_tools_when_instruction_exceeds_budget() -> 
     )
 
 
+def test_copy_prompt_template_falls_back_to_deepcopy() -> None:
+    """Deep-copy prompt objects that do not provide model_copy."""
+    messages = [object()]
+    copied = _copy_prompt_template(messages)  # type: ignore[arg-type]
+
+    assert copied is not messages
+    assert copied[0] is not messages[0]
+
+
 def test_final_answer_tool_call_guard_passes_normal_text() -> None:
     """Stream normal final-round text once it is not a tool-call prefix."""
     guard = _FinalAnswerToolCallGuard()
@@ -1814,14 +1824,25 @@ def test_final_answer_tool_call_guard_keeps_text_with_lone_angle_bracket() -> No
     assert guard.suppressed is False
 
 
-def test_final_answer_tool_call_guard_suppresses_truncated_marker_after_text() -> None:
-    """Suppress a truncated tool-call marker that trails ordinary text."""
+def test_final_answer_tool_call_guard_drops_truncated_marker_after_text() -> None:
+    """Drop a truncated marker trailing ordinary text without flagging a leak."""
     guard = _FinalAnswerToolCallGuard()
     streamed = guard.feed("The answer is 42.\n<tool_ca")
     streamed += guard.finish()
 
     assert "".join(streamed) == "The answer is 42.\n"
-    assert guard.suppressed is True
+    assert guard.suppressed is False
+
+
+def test_final_answer_tool_call_guard_keeps_answer_ending_in_angle_bracket() -> None:
+    """Do not flag a benign answer that ends in '<' or a cut-off '<t' tail."""
+    for tail in ("<", "<t", "<to", "<tool"):
+        guard = _FinalAnswerToolCallGuard()
+        streamed = guard.feed(f"The answer is 42.{tail}")
+        streamed += guard.finish()
+
+        assert "".join(streamed) == "The answer is 42."
+        assert guard.suppressed is False
 
 
 def test_final_answer_tool_call_guard_suppresses_tool_call() -> None:
@@ -1833,8 +1854,8 @@ def test_final_answer_tool_call_guard_suppresses_tool_call() -> None:
     assert guard.suppressed is True
 
 
-def test_final_answer_tool_call_guard_detects_truncated_prefix() -> None:
-    """Treat a truncated tool-call prefix at end-of-stream as a leak."""
+def test_final_answer_tool_call_guard_flags_truncated_marker_only_output() -> None:
+    """Treat a truncated marker that is the whole output as unusable."""
     guard = _FinalAnswerToolCallGuard()
     assert guard.feed("<tool_call") == []
     assert guard.finish() == []
@@ -2011,6 +2032,42 @@ async def test_collect_round_response_retries_after_streamed_preamble() -> None:
     assert invocations == 2
     assert "<tool_call>" not in text
     assert text == "I will check the pods.\nThe pods are healthy."
+    assert result.final_answer_suppressed is False
+
+
+@pytest.mark.asyncio
+async def test_collect_round_response_keeps_answer_ending_in_partial_marker() -> None:
+    """Do not retry when a synthesis answer merely ends in '<'."""
+    agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
+    invocations = 0
+
+    async def _answer_ending_in_bracket(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        yield AIMessageChunk(content="The answer is 42.<", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_answer_ending_in_bracket):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=[],
+                is_final_round=True,
+                token_counter=AsyncMock(),
+                round_index=5,
+                result=result,
+                synthesize=True,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert invocations == 1
+    assert text == "The answer is 42."
     assert result.final_answer_suppressed is False
 
 
