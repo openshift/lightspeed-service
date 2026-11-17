@@ -120,7 +120,7 @@ class RoundLLMResult:
     should_stop: bool = False
     collected_text: list[str] = field(default_factory=list)
     collected_thinking: list[str] = field(default_factory=list)
-    final_answer_suppressed: bool = False
+    answer_suppressed: bool = False
 
 
 def skip_special_chunk(
@@ -151,12 +151,11 @@ _TOOL_CALL_MARKER_LEAD = "<"
 
 
 class _FinalAnswerToolCallGuard:
-    """Hold back a final-round answer until it can be ruled out as a tool call.
+    """Hold back answer text until it can be ruled out as a tool call.
 
-    When the final round sets ``tool_choice="none"``, vLLM does not extract
-    tool calls and returns the raw model text as content. If the model ignores
-    the synthesis instruction and emits a call anyway, the guard suppresses it
-    so raw XML never reaches the client.
+    vLLM does not always extract tool calls into structured chunks and can
+    return the raw model text as content, on any round. The guard suppresses
+    that markup so raw XML never reaches the client.
     """
 
     def __init__(self) -> None:
@@ -448,12 +447,28 @@ class LLMExecutionAgent:
         messages: ChatPromptTemplate,
         all_mcp_tools: list[StructuredTool],
         is_final_round: bool,
+        *,
+        force_synthesis: bool = False,
     ) -> tuple[ChatPromptTemplate, list[StructuredTool], bool] | None:
-        """Prepare round prompt and tools, or return None if synthesis exceeds budget."""
+        """Prepare round prompt and tools, or return None if synthesis exceeds budget.
+
+        Args:
+            messages: The prepared prompt template.
+            all_mcp_tools: Tools available for the request.
+            is_final_round: Whether this is the round cap.
+            force_synthesis: Unbind tools and inject the synthesis instruction
+                regardless of provider.
+
+        Returns:
+            The round prompt, its tools, and whether synthesis was applied, or
+            None when synthesis does not fit the remaining token budget.
+        """
         if not is_final_round or not all_mcp_tools:
             return messages, all_mcp_tools, False
 
-        synthesize = self.provider_type in _FINAL_ROUND_TOOL_STRIPPING_PROVIDERS
+        synthesize = force_synthesis or (
+            self.provider_type in _FINAL_ROUND_TOOL_STRIPPING_PROVIDERS
+        )
         instruction_tokens = self._tracker.count_tokens(FINAL_SYNTHESIS_INSTRUCTION)
         if instruction_tokens > self._tracker.remaining:
             if synthesize:
@@ -851,14 +866,14 @@ class LLMExecutionAgent:
 
     def _guarded_text_chunks(
         self,
-        guard: _FinalAnswerToolCallGuard | None,
+        guard: _FinalAnswerToolCallGuard,
         text: str,
         result: RoundLLMResult,
     ) -> Iterator[StreamedChunk]:
-        """Record and wrap answer text after the final-answer guard."""
-        return self._text_chunks(guard.feed(text) if guard else [text], result)
+        """Record and wrap answer text after the answer guard."""
+        return self._text_chunks(guard.feed(text), result)
 
-    def _close_final_answer_guard(
+    def _close_answer_guard(
         self,
         guard: _FinalAnswerToolCallGuard,
         result: RoundLLMResult,
@@ -867,9 +882,9 @@ class LLMExecutionAgent:
         """Flush buffered guard text and record suppressed tool-call leaks."""
         emitted = guard.finish()
         if guard.suppressed:
-            result.final_answer_suppressed = True
+            result.answer_suppressed = True
             logger.warning(
-                "Suppressed final-round tool-call leak in round %s (provider=%s)",
+                "Suppressed tool-call markup in round %s (provider=%s)",
                 round_index,
                 self.provider_type,
             )
@@ -888,9 +903,12 @@ class LLMExecutionAgent:
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Collect a response and retry a failed final synthesis once.
 
-        A retry is only started when nothing usable was streamed: text already
-        sent to the client cannot be retracted, so a second attempt would append
-        a second, possibly contradictory answer.
+        A non-final round whose only output is tool-call markup is replayed
+        through the final-round path: the model is told to answer without tools
+        so the client still receives an answer. A retry is only started when
+        nothing usable was streamed: text already sent to the client cannot be
+        retracted, so a second attempt would append a second, possibly
+        contradictory answer.
         """
         has_answer = False
         max_attempts = 2 if synthesize else 1
@@ -899,10 +917,7 @@ class LLMExecutionAgent:
         for attempt in range(1, max_attempts + 1):
             has_answer = False
             result.should_stop = False
-            result.final_answer_suppressed = False
-            apply_final_answer_guard = is_final_round and (
-                bool(all_mcp_tools) or synthesize
-            )
+            result.answer_suppressed = False
             try:
                 async for chunk in self._collect_round_llm_chunks(
                     messages=round_messages,
@@ -912,7 +927,6 @@ class LLMExecutionAgent:
                     token_counter=token_counter,
                     round_index=round_index,
                     result=result,
-                    apply_final_answer_guard=apply_final_answer_guard,
                 ):
                     if chunk.type == StreamChunkType.TEXT and chunk.text.strip():
                         has_answer = True
@@ -929,7 +943,18 @@ class LLMExecutionAgent:
                 # retry would append a second answer to the first one.
                 return
             if not synthesize:
-                if result.final_answer_suppressed:
+                if result.answer_suppressed and not result.tool_call_chunks:
+                    if not is_final_round:
+                        async for chunk in self._retry_as_final_synthesis(
+                            messages=messages,
+                            llm_input_values=llm_input_values,
+                            all_mcp_tools=all_mcp_tools,
+                            token_counter=token_counter,
+                            round_index=round_index,
+                            result=result,
+                        ):
+                            yield chunk
+                        return
                     logger.error(
                         "Final-round tool-call output was suppressed without a "
                         "synthesis retry"
@@ -939,7 +964,7 @@ class LLMExecutionAgent:
                     )
                 return
 
-            if attempt < max_attempts and result.final_answer_suppressed:
+            if attempt < max_attempts and result.answer_suppressed:
                 retry_messages = self._build_synthesis_retry_messages(messages)
                 if retry_messages is not None:
                     logger.warning("Final synthesis emitted a tool call; retrying once")
@@ -951,6 +976,43 @@ class LLMExecutionAgent:
             logger.error("Final synthesis returned no usable text after retry")
             yield StreamedChunk(type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE)
 
+    async def _retry_as_final_synthesis(
+        self,
+        messages: ChatPromptTemplate,
+        llm_input_values: dict[str, str],
+        all_mcp_tools: list[StructuredTool],
+        token_counter: GenericTokenCounter,
+        round_index: int,
+        result: RoundLLMResult,
+    ) -> AsyncGenerator[StreamedChunk, None]:
+        """Answer a non-final round that emitted only tool-call markup.
+
+        The round is replayed through the final-round path with tools unbound so
+        the model has to answer from the evidence already gathered.
+        """
+        round_request = self._prepare_round_request(
+            messages, all_mcp_tools, is_final_round=True, force_synthesis=True
+        )
+        if round_request is None:
+            yield StreamedChunk(type=StreamChunkType.TEXT, text=FINAL_SYNTHESIS_FAILURE)
+            return
+        synthesis_messages, synthesis_tools, synthesize = round_request
+        logger.warning(
+            "Round %s returned only tool-call markup; retrying with synthesis",
+            round_index,
+        )
+        async for chunk in self._collect_round_response(
+            messages=synthesis_messages,
+            llm_input_values=llm_input_values,
+            all_mcp_tools=synthesis_tools,
+            is_final_round=True,
+            token_counter=token_counter,
+            round_index=round_index,
+            result=result,
+            synthesize=synthesize,
+        ):
+            yield chunk
+
     async def _collect_round_llm_chunks(  # noqa: C901  # pylint: disable=R0912
         self,
         messages: ChatPromptTemplate,
@@ -960,8 +1022,6 @@ class LLMExecutionAgent:
         token_counter: GenericTokenCounter,
         round_index: int,
         result: RoundLLMResult,
-        *,
-        apply_final_answer_guard: bool = False,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Collect one round of LLM chunks, yielding streamed output.
 
@@ -969,7 +1029,7 @@ class LLMExecutionAgent:
         stop flag while yielding ``StreamedChunk`` objects to the caller.
         """
         chunk_counter = 0
-        guard = _FinalAnswerToolCallGuard() if apply_final_answer_guard else None
+        guard = _FinalAnswerToolCallGuard()
         timeout_seconds = (
             self._tool_call_round_timeout or constants.TOOL_CALL_ROUND_TIMEOUT
         )
@@ -1047,12 +1107,11 @@ class LLMExecutionAgent:
 
                     chunk_counter += 1
 
-                if guard is not None:
-                    for sc in self._text_chunks(
-                        self._close_final_answer_guard(guard, result, round_index),
-                        result,
-                    ):
-                        yield sc
+                for sc in self._text_chunks(
+                    self._close_answer_guard(guard, result, round_index),
+                    result,
+                ):
+                    yield sc
         except TimeoutError:
             logger.error(
                 "Timed out waiting for LLM chunks in round %s after %s seconds",

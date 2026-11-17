@@ -761,12 +761,11 @@ async def test_collect_round_llm_chunks_suppresses_fake_llm_string_leak() -> Non
                 token_counter=AsyncMock(),
                 round_index=5,
                 result=result,
-                apply_final_answer_guard=True,
             )
         ]
 
     assert streamed == []
-    assert result.final_answer_suppressed is True
+    assert result.answer_suppressed is True
 
 
 @pytest.mark.asyncio
@@ -789,13 +788,12 @@ async def test_collect_round_llm_chunks_streams_fake_llm_string_answer() -> None
                 token_counter=AsyncMock(),
                 round_index=5,
                 result=result,
-                apply_final_answer_guard=True,
             )
         ]
 
     assert [c.text for c in streamed] == ["The pods are healthy."]
     assert result.collected_text == ["The pods are healthy."]
-    assert result.final_answer_suppressed is False
+    assert result.answer_suppressed is False
 
 
 @pytest.mark.asyncio
@@ -821,19 +819,16 @@ async def test_collect_round_llm_chunks_flushes_whitespace_only_guard_buffer() -
                 token_counter=AsyncMock(),
                 round_index=5,
                 result=result,
-                apply_final_answer_guard=True,
             )
         ]
 
     assert [c.text for c in streamed] == [" "]
-    assert result.final_answer_suppressed is False
+    assert result.answer_suppressed is False
 
 
 @pytest.mark.asyncio
-async def test_collect_round_llm_chunks_skips_guard_without_tools_or_synthesis() -> (
-    None
-):
-    """Do not suppress benign final-round text when no tools were in play."""
+async def test_collect_round_llm_chunks_passes_benign_text_without_tools() -> None:
+    """Stream benign text through the guard even when no tools were in play."""
     agent = _make_agent()
 
     async def _answer_invoke(
@@ -854,13 +849,12 @@ async def test_collect_round_llm_chunks_skips_guard_without_tools_or_synthesis()
                 token_counter=AsyncMock(),
                 round_index=1,
                 result=result,
-                apply_final_answer_guard=False,
             )
         ]
 
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert text == "The answer is 42."
-    assert result.final_answer_suppressed is False
+    assert result.answer_suppressed is False
 
 
 @pytest.mark.asyncio
@@ -1633,7 +1627,6 @@ async def test_iterate_with_tools_final_synthesis_strips_tools_for_vllm() -> Non
 
     assert len(calls) == 5
     assert calls[-1]["all_mcp_tools"] == []
-    assert calls[-1]["apply_final_answer_guard"] is True
     final_messages = calls[-1]["messages"].messages
     assert final_messages[-1].content == FINAL_SYNTHESIS_INSTRUCTION
     assert [chunk.text for chunk in chunks if chunk.type == StreamChunkType.TEXT] == [
@@ -1693,7 +1686,6 @@ async def test_iterate_with_tools_final_synthesis_keeps_tools_for_openai() -> No
 
     assert len(calls) == 5
     assert calls[-1]["all_mcp_tools"] == [tool]
-    assert calls[-1]["apply_final_answer_guard"] is True
     assert calls[-1]["messages"].messages[-1].content == FINAL_SYNTHESIS_INSTRUCTION
     assert [chunk.text for chunk in chunks if chunk.type == StreamChunkType.TEXT] == [
         "Evidence-based answer."
@@ -1894,7 +1886,6 @@ async def test_collect_round_llm_chunks_suppresses_tool_call_leak_on_final_round
                 token_counter=AsyncMock(),
                 round_index=5,
                 result=result,
-                apply_final_answer_guard=True,
             )
         ]
 
@@ -1902,10 +1893,9 @@ async def test_collect_round_llm_chunks_suppresses_tool_call_leak_on_final_round
     assert "<function=" not in text
     assert "<tool_call>" not in text
     assert text == ""
-    assert result.final_answer_suppressed is True
+    assert result.answer_suppressed is True
     assert any(
-        "Suppressed final-round tool-call leak" in record.message
-        for record in caplog.records
+        "Suppressed tool-call markup" in record.message for record in caplog.records
     )
 
 
@@ -1934,13 +1924,12 @@ async def test_collect_round_llm_chunks_suppresses_markup_after_streamed_text() 
                 token_counter=AsyncMock(),
                 round_index=5,
                 result=result,
-                apply_final_answer_guard=True,
             )
         ]
 
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert text == "I will check the pods.\n"
-    assert result.final_answer_suppressed is True
+    assert result.answer_suppressed is True
 
 
 @pytest.mark.asyncio
@@ -1984,7 +1973,7 @@ async def test_collect_round_response_retries_suppressed_final_answer() -> None:
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert invocations == 2
     assert text == "The answer."
-    assert result.final_answer_suppressed is False
+    assert result.answer_suppressed is False
 
 
 @pytest.mark.asyncio
@@ -2023,7 +2012,7 @@ async def test_collect_round_response_keeps_streamed_preamble_without_retry() ->
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert invocations == 1
     assert text == "I will check the pods.\n"
-    assert result.final_answer_suppressed is True
+    assert result.answer_suppressed is True
 
 
 @pytest.mark.asyncio
@@ -2059,7 +2048,7 @@ async def test_collect_round_response_keeps_answer_ending_in_partial_marker() ->
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert invocations == 1
     assert text == "The answer is 42."
-    assert result.final_answer_suppressed is False
+    assert result.answer_suppressed is False
 
 
 @pytest.mark.asyncio
@@ -2098,7 +2087,7 @@ async def test_collect_round_response_does_not_append_second_answer() -> None:
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert invocations == 1
     assert text == "There are 3 pods,"
-    assert result.final_answer_suppressed is True
+    assert result.answer_suppressed is True
 
 
 @pytest.mark.asyncio
@@ -2204,7 +2193,232 @@ async def test_collect_round_response_emits_fallback_without_synthesis() -> None
 
     text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
     assert text == FINAL_SYNTHESIS_FAILURE
-    assert result.final_answer_suppressed is True
+    assert result.answer_suppressed is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "markup",
+    [
+        '<tool_call>[{"name": "search_openshift_documentation"}]</tool_call>',
+        (
+            "<function=search_openshift_documentation>\n"
+            "<parameter=search_query>\n"
+            "Ignition declarative configuration approach significance\n"
+            "</parameter>\n"
+            "</function>\n"
+            "</tool_call>"
+        ),
+        (
+            "\n  <tool_call>\n<function=search_openshift_documentation>\n"
+            "<parameter=search_query>\nIgnition\n</parameter>\n</function>"
+        ),
+    ],
+    ids=["tool-call", "function", "leading-whitespace"],
+)
+async def test_collect_round_response_recovers_from_non_final_tool_call_markup(
+    markup: str,
+) -> None:
+    """Replay a non-final round that returned only tool-call markup."""
+    agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
+    invocations: list[dict[str, Any]] = []
+
+    async def _markup_then_answer(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        invocations.append({"messages": args[0], "tools": kwargs["tools_map"]})
+        if len(invocations) == 1:
+            yield AIMessageChunk(content=markup, response_metadata={})
+            yield AIMessageChunk(
+                content="", response_metadata={"finish_reason": "stop"}
+            )
+            return
+        yield AIMessageChunk(content="The answer.", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_markup_then_answer):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=False,
+                token_counter=AsyncMock(),
+                round_index=1,
+                result=result,
+                synthesize=False,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert len(invocations) == 2
+    assert invocations[1]["tools"] == []
+    assert invocations[1]["messages"][-1].content == FINAL_SYNTHESIS_INSTRUCTION
+    assert text == "The answer."
+    assert "<tool_call>" not in text
+    assert "<function=" not in text
+    assert not result.tool_call_chunks
+
+
+@pytest.mark.asyncio
+async def test_collect_round_response_keeps_non_final_preamble_without_retry() -> None:
+    """Keep a preamble already streamed on a non-final round and suppress markup."""
+    agent = _make_agent()
+    invocations = 0
+
+    async def _preamble_then_markup(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        yield AIMessageChunk(content="I will check the pods.\n", response_metadata={})
+        yield AIMessageChunk(
+            content="<tool_call>\n<function=run>", response_metadata={}
+        )
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_preamble_then_markup):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=False,
+                token_counter=AsyncMock(),
+                round_index=1,
+                result=result,
+                synthesize=False,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert invocations == 1
+    assert text == "I will check the pods.\n"
+    assert result.answer_suppressed is True
+
+
+@pytest.mark.asyncio
+async def test_collect_round_response_passes_non_final_text_with_angle_bracket() -> (
+    None
+):
+    """Stream non-final text containing '<' unchanged and without a retry."""
+    agent = _make_agent()
+    invocations = 0
+
+    async def _text_with_bracket(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        yield AIMessageChunk(content="Use <none>", response_metadata={})
+        yield AIMessageChunk(content=" for <functionality>.", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_text_with_bracket):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=False,
+                token_counter=AsyncMock(),
+                round_index=1,
+                result=result,
+                synthesize=False,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert invocations == 1
+    assert text == "Use <none> for <functionality>."
+    assert result.answer_suppressed is False
+
+
+@pytest.mark.asyncio
+async def test_collect_round_response_returns_failure_when_retry_exceeds_budget() -> (
+    None
+):
+    """Return the fallback when non-final synthesis does not fit the budget."""
+    agent = _make_agent()
+    agent._tracker.charge(TokenCategory.PROMPT, agent._tracker.remaining)
+    invocations = 0
+
+    async def _always_markup(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        yield AIMessageChunk(content="<function=search>", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_always_markup):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_response(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=False,
+                token_counter=AsyncMock(),
+                round_index=1,
+                result=result,
+                synthesize=False,
+            )
+        ]
+
+    text = "".join(c.text for c in streamed if c.type == StreamChunkType.TEXT)
+    assert invocations == 1
+    assert text == FINAL_SYNTHESIS_FAILURE
+    assert result.answer_suppressed is True
+
+
+@pytest.mark.asyncio
+async def test_iterate_with_tools_recovers_from_non_final_tool_call_markup() -> None:
+    """Do not end the tool loop on a round that only emitted tool-call markup."""
+    agent = _make_agent(provider_type=constants.PROVIDER_RHOAI_VLLM)
+    tool = mock_tools_map[0]
+    messages, inputs = GeneratePrompt("question").generate_prompt(agent.model)
+    invocations = 0
+
+    async def _markup_then_answer(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[AIMessageChunk, None]:
+        nonlocal invocations
+        invocations += 1
+        if invocations == 1:
+            yield AIMessageChunk(
+                content="<tool_call>[...]</tool_call>", response_metadata={}
+            )
+            yield AIMessageChunk(
+                content="", response_metadata={"finish_reason": "stop"}
+            )
+            return
+        yield AIMessageChunk(content="Evidence-based answer.", response_metadata={})
+        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
+
+    with patch.object(agent, "_invoke_llm", side_effect=_markup_then_answer):
+        chunks = [
+            chunk
+            async for chunk in agent._iterate_with_tools(
+                messages=messages,
+                max_rounds=5,
+                llm_input_values=inputs,
+                token_counter=AsyncMock(),
+                all_mcp_tools=[tool],
+            )
+        ]
+
+    text = "".join(c.text for c in chunks if c.type == StreamChunkType.TEXT)
+    assert invocations == 2
+    assert text == "Evidence-based answer."
+    assert "<tool_call>" not in text
 
 
 @pytest.mark.asyncio
@@ -2231,7 +2445,6 @@ async def test_collect_round_llm_chunks_streams_normal_final_answer() -> None:
                 token_counter=AsyncMock(),
                 round_index=5,
                 result=result,
-                apply_final_answer_guard=True,
             )
         ]
 
