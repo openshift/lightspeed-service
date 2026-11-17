@@ -140,6 +140,34 @@ async def test_auth_dependency_normalizes_opaque_uid():
 
 @pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio
+async def test_auth_dependency_handles_missing_uid():
+    """TokenReview with omitted uid still returns a UUID-shaped user id."""
+    with (
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api,
+        patch(
+            "ols.src.auth.k8s.get_user_info",
+            return_value=MockK8sResponseStatus(
+                True, True, "valid-user", None, ["ols-group"]
+            ),
+        ),
+    ):
+        mock_authz_api.return_value.create_subject_access_review.side_effect = (
+            mock_subject_access_review_response
+        )
+        request = Request(
+            scope={
+                "type": "http",
+                "headers": [(b"authorization", b"Bearer valid-token")],
+            }
+        )
+        user_uid, username, _, _ = await auth_dependency(request)
+        assert username == "valid-user"
+        assert user_uid == suid.normalize_k8s_user_uid(None, "valid-user")
+        assert suid.check_suid(user_uid)
+
+
+@pytest.mark.usefixtures("_setup")
+@pytest.mark.asyncio
 async def test_cluster_id_is_used_for_kube_admin():
     """Test the cluster id is used as user_id when user is kube:admin."""
     with patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api:

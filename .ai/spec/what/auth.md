@@ -21,7 +21,7 @@ Control which users can access the OpenShift LightSpeed service and what they ar
 12. If the SubjectAccessReview denies access, the system must reject the request with HTTP 403.
 13. On successful authentication and authorization, the system must return the user's UID, username, bearer token, and a flag indicating that user ID override is not permitted.
 14. When the authenticated username is `kube:admin`, the system must replace the user ID with the cluster ID retrieved from the OpenShift ClusterVersion resource.
-15. When the TokenReview user UID is not RFC-4122 UUID-shaped, the k8s module must map it to a stable UUID (UUID5 in a fixed namespace) before returning identity to callers; UUID-shaped values must be returned unchanged.
+15. When the TokenReview user UID is not RFC-4122 UUID-shaped, the k8s module must map it to a stable UUID (UUID5 in a fixed namespace) before returning identity to callers; UUID-shaped values must be returned unchanged. When UID is omitted, derive a distinct UUID5 from the authenticated username.
 16. The k8s module must never allow callers to override the authenticated user ID.
 
 ### noop Module (Development)

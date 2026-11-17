@@ -337,7 +337,9 @@ class AuthDependency(AuthDependencyInterface):
         if user_info.user.username == "kube:admin":
             user_info.user.uid = K8sClientSingleton.get_cluster_id()
         else:
-            user_info.user.uid = suid.normalize_user_uid(user_info.user.uid)
+            user_info.user.uid = suid.normalize_k8s_user_uid(
+                user_info.user.uid, user_info.user.username
+            )
         authorization_api = K8sClientSingleton.get_authz_api()
 
         sar = kubernetes.client.V1SubjectAccessReview(

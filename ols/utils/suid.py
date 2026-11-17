@@ -44,3 +44,18 @@ def normalize_user_uid(uid: str) -> str:
     if check_suid(uid):
         return uid
     return str(uuid.uuid5(_USER_UID_NAMESPACE, uid))
+
+
+def normalize_k8s_user_uid(uid: str | None, username: str) -> str:
+    """Map TokenReview identity to a UUID-shaped user id for cache and API use.
+
+    Args:
+        uid: User UID from TokenReview, if present.
+        username: Authenticated Kubernetes username from TokenReview.
+
+    Returns:
+        A UUID string suitable for conversation-cache keys.
+    """
+    if uid:
+        return normalize_user_uid(uid)
+    return str(uuid.uuid5(_USER_UID_NAMESPACE, f"username:{username}"))

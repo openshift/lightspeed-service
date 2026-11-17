@@ -20,6 +20,13 @@ def test_normalize_user_uid_maps_opaque_subject_to_uuid():
     assert suid.normalize_user_uid(ENTRA_LIKE_SUB) == normalized
 
 
+def test_normalize_k8s_user_uid_from_username_when_uid_missing():
+    """Omitted TokenReview uid maps to a stable UUID from username."""
+    from_username = suid.normalize_k8s_user_uid(None, "valid-user")
+    assert suid.check_suid(from_username)
+    assert from_username == suid.normalize_k8s_user_uid(None, "valid-user")
+
+
 def test_normalize_user_uid_uses_uuid5_namespace():
     """Mapping is deterministic and namespaced."""
     namespace = uuid.uuid5(

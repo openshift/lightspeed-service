@@ -12,6 +12,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import config, constants
+from ols.utils import suid
 from ols.app.models.config import LoggingConfig
 from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_k8s_api import (
@@ -128,7 +129,7 @@ def test_is_user_authorized_valid_token():
 
         # check the response payload
         assert response.json() == {
-            "user_id": "valid-uid",
+            "user_id": suid.normalize_user_uid("valid-uid"),
             "username": "valid-user",
             "skip_user_id_check": False,
         }
