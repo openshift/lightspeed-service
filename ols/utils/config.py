@@ -298,21 +298,23 @@ class AppConfig:
             self._cached_solr_hybrid_search = SolrHybridSearch(settings, encode_fn)
             self._solr_hybrid_initialized = True
             return self._cached_solr_hybrid_search
-        except Exception:
+        except Exception as e:
             self._solr_init_attempts += 1
             if self._solr_init_attempts >= self._SOLR_MAX_INIT_ATTEMPTS:
-                logger.error(
+                logger.exception(
                     "Solr hybrid RAG permanently unavailable after %d attempts "
-                    "— product documentation search is disabled for this pod",
+                    "— product documentation search is disabled for this pod: %s",
                     self._solr_init_attempts,
+                    e,
                 )
                 self._solr_hybrid_initialized = True
             else:
                 logger.warning(
                     "Solr hybrid RAG not yet available (attempt %d/%d) "
-                    "— will retry on next request",
+                    "— will retry on next request: %s",
                     self._solr_init_attempts,
                     self._SOLR_MAX_INIT_ATTEMPTS,
+                    e,
                 )
             return None
 
