@@ -114,6 +114,15 @@ Grounded answers (passages from ``search_openshift_documentation``):
 * If the answer is not based on such passages, stay concise per the general style rules above.
 """
 
+SOLR_DOCS_PRE_RETRIEVED_SUPPLEMENT = """
+Documentation context (already retrieved):
+* Documentation passages for this question are already in the context above. No documentation tool is available for this request and no search is needed.
+* Answer the question directly from those passages; do not call ``search_openshift_documentation`` and do not describe a plan to search the documentation. Other tools remain available when the task needs them.
+* Cite a passage's title and URL when you use it. Never invent documentation URLs.
+* If the passages do not answer the question, say so in one sentence, then you may use general knowledge.
+* Be brief: state the answer first, then at most a few supporting bullet points.
+"""
+
 SOLR_DOCS_TOOL_SUPPLEMENT_WITH_BYOK = """
 Solr docs tool:
 * ``search_openshift_documentation`` searches published Red Hat product documentation (not live cluster resources).

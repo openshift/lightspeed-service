@@ -27,7 +27,7 @@ from ols.src.query_helpers.llm_execution_agent import (
     log_tool_loop_iteration,
 )
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.rag_index.solr_support import get_openshift_docs_tool
+from ols.src.rag_index.solr_support import RetrievedChunk, get_openshift_docs_tool
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
 from ols.src.tools.tool_result_inspection import (
@@ -85,6 +85,7 @@ class DocsSummarizer(QueryHelper):
         client_headers: ClientHeaders | None = None,
         streaming: bool = False,
         audit_ctx: Optional[AuditContext] = None,
+        pre_retrieval_query: Optional[str] = None,
         **kwargs: object,
     ) -> None:
         """Initialize the DocsSummarizer.
@@ -94,6 +95,9 @@ class DocsSummarizer(QueryHelper):
             client_headers: Optional client-provided MCP headers for authentication
             streaming: Whether this summarizer is used for the streaming endpoint
             audit_ctx: Audit context for structured event logging
+            pre_retrieval_query: The user question without attachment bodies, used
+                for the pre-retrieval search. The prompt still receives the full
+                query, including attachments.
             *args: Additional positional arguments passed to the parent class
             **kwargs: Additional keyword arguments passed to the parent class
         """
@@ -101,6 +105,7 @@ class DocsSummarizer(QueryHelper):
         self._audit_ctx = audit_ctx
         self._prepare_llm()
         self.streaming = streaming
+        self._pre_retrieval_query = pre_retrieval_query
         self._cluster_version = (
             K8sClientSingleton.get_cluster_version()
             if self._mode == constants.QueryMode.TROUBLESHOOTING
@@ -118,6 +123,23 @@ class DocsSummarizer(QueryHelper):
             self._solr_hybrid is not None and self._solr_client is not None
         )
         self._solr_docs_tool_prompt_guidance = solr_docs_tool_active
+        # Pre-retrieval and the docs tool are mutually exclusive. Running both
+        # would duplicate the product-docs surface and keep the round
+        # pre-retrieval exists to save, a combination that has not been
+        # measured, so MCP requests keep the tool path. Gate on the configured
+        # server list, not the resolved map: a server whose headers were not
+        # supplied is still a configured MCP request.
+        self._pre_retrieval_enabled = bool(
+            solr_docs_tool_active
+            and self._solr_hybrid is not None
+            and self._solr_hybrid.pre_retrieval
+            and self._mode == constants.QueryMode.ASK
+            and not config.mcp_servers.servers
+        )
+        # Per-request state. DocsSummarizer is constructed per request in
+        # ols/app/endpoints/ols.py; if it ever becomes a shared instance this
+        # flag becomes a cross-request data leak.
+        self._docs_tool_suppressed = False
         ref = config.config.ols_config.reference_content
         self._byok_active = ref is not None and bool(ref.indexes)
         self._tool_calling_enabled = bool(self.mcp_servers) or solr_docs_tool_active
@@ -188,9 +210,117 @@ class DocsSummarizer(QueryHelper):
         tools = await get_mcp_tools(
             mcp_tools_query, self.user_token, self.client_headers
         )
-        if self._solr_hybrid is not None and self._solr_client is not None:
+        if (
+            self._solr_hybrid is not None
+            and self._solr_client is not None
+            and not self._docs_tool_suppressed
+        ):
             tools.append(get_openshift_docs_tool(self._solr_client))
         return tools
+
+    def _has_conversation_history(
+        self,
+        user_id: Optional[str],
+        conversation_id: Optional[str],
+        skip_user_id_check: bool,
+    ) -> bool:
+        """Return whether the conversation already has cached turns.
+
+        Pre-retrieval searches with the current turn's text only, so a follow-up
+        that depends on earlier turns would be grounded on unrelated passages
+        and lose the docs tool. Those requests keep the tool path, which sees
+        the history and can build a history-aware query.
+        """
+        if not (user_id and conversation_id):
+            return False
+        return bool(
+            config.conversation_cache.get(
+                user_id,
+                conversation_id,
+                skip_user_id_check,
+            )
+        )
+
+    async def _pre_retrieve_docs(self, query: str) -> list[RetrievedChunk]:
+        """Retrieve documentation passages before the first LLM call.
+
+        Only used when ``solr_hybrid.pre_retrieval`` is enabled in ask mode and
+        no other RAG retriever supplies context. The search is sized with the
+        per-round tool budget the docs tool would receive, so the amount of
+        documentation fetched is comparable to a tool round.
+
+        Returns:
+            Ranked passages, or an empty list when retrieval fails or has no hits.
+        """
+        if self._solr_client is None:
+            return []
+        chunks = await self._solr_client.search(
+            query, token_budget=self._tracker.tools_round_budget
+        )
+        logger.info(
+            "Pre-retrieval returned %d documentation passages for query: %.200s",
+            len(chunks),
+            query,
+        )
+        return chunks
+
+    def _pre_retrieved_to_rag_chunks(
+        self, chunks: list[RetrievedChunk]
+    ) -> list[RagChunk]:
+        """Convert retrieved passages to prompt chunks within the prompt budget.
+
+        Each passage keeps its source title and URL, matching how the docs tool
+        presents results so the model can cite them. Passages with no text are
+        skipped, and a missing URL is left out of the citation rather than
+        rendered as a placeholder. A passage that does not fit the remaining
+        prompt budget is skipped so a later, smaller passage can still be used.
+
+        Search was sized with the per-round tool budget so the volume matches a
+        tool round, but these tokens become prompt input, so they are charged to
+        the RAG pool and capped by the prompt-side history budget. That is the
+        budget that actually binds; the tool pool is left untouched because no
+        tool round runs when the docs tool is suppressed.
+        """
+        rag_chunks: list[RagChunk] = []
+        kept: list[RetrievedChunk] = []
+        used = 0
+        budget = self._tracker.history_budget
+        for chunk in chunks:
+            if not chunk.text.strip():
+                logger.warning(
+                    "Skipping pre-retrieved passage with no text (title=%r, url=%r)",
+                    chunk.metadata.get("title"),
+                    chunk.metadata.get("docs_url"),
+                )
+                continue
+            title = str(chunk.metadata.get("title") or "unknown")
+            doc_url = str(chunk.metadata.get("docs_url") or "")
+            source = f'From document "{title}"'
+            if doc_url:
+                source += f" ({doc_url})"
+            text = f"{source}\n{chunk.text}"
+            tokens = self._tracker.count_tokens(text)
+            if used + tokens > budget:
+                continue
+            rag_chunks.append(RagChunk(text=text, doc_url=doc_url, doc_title=title))
+            kept.append(chunk)
+            used += tokens
+        self._tracker.charge(TokenCategory.RAG, used)
+        logger.info(
+            "Pre-retrieved context: %d/%d passages, %d tokens",
+            len(rag_chunks),
+            len(chunks),
+            used,
+        )
+        if self._audit_ctx:
+            self._audit_ctx.logger.rag_retrieved(
+                chunk_count=len(rag_chunks),
+                scores=[
+                    chunk.score if chunk.score is not None else 0.0 for chunk in kept
+                ],
+                source_documents=[chunk.doc_url or "unknown" for chunk in rag_chunks],
+            )
+        return rag_chunks
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
@@ -205,20 +335,15 @@ class DocsSummarizer(QueryHelper):
             self.generic_llm_params,
         )
 
-    async def _prepare_prompt_context(
-        self,
-        query: str,
-        rag_retriever: Optional[BaseRetriever] = None,
-    ) -> list[RagChunk]:
-        """Prepare RAG context for prompt construction.
-
-        Args:
-            query: The query to be answered.
-            rag_retriever: The retriever to get RAG data/context.
-
-        Returns:
-            RAG chunks truncated to fit the prompt budget.
-        """
+    def _count_prompt_tokens(
+        self, query: str, *, docs_tool_suppressed: bool | None = None
+    ) -> int:
+        """Count prompt tokens, optionally for a pre-retrieval state."""
+        suppressed = (
+            self._docs_tool_suppressed
+            if docs_tool_suppressed is None
+            else docs_tool_suppressed
+        )
         temp_prompt, temp_prompt_input = GeneratePrompt(
             query,
             ["sample"],
@@ -227,12 +352,58 @@ class DocsSummarizer(QueryHelper):
             self._tool_calling_enabled,
             self._mode,
             self._cluster_version,
-            solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
+            solr_docs_tool_guidance=(
+                self._solr_docs_tool_prompt_guidance and not suppressed
+            ),
             byok_active=self._byok_active,
+            pre_retrieved_context=suppressed,
         ).generate_prompt(self.model)
-        prompt_tokens = self._tracker.count_tokens(
-            temp_prompt.format(**temp_prompt_input)
+        return self._tracker.count_tokens(temp_prompt.format(**temp_prompt_input))
+
+    def _ensure_prompt_budget_for_pre_retrieval(self, query: str) -> None:
+        """Reject over-budget prompts before paying for a documentation search.
+
+        A request can fit only with the pre-retrieved supplement, so the search
+        proceeds when either prompt variant fits. The fallback after a search
+        that yields no usable passage keeps its own check, because switching
+        back to the docs-tool prompt may not fit.
+        """
+        tool_tokens = self._count_prompt_tokens(query, docs_tool_suppressed=False)
+        pre_retrieved_tokens = self._count_prompt_tokens(
+            query, docs_tool_suppressed=True
         )
+        smallest = min(tool_tokens, pre_retrieved_tokens)
+        if smallest > self._tracker.prompt_budget:
+            raise PromptTooLongError(
+                f"Prompt length {smallest} exceeds "
+                f"LLM available context window limit "
+                f"{self._tracker.prompt_budget} tokens"
+            )
+
+    async def _prepare_prompt_context(
+        self,
+        query: str,
+        rag_retriever: Optional[BaseRetriever] = None,
+        pre_retrieved: Optional[list[RetrievedChunk]] = None,
+    ) -> list[RagChunk]:
+        """Prepare RAG context for prompt construction.
+
+        Args:
+            query: The query to be answered.
+            rag_retriever: The retriever to get RAG data/context.
+            pre_retrieved: Documentation passages retrieved before the LLM call.
+                When they are used, the docs tool stays suppressed for the rest
+                of the request unless no passage fits the prompt budget.
+
+        Returns:
+            RAG chunks truncated to fit the prompt budget.
+        """
+        if pre_retrieved and rag_retriever is None:
+            # Optimistic: passages were found, so the prompt should use the
+            # pre-retrieved supplement. Cleared below if none fit the budget.
+            self._docs_tool_suppressed = True
+
+        prompt_tokens = self._count_prompt_tokens(query)
         if prompt_tokens > self._tracker.prompt_budget:
             raise PromptTooLongError(
                 f"Prompt length {prompt_tokens} exceeds "
@@ -284,8 +455,33 @@ class DocsSummarizer(QueryHelper):
                         ],
                     )
         else:
-            logger.warning("Proceeding without RAG content. Check start up messages.")
-            rag_chunks = []
+            if pre_retrieved:
+                rag_chunks = self._pre_retrieved_to_rag_chunks(pre_retrieved)
+                if not rag_chunks:
+                    # None of the passages fit the prompt budget, so the
+                    # fallback contract requires the docs tool to stay bound.
+                    # Recount the prompt: the tool supplement it now uses is
+                    # longer than the pre-retrieved one charged above.
+                    self._docs_tool_suppressed = False
+                    tool_prompt_tokens = self._count_prompt_tokens(query)
+                    if tool_prompt_tokens > self._tracker.prompt_budget:
+                        raise PromptTooLongError(
+                            f"Prompt length {tool_prompt_tokens} with docs tool "
+                            f"guidance exceeds LLM available context window "
+                            f"limit {self._tracker.prompt_budget} tokens"
+                        )
+                    self._tracker.charge(
+                        TokenCategory.PROMPT, tool_prompt_tokens - prompt_tokens
+                    )
+                    logger.warning(
+                        "Pre-retrieved documentation did not fit the prompt "
+                        "budget; keeping the docs tool bound."
+                    )
+            else:
+                logger.warning(
+                    "Proceeding without RAG content. Check start up messages."
+                )
+                rag_chunks = []
 
         return rag_chunks
 
@@ -337,8 +533,11 @@ class DocsSummarizer(QueryHelper):
             self._mode,
             self._cluster_version,
             skill_content=skill_content,
-            solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
+            solr_docs_tool_guidance=(
+                self._solr_docs_tool_prompt_guidance and not self._docs_tool_suppressed
+            ),
             byok_active=self._byok_active,
+            pre_retrieved_context=self._docs_tool_suppressed,
         ).generate_prompt(self.model)
 
         log_tool_loop_iteration(
@@ -395,7 +594,22 @@ class DocsSummarizer(QueryHelper):
                 user_id or "",
             )
 
-        rag_chunks = await self._prepare_prompt_context(query, rag_retriever)
+        pre_retrieved: list[RetrievedChunk] = []
+        if (
+            self._pre_retrieval_enabled
+            and rag_retriever is None
+            and not self._has_conversation_history(
+                user_id, conversation_id, skip_user_id_check
+            )
+        ):
+            self._ensure_prompt_budget_for_pre_retrieval(query)
+            pre_retrieved = await self._pre_retrieve_docs(
+                self._pre_retrieval_query or query
+            )
+
+        rag_chunks = await self._prepare_prompt_context(
+            query, rag_retriever, pre_retrieved
+        )
 
         skill_content: Optional[str] = None
         has_support_files = False

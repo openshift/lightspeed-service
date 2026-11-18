@@ -533,6 +533,41 @@ def test_solr_docs_tool_guidance_false_omits_supplement():
     assert "Grounded answers (passages from" not in prompt.messages[0].prompt.template
 
 
+def test_pre_retrieved_context_supplement_replaces_tool_guidance():
+    """Pre-retrieved context tells the model to answer without a docs search."""
+    prompt, _ = GeneratePrompt(
+        query,
+        ["passage"],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.ASK,
+        solr_docs_tool_guidance=False,
+        pre_retrieved_context=True,
+    ).generate_prompt("gpt-4o-mini")
+    template = prompt.messages[0].prompt.template
+    assert "Documentation context (already retrieved):" in template
+    assert "No documentation tool is available" in template
+    assert "Solr docs tool:" not in template
+    assert "Be extremely concise." in template
+
+
+def test_pre_retrieved_context_supplement_ask_only():
+    """Pre-retrieved guidance is not added outside ask mode."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.TROUBLESHOOTING,
+        pre_retrieved_context=True,
+    ).generate_prompt("gpt-4o-mini")
+    assert "Documentation context (already retrieved):" not in (
+        prompt.messages[0].prompt.template
+    )
+
+
 def test_solr_docs_tool_guidance_with_byok_uses_relaxed_supplement():
     """When BYOK is active, the relaxed Solr supplement is used instead of the mandatory one."""
     prompt, _ = GeneratePrompt(

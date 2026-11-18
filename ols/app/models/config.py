@@ -1167,6 +1167,15 @@ class SolrHybridSettings(BaseModel):
             "matched chunk during chunk expansion. ``0`` disables expansion."
         ),
     )
+    pre_retrieval: bool = Field(
+        default=False,
+        description=(
+            "In ask mode, retrieve documentation before the first LLM call and "
+            "answer from the supplied context instead of spending a round on the "
+            "docs tool decision. Falls back to the docs tool when retrieval "
+            "returns no usable passages."
+        ),
+    )
 
     def validate_yaml(self) -> None:
         """Validate Solr hybrid settings."""
