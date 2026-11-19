@@ -85,6 +85,12 @@ ols_config:
   # Product docs via Solr hybrid (OKP).  Omit solr_hybrid to disable.
   solr_hybrid:
     solr_http_base: "https://solr.example.com:8983"
+    # Opt-in: in ask mode, retrieve documentation before the first LLM call
+    # and answer from that context instead of spending a round on the docs
+    # tool decision. Falls back to the docs tool when retrieval returns
+    # nothing usable. Ignored for troubleshooting mode, follow-up turns, when
+    # MCP servers are set, and when a BYOK index below supplies retrieval.
+    # pre_retrieval: true
   # BYOK / local FAISS indexes (user-supplied content only).
   reference_content:
     indexes:

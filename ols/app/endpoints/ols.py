@@ -153,6 +153,7 @@ def conversation_request(
                 user_token=processed_request.user_token,
                 client_headers=client_headers,
                 audit_ctx=audit_ctx,
+                query_without_attachments=processed_request.query_without_attachments,
             )
 
             processed_request.timestamps["generate response"] = time.time()
@@ -505,6 +506,7 @@ def generate_response(
     user_token: Optional[str] = None,
     client_headers: dict[str, dict[str, str]] | None = None,
     audit_ctx: Optional["AuditContext"] = None,
+    query_without_attachments: Optional[str] = None,
 ) -> Union[SummarizerResponse, Generator]:
     """Generate response based on validation result and model output.
 
@@ -517,6 +519,8 @@ def generate_response(
         user_token: The user token used for authorization.
         client_headers: Client-provided MCP headers for authentication.
         audit_ctx: Audit context for structured event logging.
+        query_without_attachments: The redacted user question without attachment
+            bodies, used only for pre-retrieval search.
 
     Returns:
         SummarizerResponse or Generator, depending on the streaming flag.
@@ -531,6 +535,7 @@ def generate_response(
             client_headers=client_headers,
             streaming=streaming,
             audit_ctx=audit_ctx,
+            pre_retrieval_query=query_without_attachments,
         )
         rag_index_loader = config.rag_index_loader
         rag_retriever = (

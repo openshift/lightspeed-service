@@ -117,6 +117,7 @@ def conversation_request(
             user_token=processed_request.user_token,
             client_headers=client_headers,
             audit_ctx=processed_request.audit_ctx,
+            query_without_attachments=processed_request.query_without_attachments,
         )
 
         return StreamingResponse(

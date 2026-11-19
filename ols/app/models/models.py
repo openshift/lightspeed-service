@@ -173,6 +173,7 @@ class ReferencedDocument:
                     ReferencedDocument(rag_chunk.doc_url, rag_chunk.doc_title),
                 )
                 for rag_chunk in rag_chunks
+                if rag_chunk.doc_url
             ).values()
         )
 

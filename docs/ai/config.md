@@ -165,6 +165,46 @@ Relevant config fields on ``SolrHybridSettings``:
 | ``max_results`` | 5 | Max deduped chunks returned |
 | ``max_expansion_neighbors`` | 2 | Max siblings per side during expansion (0 disables) |
 
+### Pre-retrieval in ask mode
+
+``solr_hybrid.pre_retrieval`` (default ``false``) searches the documentation
+index with the user's redacted question, without attachment bodies, before the
+first LLM call and injects the passages into the prompt, so the model answers
+without first calling ``search_openshift_documentation``. It removes that tool
+round; it does not guarantee a single-round response, because history
+compression or a selected skill's support-file tool can still add model calls.
+It is opt-in and ask-mode only (troubleshooting needs live cluster resources,
+not product docs).
+
+The feature is inert unless all of these hold: ``solr_hybrid`` is configured,
+the request is ``QueryMode.ASK``, no ``rag_retriever`` (BYOK) is supplied, no
+MCP servers are configured, and the conversation has no earlier turns. The MCP
+exclusion is deliberate: running both would put pre-retrieved passages and a
+bound docs tool in the same request, which duplicates the docs surface and
+keeps the round pre-retrieval is meant to save. The first-turn restriction
+exists because pre-retrieval searches with the current turn's text only; a
+follow-up such as "how do I do that?" would be grounded on unrelated passages,
+so follow-ups keep the docs tool and its history-aware search.
+
+When retrieval returns no passages, or none of the passages fit the prompt
+budget, the docs tool stays bound and the request uses the existing tool path.
+This fallback matters for questions where the index legitimately has no hits,
+and for requests whose system prompt leaves no room for retrieved text.
+
+Search is sized with the per-round tool budget (``tools_round_budget``) so the
+amount of documentation fetched is comparable to a tool round. The resulting
+passages are prompt input, so they are charged to ``TokenCategory.RAG`` and
+capped by the prompt-side ``history_budget``; the tool budget pool is untouched.
+The answer prompt still receives the full query, including attachment bodies;
+only the Solr search uses the attachment-free question.
+
+```yaml
+ols_config:
+  solr_hybrid:
+    solr_http_base: "https://solr.example.com:8983"
+    pre_retrieval: false   # opt-in; ask mode only
+```
+
 ### OCP version resolution at startup
 
 When ``solr_hybrid`` is configured, ``SolrHybridSearch.__init__`` resolves the

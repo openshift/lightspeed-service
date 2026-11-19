@@ -1,7 +1,8 @@
 """Unit tests for DocsSummarizer PR2 class."""
 
 import logging
-from typing import ClassVar
+from contextlib import contextmanager
+from typing import Callable, ClassVar
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
@@ -10,7 +11,12 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
-from ols.app.models.config import LoggingConfig, MCPServerConfig, SolrHybridSettings
+from ols.app.models.config import (
+    LoggingConfig,
+    MCPServerConfig,
+    MCPServers,
+    SolrHybridSettings,
+)
 from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
@@ -23,12 +29,20 @@ from ols.utils.config import AppConfig
 # needs to be setup before importing docs_summarizer
 config.ols_config.authentication_config.module = "k8s"
 
-from ols.app.models.models import CacheEntry  # noqa: E402
+from ols.app.models.models import (  # noqa: E402
+    CacheEntry,
+    ReferencedDocument,
+)
 from ols.src.llms.llm_loader import load_llm  # noqa: E402
+from ols.src.prompts.prompt_generator import GeneratePrompt  # noqa: E402
 from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
 )
+from ols.src.query_helpers.llm_execution_agent import (  # noqa: E402
+    LLMExecutionAgent,
+)
+from ols.src.rag_index.solr_support import RetrievedChunk  # noqa: E402
 from ols.src.tools.tool_result_inspection import (  # noqa: E402
     ToolResultInspectionError,
 )
@@ -460,6 +474,629 @@ async def test_resolve_tools_appends_openshift_docs_tool_when_solr_configured_no
             config._solr_hybrid_initialized = False
     assert [t.name for t in tools] == ["search_openshift_documentation"]
     m_get.assert_awaited_once()
+
+
+@contextmanager
+def _solr_pre_retrieval_source(
+    search: AsyncMock | None = None, pre_retrieval: bool = True
+):
+    """Patch Solr hybrid config and search client for pre-retrieval tests."""
+    client = MagicMock()
+    client.search = search or AsyncMock(return_value=[])
+    hybrid = SolrHybridSettings(pre_retrieval=pre_retrieval)
+    with (
+        patch.object(config.ols_config, "solr_hybrid", hybrid),
+        patch.object(
+            AppConfig, "solr_hybrid_search", PropertyMock(return_value=client)
+        ),
+    ):
+        yield client
+
+
+@contextmanager
+def _spy_generate_prompt():
+    """Record GeneratePrompt calls so tests can inspect the built prompt."""
+    calls: list[tuple] = []
+
+    def spy(*args, **kwargs):
+        calls.append((args, kwargs))
+        return GeneratePrompt(*args, **kwargs)
+
+    with patch("ols.src.query_helpers.docs_summarizer.GeneratePrompt", side_effect=spy):
+        yield calls
+
+
+@contextmanager
+def _capture_agent_execute():
+    """Record the arguments the summarizer passes to the tool loop."""
+    executions: list[dict] = []
+    original = LLMExecutionAgent.execute
+
+    async def capture(self, *args, **kwargs):
+        executions.append(kwargs)
+        async for chunk in original(self, *args, **kwargs):
+            yield chunk
+
+    with patch.object(LLMExecutionAgent, "execute", new=capture):
+        yield executions
+
+
+def _count_tokens_by_variant(
+    summarizer: DocsSummarizer, *, tool_tokens: int, pre_tokens: int
+) -> Callable[..., int]:
+    """Return a token counter with distinct values per prompt variant."""
+
+    def count(_query: str, *, docs_tool_suppressed: bool | None = None) -> int:
+        suppressed = (
+            summarizer._docs_tool_suppressed
+            if docs_tool_suppressed is None
+            else docs_tool_suppressed
+        )
+        return pre_tokens if suppressed else tool_tokens
+
+    return count
+
+
+def _render_system_prompt(call, model: str = "mock_model") -> str:
+    """Render the system message template captured from a GeneratePrompt call."""
+    args, kwargs = call
+    prompt, _ = GeneratePrompt(*args, **kwargs).generate_prompt(model)
+    return prompt.messages[0].prompt.template
+
+
+def _pre_retrieval_chunk(
+    text: str = "passage",
+    title: str = "Install",
+    url: str = "https://docs/1",
+    score: float = 1.0,
+) -> RetrievedChunk:
+    """Build a retrieved chunk with the metadata the docs tool would return."""
+    return RetrievedChunk(
+        text=text, score=score, metadata={"title": title, "docs_url": url}
+    )
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_disabled_by_default_keeps_docs_tool():
+    """With the flag off, search is skipped and the docs tool stays bound."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search, pre_retrieval=False),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        _spy_generate_prompt() as calls,
+        _capture_agent_execute() as executions,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response("install a cluster"):
+            pass
+
+    search.assert_not_awaited()
+    assert summarizer._docs_tool_suppressed is False
+    assert len(executions) == 1
+    assert [t.name for t in executions[0]["all_mcp_tools"]] == [
+        "search_openshift_documentation"
+    ]
+    template = _render_system_prompt(calls[-1])
+    assert "Solr docs tool:" in template
+    assert "Documentation context (already retrieved):" not in template
+
+
+def test_pre_retrieval_disabled_by_default():
+    """Pre-retrieval stays off unless explicitly configured."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert summarizer._pre_retrieval_enabled is False
+
+
+def test_pre_retrieval_enabled_in_ask_mode():
+    """Pre-retrieval is active in ask mode when Solr hybrid enables it."""
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert summarizer._pre_retrieval_enabled is True
+
+
+def test_pre_retrieval_disabled_when_mcp_configured_even_if_headers_missing():
+    """Configured MCP servers keep the tool path even when headers are absent."""
+    configured = MCPServers(
+        servers=[MCPServerConfig(name="test_server", url="http://mcp.example/mcp")]
+    )
+    with (
+        _solr_pre_retrieval_source(),
+        patch.object(config.config, "mcp_servers", configured),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value={},
+        ),
+    ):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert summarizer.mcp_servers == {}
+    assert summarizer._pre_retrieval_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_inert_outside_ask_mode():
+    """Troubleshooting mode never pre-retrieves product documentation."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
+        )
+        assert summarizer._pre_retrieval_enabled is False
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response("install a cluster"):
+            pass
+    search.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieve_docs_uses_round_budget():
+    """Retrieval receives the configured query and the per-round tool budget."""
+    chunk = _pre_retrieval_chunk(text="passage one", score=1.5)
+    search = AsyncMock(return_value=[chunk])
+    with _solr_pre_retrieval_source(search):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    chunks = await summarizer._pre_retrieve_docs("install a cluster")
+    assert chunks == [chunk]
+    assert search.await_args.args[0] == "install a cluster"
+    assert (
+        search.await_args.kwargs["token_budget"]
+        == summarizer._tracker.tools_round_budget
+    )
+
+
+def test_pre_retrieved_chunks_carry_source_and_url():
+    """Passages keep the docs tool's title and URL so the model can cite them."""
+    chunk = _pre_retrieval_chunk(score=2.0)
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    rag_chunks = summarizer._pre_retrieved_to_rag_chunks([chunk, chunk])
+    assert len(rag_chunks) == 2
+    assert rag_chunks[0].text.startswith('From document "Install" (https://docs/1)')
+    assert rag_chunks[0].doc_title == "Install"
+    assert rag_chunks[0].doc_url == "https://docs/1"
+    assert summarizer._tracker.usage(TokenCategory.RAG) == 2 * (
+        summarizer._tracker.count_tokens(rag_chunks[0].text)
+    )
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieve_docs_returns_empty_without_client():
+    """The retrieval helper is inert when no Solr client exists."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert await summarizer._pre_retrieve_docs("install a cluster") == []
+
+
+def test_pre_retrieved_chunks_log_audit_event():
+    """Injected passages are reported through the audit logger."""
+    audit_ctx = MagicMock()
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(None), audit_ctx=audit_ctx
+        )
+    summarizer._pre_retrieved_to_rag_chunks(
+        [_pre_retrieval_chunk(score=0.75), _pre_retrieval_chunk(score=None)]
+    )
+    audit_ctx.logger.rag_retrieved.assert_called_once_with(
+        chunk_count=2,
+        scores=[0.75, 0.0],
+        source_documents=["https://docs/1", "https://docs/1"],
+    )
+
+
+def test_pre_retrieved_chunks_drop_passages_over_budget():
+    """Passages that no longer fit are dropped; earlier passages are kept."""
+    first = _pre_retrieval_chunk(text="first passage", url="https://docs/1")
+    second = _pre_retrieval_chunk(text="second passage", url="https://docs/2")
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    first_tokens = summarizer._tracker.count_tokens(
+        f'From document "Install" (https://docs/1)\n{first.text}'
+    )
+    summarizer._tracker.charge(
+        TokenCategory.PROMPT,
+        summarizer._tracker.prompt_budget - first_tokens - 1,
+    )
+
+    rag_chunks = summarizer._pre_retrieved_to_rag_chunks([first, second])
+    assert len(rag_chunks) == 1
+    assert rag_chunks[0].doc_url == "https://docs/1"
+    assert "first passage" in rag_chunks[0].text
+
+
+def test_pre_retrieved_chunks_skip_oversized_passage_and_keep_later_one():
+    """A passage that does not fit is skipped so later passages can be used."""
+    oversized = _pre_retrieval_chunk(text="big " * 100, url="https://docs/big")
+    later = _pre_retrieval_chunk(text="small", url="https://docs/small")
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    later_tokens = summarizer._tracker.count_tokens(
+        'From document "Install" (https://docs/small)\nsmall'
+    )
+    with patch.object(
+        TokenBudgetTracker,
+        "history_budget",
+        new_callable=PropertyMock,
+        return_value=later_tokens + 5,
+    ):
+        rag_chunks = summarizer._pre_retrieved_to_rag_chunks([oversized, later])
+
+    assert len(rag_chunks) == 1
+    assert rag_chunks[0].doc_url == "https://docs/small"
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_suppresses_docs_tool_and_injects_passages():
+    """Passages replace the docs tool and reach the prompt with title and URL."""
+    chunk = _pre_retrieval_chunk(
+        text="Run the installer.",
+        title="Installing a cluster",
+        url="https://docs.example/install",
+    )
+    search = AsyncMock(return_value=[chunk])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_openshift_docs_tool"
+        ) as mock_get_docs_tool,
+        _spy_generate_prompt() as calls,
+        _capture_agent_execute() as executions,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response("install a cluster"):
+            pass
+        assert summarizer._docs_tool_suppressed is True
+
+    search.assert_awaited_once()
+    assert search.await_args.args[0] == "install a cluster"
+    assert len(executions) == 1
+    assert executions[0]["all_mcp_tools"] == []
+    mock_get_docs_tool.assert_not_called()
+
+    template = _render_system_prompt(calls[-1])
+    assert "Documentation context (already retrieved):" in template
+    assert "Solr docs tool:" not in template
+    assert calls[-1][0][1] == [
+        'From document "Installing a cluster" '
+        "(https://docs.example/install)\nRun the installer."
+    ]
+    _, final_kwargs = calls[-1]
+    assert final_kwargs["pre_retrieved_context"] is True
+    assert final_kwargs["solr_docs_tool_guidance"] is False
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_falls_back_to_docs_tool_without_hits():
+    """An empty retrieval keeps the docs tool so the model can still search."""
+    search = AsyncMock(return_value=[])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        _spy_generate_prompt() as calls,
+        _capture_agent_execute() as executions,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response("install a cluster"):
+            pass
+        assert summarizer._docs_tool_suppressed is False
+
+    search.assert_awaited_once()
+    assert len(executions) == 1
+    assert [t.name for t in executions[0]["all_mcp_tools"]] == [
+        "search_openshift_documentation"
+    ]
+    template = _render_system_prompt(calls[-1])
+    assert "Solr docs tool:" in template
+    assert "Documentation context (already retrieved):" not in template
+    _, final_kwargs = calls[-1]
+    assert final_kwargs["pre_retrieved_context"] is False
+    assert final_kwargs["solr_docs_tool_guidance"] is True
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_falls_back_when_no_passage_fits_budget():
+    """Hits that do not fit the prompt budget restore the docs tool."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        patch.object(
+            TokenBudgetTracker,
+            "history_budget",
+            new_callable=PropertyMock,
+            return_value=0,
+        ),
+        _spy_generate_prompt() as calls,
+        _capture_agent_execute() as executions,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response("install a cluster"):
+            pass
+        assert summarizer._docs_tool_suppressed is False
+
+    search.assert_awaited_once()
+    assert len(executions) == 1
+    assert [t.name for t in executions[0]["all_mcp_tools"]] == [
+        "search_openshift_documentation"
+    ]
+    template = _render_system_prompt(calls[-1])
+    assert "Solr docs tool:" in template
+    assert "Documentation context (already retrieved):" not in template
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_budget_fallback_recharges_prompt_for_tool_guidance():
+    """The prompt charge follows the supplement actually used after fallback."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        patch.object(
+            TokenBudgetTracker,
+            "history_budget",
+            new_callable=PropertyMock,
+            return_value=0,
+        ),
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+
+        with patch.object(
+            summarizer,
+            "_count_prompt_tokens",
+            side_effect=_count_tokens_by_variant(
+                summarizer, tool_tokens=250, pre_tokens=100
+            ),
+        ) as count_prompt_tokens_mock:
+            async for _ in summarizer.generate_response("install a cluster"):
+                pass
+
+    assert count_prompt_tokens_mock.call_count == 4
+    assert summarizer._tracker.usage(TokenCategory.PROMPT) == 250
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_rejects_over_budget_prompt_before_search():
+    """No search is paid for when neither prompt variant fits the budget."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        with patch.object(summarizer, "_count_prompt_tokens", return_value=100_000):
+            with pytest.raises(PromptTooLongError, match="exceeds"):
+                async for _ in summarizer.generate_response("install a cluster"):
+                    pass
+
+    search.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_runs_when_only_pre_retrieved_prompt_fits():
+    """A prompt that fits only without the tool guidance still searches."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        _capture_agent_execute() as executions,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+
+        with patch.object(
+            summarizer,
+            "_count_prompt_tokens",
+            side_effect=_count_tokens_by_variant(
+                summarizer, tool_tokens=100_000, pre_tokens=100
+            ),
+        ):
+            async for _ in summarizer.generate_response("install a cluster"):
+                pass
+        assert summarizer._docs_tool_suppressed is True
+
+    search.assert_awaited_once()
+    assert len(executions) == 1
+    assert executions[0]["all_mcp_tools"] == []
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_fallback_rejects_tool_prompt_over_budget():
+    """A request that fits only with passages fails if none can be injected."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        patch.object(
+            TokenBudgetTracker,
+            "history_budget",
+            new_callable=PropertyMock,
+            return_value=0,
+        ),
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+
+        with patch.object(
+            summarizer,
+            "_count_prompt_tokens",
+            side_effect=_count_tokens_by_variant(
+                summarizer, tool_tokens=100_000, pre_tokens=100
+            ),
+        ):
+            with pytest.raises(PromptTooLongError, match="with docs tool guidance"):
+                async for _ in summarizer.generate_response("install a cluster"):
+                    pass
+
+    search.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_searches_question_without_attachments():
+    """Solr gets the attachment-free question; the answer prompt gets both."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    question = "why is this pod failing?"
+    attachment = "\n\n```yaml\nkind: Pod\nmetadata:\n  name: internal-id\n```"
+    full_query = question + attachment
+    with (
+        _solr_pre_retrieval_source(search),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        _spy_generate_prompt() as calls,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(None),
+            pre_retrieval_query=question,
+        )
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response(full_query):
+            pass
+
+    search.assert_awaited_once()
+    assert search.await_args.args[0] == question
+    assert calls[-1][0][0] == full_query
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_skips_follow_up_turns():
+    """Follow-ups keep the docs tool so search can use conversation history."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        patch.object(
+            DocsSummarizer, "_has_conversation_history", return_value=True
+        ) as has_history,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+        ) as mock_get_mcp_tools,
+        _spy_generate_prompt() as calls,
+    ):
+        mock_get_mcp_tools.side_effect = lambda *args, **kwargs: []
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response("how do I do that?"):
+            pass
+
+    has_history.assert_called_once()
+    search.assert_not_awaited()
+    assert summarizer._docs_tool_suppressed is False
+    assert "Solr docs tool:" in _render_system_prompt(calls[-1])
+
+
+def test_has_conversation_history_reads_cache():
+    """Cached turns mark the request as a follow-up."""
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    with patch(
+        "ols.config.conversation_cache.get",
+        return_value=[CacheEntry(query=HumanMessage("earlier turn"))],
+    ) as cache_get:
+        assert summarizer._has_conversation_history("user", "conv", False) is True
+    cache_get.assert_called_once_with("user", "conv", False)
+
+    with patch("ols.config.conversation_cache.get", return_value=[]):
+        assert summarizer._has_conversation_history("user", "conv", False) is False
+    assert summarizer._has_conversation_history(None, "conv", False) is False
+
+
+def test_pre_retrieved_chunks_skip_blank_passages():
+    """Hits without passage text never reach the prompt or suppress the tool."""
+    blank = _pre_retrieval_chunk(text="   ")
+    usable = _pre_retrieval_chunk(text="real content", url="https://docs/2")
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    rag_chunks = summarizer._pre_retrieved_to_rag_chunks([blank, usable])
+    assert len(rag_chunks) == 1
+    assert "real content" in rag_chunks[0].text
+    assert rag_chunks[0].doc_url == "https://docs/2"
+
+
+def test_pre_retrieved_chunks_omit_missing_docs_url():
+    """A passage without a URL still grounds the answer but is not cited."""
+    chunk = _pre_retrieval_chunk(text="real content", url="")
+    with _solr_pre_retrieval_source():
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+
+    rag_chunks = summarizer._pre_retrieved_to_rag_chunks([chunk])
+    assert len(rag_chunks) == 1
+    assert "real content" in rag_chunks[0].text
+    assert "unknown" not in rag_chunks[0].text
+    assert rag_chunks[0].doc_url == ""
+    assert ReferencedDocument.from_rag_chunks(rag_chunks) == []
+
+
+@pytest.mark.asyncio
+async def test_pre_retrieval_skipped_when_retriever_supplied():
+    """A configured RAG retriever takes precedence over Solr pre-retrieval."""
+    search = AsyncMock(return_value=[_pre_retrieval_chunk()])
+    with (
+        _solr_pre_retrieval_source(search),
+        _spy_generate_prompt() as calls,
+        patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4),
+        patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3),
+    ):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tracker.context_window_size = 65536
+        async for _ in summarizer.generate_response(
+            "install a cluster", rag_retriever=MockRetriever()
+        ):
+            pass
+
+    search.assert_not_awaited()
+    assert summarizer._docs_tool_suppressed is False
+    rag_context = calls[-1][0][1]
+    assert any("a text text text text" in text for text in rag_context)
 
 
 @pytest.mark.asyncio

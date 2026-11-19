@@ -644,6 +644,15 @@ def test_ref_docs_from_rag_chunks():
     assert ref_docs == expected
 
 
+def test_ref_docs_from_rag_chunks_skips_missing_url():
+    """Chunks without a URL are not exposed as referenced documents."""
+    rag_chunk_1 = RagChunk("bla1", "", "title1")
+    rag_chunk_2 = RagChunk("bla2", "url2", "title2")
+
+    ref_docs = ReferencedDocument.from_rag_chunks([rag_chunk_1, rag_chunk_2])
+    assert ref_docs == [ReferencedDocument(doc_url="url2", doc_title="title2")]
+
+
 def test_message_encoder_human_message():
     """Test encoding Human message into string containing JSON representation."""
     msg = HumanMessage(content="Hello")

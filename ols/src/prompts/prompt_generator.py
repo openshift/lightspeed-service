@@ -34,6 +34,7 @@ class GeneratePrompt:
         skill_content: Optional[str] = None,
         solr_docs_tool_guidance: bool = False,
         byok_active: bool = False,
+        pre_retrieved_context: bool = False,
     ) -> None:
         """Initialize prompt generator."""
         self._query = query
@@ -46,6 +47,7 @@ class GeneratePrompt:
         self._skill_content = skill_content
         self._solr_docs_tool_guidance = solr_docs_tool_guidance
         self._byok_active = byok_active
+        self._pre_retrieved_context = pre_retrieved_context
 
     def _get_agent_instructions(self, model: str) -> str:
         """Return agent instructions based on mode and model family."""
@@ -82,7 +84,13 @@ class GeneratePrompt:
 
         if self._tool_call:
             agent_instructions = self._get_agent_instructions(model)
-            if self._solr_docs_tool_guidance and self._mode == QueryMode.ASK:
+            if self._pre_retrieved_context and self._mode == QueryMode.ASK:
+                agent_instructions = (
+                    agent_instructions
+                    + "\n"
+                    + prompts.SOLR_DOCS_PRE_RETRIEVED_SUPPLEMENT.strip()
+                )
+            elif self._solr_docs_tool_guidance and self._mode == QueryMode.ASK:
                 supplement = (
                     prompts.SOLR_DOCS_TOOL_SUPPLEMENT_WITH_BYOK
                     if self._byok_active
