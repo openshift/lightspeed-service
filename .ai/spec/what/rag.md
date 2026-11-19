@@ -38,7 +38,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 5. When a configured index path does not exist, validation must fail immediately with a hard configuration error. There is no fallback logic — BYOK users supply their own paths and are responsible for ensuring they exist.
 
-6. The embedding model used for BYOK vector similarity is configurable via a filesystem path to a HuggingFace-compatible model (`embeddings_model_path`). If no path is configured, the service must fall back to the default model (`sentence-transformers/all-mpnet-base-v2`), which is bundled directly in the service image. The chosen model must be redistributable under an Apache 2.0 compatible license. [PLANNED: OLS-1812 — operator CRD support for per-index embedding model path]
+6. BYOK vector similarity uses a single embedding model (`sentence-transformers/all-mpnet-base-v2`), bundled in the service image and loaded offline (`TRANSFORMERS_OFFLINE=1`, resolved via a pre-populated HuggingFace cache). The model is not configurable: the `embeddings_model_path` key historically written into `olsconfig.yaml` is not read by the service. Build/query parity is maintained by the BYOK tool (lightspeed-rag-content), which hardcodes the same model. Each index's `metadata.json` records `embedding-model-name` and `embedding-dimension`; the service does not currently read it, so a build/query model mismatch fails silently. The shipped model must be redistributable under an Apache 2.0 compatible license.
 
 7. Retrieval must use vector similarity search against the loaded FAISS indexes. The number of most-similar document chunks returned per query is controlled by a configurable content limit. Chunks scoring below a configurable similarity cutoff must be discarded, even if they are within the top-k.
 
@@ -77,7 +77,6 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 ### BYOK (FAISS)
 
-- `ols_config.reference_content.embeddings_model_path` — Filesystem path to a HuggingFace-compatible embedding model directory. Falls back to `sentence-transformers/all-mpnet-base-v2` if unset.
 - `ols_config.reference_content.indexes[]` — List of index definitions, each containing:
   - `product_docs_index_path` — Filesystem path to the persisted FAISS vector store directory.
   - `product_docs_index_id` — Optional index identifier used during deserialization from the storage context.
@@ -127,7 +126,6 @@ Customers can supply their own documentation as additional RAG indexes, so that 
 - [DONE: OLS-1894] ROSA-aware OKP retrieval — service reads `OLS_ROSA_PRODUCT` env var and builds compound Solr filter. Operator-side detection pending.
 - [PLANNED: OLS-2704] RAG as a service / MCP — externalize RAG retrieval behind an MCP interface.
 - [PLANNED: OLS-1872] BYOK — internal web source integration (Git, Confluence).
-- [PLANNED: OLS-1812] Add embedding model path to CRD for each index, enabling per-index embedding model configuration through the operator.
 - [PENDING] OKP server-side embedding — if OKP team confirms, the granite model can be removed from the service image.
 - [PLANNED: OLS-3697] RHOKP standalone HTTPS cutover — `solr_http_base` changes to HTTPS cluster DNS URL. No service code changes needed; HTTPS trust provided by operator-set `SSL_CERT_FILE`.
 - [PLANNED: OLS-3432] Dynamic product filtering — LLM-driven selection of additional OpenShift-related products (Pipelines, GitOps, Service Mesh, etc.) via tool argument. Depends on OLS-3310.
