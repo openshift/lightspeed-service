@@ -7,7 +7,7 @@ The REST API is the only external interface to the OpenShift LightSpeed service.
 ### General
 
 1. All paths are relative to the service root (e.g. `https://host:port`).
-2. All endpoints under `/v1` (except `/v1/feedback/status`) require authentication via bearer token in the `Authorization` header. The token is resolved into a user identity consisting of a user ID (UUID), a username, a `skip_user_id_check` flag, and a user token.
+2. All endpoints under `/v1` (except `/v1/feedback/status`) require authentication via bearer token in the `Authorization` header. The token is resolved into a user identity consisting of a user ID (bounded opaque string, see User Identity Contract rule 32 in `auth.md`), a username, a `skip_user_id_check` flag, and a user token.
 3. All authenticated endpoints (except `/metrics`) enforce the `ols-access` authorization scope. The `/metrics` endpoint enforces a separate `ols-metrics-access` scope.
 4. Health probes (`/readiness`, `/liveness`) require no authentication and have no version prefix.
 5. Extra fields in request bodies are rejected with HTTP 422 for endpoints that use `"extra": "forbid"` in their Pydantic model (`LLMRequest`, `MCPAppResourceRequest`, `MCPAppToolCallRequest`, `ToolApprovalDecisionRequest`).
@@ -490,7 +490,7 @@ None required.
 
 | Field              | Type          | Description |
 |--------------------|---------------|-------------|
-| user_id            | string (UUID) | The authenticated user's ID |
+| user_id            | string (opaque, bounded; see User Identity Contract rule 32 in `auth.md`) | The authenticated user's ID |
 | username           | string        | The authenticated user's name |
 | skip_user_id_check | boolean       | Whether strict user ID validation is bypassed |
 

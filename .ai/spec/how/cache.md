@@ -8,7 +8,7 @@ PostgreSQL) behind a common abstract interface, selected at startup via factory.
 
 | File | Key symbols | Responsibility |
 |---|---|---|
-| `ols/src/cache/cache.py` | `Cache` (ABC) | Abstract interface. Defines `get`, `insert_or_append`, `delete`, `list`, `set_topic_summary`, `ready`. Also provides `construct_key` (static) for compound key creation and ID validation via `check_suid`. |
+| `ols/src/cache/cache.py` | `Cache` (ABC) | Abstract interface. Defines `get`, `insert_or_append`, `delete`, `list`, `set_topic_summary`, `ready`. Also provides `construct_key` (static) for compound key creation and ID validation: user IDs via `check_user_id` (bounded opaque string) and conversation IDs via `check_suid` (UUID format). |
 | `ols/src/cache/in_memory_cache.py` | `InMemoryCache` | Thread-safe singleton LRU cache backed by a `deque` (for recency ordering) and a `dict` (for O(1) lookup). Capacity is measured in total message entries across all conversations. |
 | `ols/src/cache/postgres_cache.py` | `PostgresCache` | PostgreSQL-backed cache using `psycopg2`. Stores serialized JSON in a `bytea` column. Uses advisory locks for write serialization and a separate `conversations` metadata table. |
 | `ols/src/cache/cache_factory.py` | `CacheFactory.conversation_cache()` | Static factory. Maps config type string (`"memory"` / `"postgres"`) to concrete `Cache` subclass. |
@@ -36,7 +36,7 @@ olsconfig.yaml
 ```
 Endpoint / HistorySupport
   -> config.conversation_cache.get(user_id, conversation_id, skip_user_id_check)
-  -> construct_key validates IDs (UUID format via check_suid)
+  -> construct_key validates IDs (user_id via check_user_id: bounded opaque string; conversation_id via check_suid: UUID format)
   -> InMemory: dict lookup, promote key to front of deque, return list[CacheEntry]
   -> Postgres: @connection ensures live connection, SELECT value WHERE (user_id, conversation_id),
                deserialize JSON via MessageDecoder, return list[CacheEntry]
@@ -47,6 +47,7 @@ Endpoint / HistorySupport
 ```
 ols.py endpoint
   -> config.conversation_cache.insert_or_append(user_id, conversation_id, cache_entry, ...)
+  -> validate IDs before storage access (check_user_id for user IDs, check_suid for conversation IDs)
   -> CacheEntry.to_dict() produces {"human_query": HumanMessage, "ai_response": AIMessage, ...}
   -> InMemory: append to dict list, promote in deque, increment total_entries,
                update ConversationData metadata, evict from tail if over capacity
