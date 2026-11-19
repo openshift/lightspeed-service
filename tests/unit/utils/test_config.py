@@ -3,15 +3,16 @@
 import io
 import logging
 import traceback
-from typing import TypeVar
-from unittest.mock import patch
+from contextlib import contextmanager
+from typing import Iterator, TypeVar
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 from yaml.parser import ParserError
 
 from ols import config
-from ols.app.models.config import Config
+from ols.app.models.config import Config, SolrHybridSettings
 from ols.utils.checks import InvalidConfigurationError
 
 E = TypeVar("E", bound=Exception)
@@ -1231,3 +1232,94 @@ dev_config:
             model_name="ibm-granite/granite-embedding-small-english-r2"
         )
     config.reload_empty()
+
+
+@contextmanager
+def _solr_hybrid_config() -> Iterator[None]:
+    """Configure solr_hybrid with clean init state and restore the global config.
+
+    ``configure_logging`` sets ``propagate=False`` on the ``ols`` logger, which
+    hides its records from ``caplog``. Propagation is enabled for the duration
+    of the test and restored afterwards so the assertions do not depend on the
+    logging state left by earlier tests.
+    """
+    ols_logger = logging.getLogger("ols")
+    previous_propagate = ols_logger.propagate
+    ols_logger.propagate = True
+    try:
+        config.reload_empty()
+        config.config.ols_config.solr_hybrid = SolrHybridSettings(
+            solr_http_base="http://localhost:8080"
+        )
+        config._solr_hybrid_initialized = False
+        config._solr_init_attempts = 0
+        config._cached_solr_hybrid_search = None
+        yield
+    finally:
+        ols_logger.propagate = previous_propagate
+        config.reload_empty()
+        config._solr_hybrid_initialized = False
+        config._solr_init_attempts = 0
+        config._cached_solr_hybrid_search = None
+
+
+def _captured_records(caplog) -> list[logging.LogRecord]:
+    """Return captured records once each, even if a handler is attached twice.
+
+    Tests that install the shared ``caplog`` handler on the ``ols`` logger leave
+    it there, so with propagation enabled a record can be delivered through both
+    the logger and the root logger.
+    """
+    records: dict[int, logging.LogRecord] = {}
+    for record in caplog.records:
+        records.setdefault(id(record), record)
+    return list(records.values())
+
+
+def test_solr_hybrid_search_logs_init_failure_reason(caplog) -> None:
+    """The retry warning names the exception that blocked initialization."""
+    reason = "OCP_CLUSTER_VERSION environment variable must be set"
+    with (
+        _solr_hybrid_config(),
+        caplog.at_level(logging.WARNING),
+        patch.object(config, "_solr_hybrid_embed_model", return_value=MagicMock()),
+        patch(
+            "ols.utils.config.SolrHybridSearch",
+            side_effect=InvalidConfigurationError(reason),
+        ),
+    ):
+        assert config.solr_hybrid_search is None
+        assert config._solr_hybrid_initialized is False
+
+    warning = _captured_records(caplog)[-1]
+    assert warning.levelno == logging.WARNING
+    assert "attempt 1/3" in warning.getMessage()
+    assert reason in warning.getMessage()
+
+
+def test_solr_hybrid_search_logs_terminal_failure_reason(caplog) -> None:
+    """The terminal error names the exception, includes a traceback, and stops retrying."""
+    reason = "OCP_CLUSTER_VERSION environment variable must be set"
+    with (
+        _solr_hybrid_config(),
+        caplog.at_level(logging.WARNING),
+        patch.object(config, "_solr_hybrid_embed_model", return_value=MagicMock()),
+        patch(
+            "ols.utils.config.SolrHybridSearch",
+            side_effect=InvalidConfigurationError(reason),
+        ),
+    ):
+        for _ in range(3):
+            assert config.solr_hybrid_search is None
+        assert config._solr_hybrid_initialized is True
+        assert config.solr_hybrid_search is None
+
+    errors = [
+        record
+        for record in _captured_records(caplog)
+        if record.levelno == logging.ERROR
+    ]
+    assert len(errors) == 1
+    assert "permanently unavailable after 3 attempts" in errors[0].getMessage()
+    assert reason in errors[0].getMessage()
+    assert errors[0].exc_info is not None
