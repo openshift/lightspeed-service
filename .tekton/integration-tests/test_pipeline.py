@@ -83,6 +83,16 @@ class PipelineTests(unittest.TestCase):
 
     def test_pipeline_wires_snapshot_and_retains_failures(self):
         """Pass snapshot values into tests and preserve failures after publication."""
+        gate = self.tasks["check-snapshot-component"]
+        self.assertIn("metadata.labels['appstudio.openshift.io/component']", str(gate))
+        self.assertEqual(
+            self.tasks["get-snapshot-component"]["when"],
+            [{
+                "input": "$(tasks.check-snapshot-component.results.matches)",
+                "operator": "in",
+                "values": ["true"],
+            }],
+        )
         task = self.tasks["ols-service-tests"]
         params = {param["name"]: param["value"] for param in task["params"]}
         self.assertEqual(
@@ -128,10 +138,11 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(env.get("OLS_EXTERNAL_IMAGE_MIRRORS"), "true")
 
     def test_scenario_targets_service_pipeline(self):
-        """Trigger for service builds and resolve an existing pipeline path."""
+        """Run E2E only for PR snapshots and resolve an existing pipeline path."""
         scenario = yaml.safe_load(SCENARIO.read_text())
         self.assertEqual(
-            scenario["spec"]["contexts"][0]["name"], "component_lightspeed-service"
+            [context["name"] for context in scenario["spec"]["contexts"]],
+            ["pull_request"],
         )
         params = {
             p["name"]: p["value"] for p in scenario["spec"]["resolverRef"]["params"]

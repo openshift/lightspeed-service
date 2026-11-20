@@ -9,8 +9,8 @@ metadata:
 spec:
   application: ols
   contexts:
-    - name: component_lightspeed-service
-      description: Service snapshot e2e tests on an AWS HyperShift cluster
+    - name: pull_request
+      description: Service snapshot e2e tests on an AWS HyperShift cluster (PRs only)
   params:
     - name: test-name
       value: lightspeed-service-e2e-tests
