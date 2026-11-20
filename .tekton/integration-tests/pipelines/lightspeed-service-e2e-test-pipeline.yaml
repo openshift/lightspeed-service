@@ -27,7 +27,31 @@ spec:
     default: quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest
     description: Operator bundle installed by the e2e harness; override with a digest for reproducibility.
   tasks:
+  - name: check-snapshot-component
+    taskSpec:
+      results:
+      - name: matches
+        description: Whether the PR snapshot belongs to a service build.
+      steps:
+      - name: check
+        image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+        env:
+        - name: COMPONENT
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['appstudio.openshift.io/component']
+        script: |
+          #!/bin/sh
+          if [ "$COMPONENT" = lightspeed-service ]; then
+            printf true > $(step.results.matches.path)
+          else
+            printf false > $(step.results.matches.path)
+          fi
   - name: get-snapshot-component
+    when:
+    - input: $(tasks.check-snapshot-component.results.matches)
+      operator: in
+      values: ["true"]
     params:
     - name: SNAPSHOT
       value: $(params.SNAPSHOT)
@@ -317,6 +341,10 @@ spec:
             value: stepactions/fail-if-any-step-failed/0.1/fail-if-any-step-failed.yaml
   finally:
   - name: export-logs-for-retention
+    when:
+    - input: $(tasks.check-snapshot-component.results.matches)
+      operator: in
+      values: ["true"]
     taskRef:
       resolver: git
       params:
