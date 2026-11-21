@@ -126,3 +126,7 @@ class Cache(ABC):
         Returns:
             True if the cache is ready, False otherwise.
         """
+
+    @abstractmethod
+    def find_owner_user_id(self, conversation_id: str) -> str | None:
+        """Return the user_id that owns conversation_id, if any cache row exists."""

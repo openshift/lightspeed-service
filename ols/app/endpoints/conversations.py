@@ -17,6 +17,7 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.src.auth.auth import get_auth_dependency
+from ols.src.query_helpers.conversation_access import ensure_conversation_owned_by_user
 from ols.utils import suid
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,8 @@ def get_conversation(
 
     logger.debug("Getting conversation %s for user %s", conversation_id, user_id)
 
+    ensure_conversation_owned_by_user(user_id, conversation_id)
+
     try:
         cache_entries = config.conversation_cache.get(
             user_id, conversation_id, skip_user_id_check
@@ -243,6 +246,8 @@ def delete_conversation(
 
     logger.debug("Deleting conversation %s for user %s", conversation_id, user_id)
 
+    ensure_conversation_owned_by_user(user_id, conversation_id)
+
     try:
         deleted = config.conversation_cache.delete(
             user_id, conversation_id, skip_user_id_check
@@ -330,6 +335,8 @@ def update_conversation(
     logger.debug(
         "Updating conversation %s topic_summary for user %s", conversation_id, user_id
     )
+
+    ensure_conversation_owned_by_user(user_id, conversation_id)
 
     try:
         cache_entries = config.conversation_cache.get(
