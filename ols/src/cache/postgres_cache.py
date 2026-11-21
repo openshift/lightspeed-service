@@ -115,6 +115,13 @@ class PostgresCache(Cache, PostgresBase):
          WHERE user_id=%s AND conversation_id=%s
         """
 
+    SELECT_OWNER_USER_ID_STATEMENT = """
+        SELECT user_id
+          FROM cache
+         WHERE conversation_id=%s
+         LIMIT 1
+        """
+
     LIST_CONVERSATIONS_STATEMENT = """
         SELECT conversation_id, topic_summary,
                EXTRACT(EPOCH FROM last_message_timestamp) as last_message_timestamp,
@@ -384,6 +391,23 @@ class PostgresCache(Cache, PostgresBase):
                 except psycopg2.DatabaseError as e:
                     logger.error("PostgresCache.set_topic_summary: %s", e)
                     raise CacheError("PostgresCache.set_topic_summary", e) from e
+
+    @connection
+    def find_owner_user_id(self, conversation_id: str) -> str | None:
+        """Return user_id for an existing conversation_id, if present in cache."""
+        Cache._check_conversation_id(conversation_id)
+        with self.connection.cursor() as cursor:
+            try:
+                cursor.execute(
+                    PostgresCache.SELECT_OWNER_USER_ID_STATEMENT, (conversation_id,)
+                )
+                row = cursor.fetchone()
+            except psycopg2.DatabaseError as e:
+                logger.error("PostgresCache.find_owner_user_id: %s", e)
+                raise CacheError("PostgresCache.find_owner_user_id", e) from e
+        if row is None:
+            return None
+        return row[0]
 
     def ready(self) -> bool:
         """Check if the cache is ready.
