@@ -31,6 +31,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [prompts.md](what/prompts.md) | System prompts (full text), agent instructions, composition order, placeholders |
 | [mcp-apps.md](what/mcp-apps.md) | MCP apps UI integration: resource discovery, direct tool calls, client auth headers |
 | [audit-logging.md](what/audit-logging.md) | OTel-based audit logging: span hierarchy, GenAI attributes, content capture policy |
+| [execution-core.md](what/execution-core.md) | [PLANNED: OLS-4671] Chat on the shared DeepAgents execution core: removed budget/compression/offload, approval and turn-limit continuation, config compatibility |
 
 ### how/ -- Architecture Specifications
 
@@ -88,6 +89,7 @@ When what/ and how/ file names don't match 1:1, this table maps behavioral specs
 | `prompts.md` | _(see `how/query-pipeline.md` prompt generation)_ |
 | `mcp-apps.md` | _(see `how/tools.md` MCP client section)_ |
 | `audit-logging.md` | _(no dedicated how/ file)_ |
+| `execution-core.md` | `query-pipeline.md`, `tools.md` (planned notes) |
 
 ## Project History
 

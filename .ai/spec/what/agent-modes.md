@@ -95,6 +95,9 @@ behavior; other specs reference it rather than redefining mode rules.
     request at the iteration limit, with an explicit instruction not to call
     tools. This guarantees termination.
 
+
+> [PLANNED: OLS-4671] Rule 13 is replaced by the continuation flow: when the effective limit (rule 12, counted as model calls) is reached and the model still requests tools, the user is asked to continue (a complete answer within the limit returns normally; `/v1/query` stops automatically; the wait is bounded by `tools_approval.approval_timeout`, with expiry treated as Stop); Stop yields one final model call with tools disabled using the same per-provider mechanisms. Rules 14 and 19 (token budget, round cap, per-round timeout) no longer apply; the run timeout is `TOOL_CALL_ROUND_TIMEOUT` × the effective limit. See `what/execution-core.md`.
+
 ### Common Behavior
 
 14. Both modes share the same token budget system (`TokenBudgetTracker`).
@@ -190,4 +193,5 @@ Scenarios are defined under `eval/troubleshooting/scenarios/`. The test module i
 |---|---|
 | OLS-2754 | Propose plan for autonomous investigation in TROUBLESHOOTING mode |
 | OLS-2894 | Autonomous, policy-driven AI agents for OpenShift (TP: OCP 5.0) |
+| OLS-4671 | Turn-limit continuation prompt replaces the automatic final iteration; mode limits unchanged (see `what/execution-core.md`) |
 | OLS-2898 | Raise `max_iterations` to 50 and validate orchestration loop early-exit behavior |

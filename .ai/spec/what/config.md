@@ -79,9 +79,9 @@ The YAML file has four top-level sections:
 | `ols_config.reference_content` | object | none | RAG index paths and embeddings model | see what/rag.md |
 | `ols_config.openshift_docs_mcp` | object | none | Dedicated RHOKP MCP endpoint and result limit for OpenShift docs search | see what/rag.md |
 | `ols_config.system_prompt_path` | string | none | Path to file containing custom system prompt | -- |
-| `ols_config.history_compression_enabled` | bool | true | Toggle conversation history compression | -- |
+| `ols_config.history_compression_enabled` | bool | true | Toggle conversation history compression. [PLANNED: OLS-4671] Accepted but ignored; deprecation warning | -- |
 | `ols_config.max_iterations` | int | mode-dependent | Tool-calling loop iteration cap (ask=5, troubleshooting=35) | -- |
-| `ols_config.tool_round_cap_fraction` | float | 0.6 | Max fraction of remaining tool token budget usable per round (0.3--0.8) | -- |
+| `ols_config.tool_round_cap_fraction` | float | 0.6 | Max fraction of remaining tool token budget usable per round (0.3--0.8). [PLANNED: OLS-4671] Accepted but ignored; deprecation warning | -- |
 | `ols_config.guardrails.tool_result_inspection.enabled` | bool | true | Enable LLM inspection of model-visible tool results and errors | see what/tools.md |
 | `ols_config.credential_hot_reload` | bool | false | When true, LLM credentials are re-read from disk on each request (OLS-3450) |
 | `ols_config.max_workers` | int | 1 | Number of concurrent workers | -- |
@@ -125,7 +125,7 @@ Each provider entry under `llm_providers` supports:
 | `llm_providers[].models[].name` | string | (required) | Model identifier |
 | `llm_providers[].models[].context_window_size` | int | 128000 | Context window size in tokens |
 | `llm_providers[].models[].parameters.max_tokens_for_response` | int | 4096 | Tokens reserved for response |
-| `llm_providers[].models[].parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window for tool outputs (0.1--0.6) |
+| `llm_providers[].models[].parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window for tool outputs (0.1--0.6). [PLANNED: OLS-4671] Accepted but ignored; deprecation warning |
 | `llm_providers[].models[].parameters.reasoning_config` | dict | none | Freeform dict of provider-specific reasoning/thinking parameters. See `what/llm-providers.md` rule 13 for valid keys per provider |
 | `llm_providers[].models[].parameters.temperature` | float | none | Optional finite, non-negative temperature; omitted from provider parameters when unset. `temperature_supported` is rejected. |
 | `llm_providers[].models[].parameters.reasoning_effort` | enum | low | [DEPRECATED: OLS-3442] Reasoning effort level (low, medium, high). Replaced by `reasoning_config` |

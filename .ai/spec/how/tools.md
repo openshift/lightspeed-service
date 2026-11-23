@@ -4,6 +4,8 @@ The tools subsystem manages MCP (Model Context Protocol) server integration,
 tool discovery and filtering, human-in-the-loop approval gating, parallel tool
 execution with retry/backoff, and token-budget-aware result truncation.
 
+> [PLANNED: OLS-4671] Tool execution, retry/backoff, inspection, wrapping, redaction and the approval gate move into the shared execution core (core `ApprovalMiddleware` with a service approver; approval state machine and pending store stay in the service). The 3-tier truncation, per-round timeout and `offloaded_content.py` are removed. MCP client setup, tool gathering, header placeholder resolution and hybrid-RAG tool filtering stay in the service. See `what/execution-core.md`.
+
 ## Module Map
 
 | File | Key symbols | Responsibility |

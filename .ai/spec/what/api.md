@@ -38,7 +38,7 @@ The REST API is the only external interface to the OpenShift LightSpeed service.
 18. `POST /v1/mcp-apps/resources` fetches a `ui://` resource from a configured MCP server. The URI must start with `ui://` and contain a path after the prefix.
 19. `POST /v1/mcp-apps/tools/call` proxies a tool call to a configured MCP server.
 20. `GET /v1/mcp/client-auth-headers` returns which MCP servers require client-provided authorization headers so clients know what to include in the `mcp_headers` field of query requests.
-21. `POST /v1/tool-approvals/decision` submits an approval or rejection for a pending tool execution request. Used during streaming queries when a tool call requires explicit user approval.
+21. `POST /v1/tool-approvals/decision` submits an approval or rejection for a pending tool execution request. Used during streaming queries when a tool call requires explicit user approval. [PLANNED: OLS-4671] It also resolves a pending turn-limit continuation (`continuation_id`; see `what/execution-core.md`).
 
 ### Infrastructure Endpoints
 
@@ -435,8 +435,9 @@ Submit an approval or rejection decision for a pending tool execution request. D
 
 | Field       | Type    | Required | Description |
 |-------------|---------|----------|-------------|
-| approval_id | string  | yes      | Unique identifier of the pending approval request |
-| approved    | boolean | yes      | `true` to approve, `false` to reject |
+| approval_id | string  | yes      | Unique identifier of the pending approval request. [PLANNED: OLS-4671] Optional; exactly one of `approval_id` or `continuation_id` is required |
+| continuation_id | string | no | [PLANNED: OLS-4671] Identifier from a `continuation_required` event |
+| approved    | boolean | yes      | `true` to approve, `false` to reject. For `continuation_id`: `true` = Continue, `false` = Stop |
 
 Extra fields are rejected (422).
 
@@ -450,7 +451,7 @@ Empty body (no content, 200 status).
 |--------|-----------|
 | 401    | Missing or invalid credentials |
 | 403    | Caller lacks permission |
-| 404    | No pending approval found for the given `approval_id` |
+| 404    | No pending approval found for the given `approval_id` (or [PLANNED: OLS-4671] `continuation_id`) |
 | 409    | The approval request has already been resolved (approved or rejected) |
 
 ---
@@ -600,6 +601,12 @@ The `id` field is a zero-based sequential counter shared across all `token` and 
 {"event": "approval_required", "data": {"approval_id": "...", ...}}
 ```
 
+**continuation_required** -- [PLANNED: OLS-4671] The turn limit was reached while the model still requests tools. The client must ask the user to Continue or Stop and submit the decision via `POST /v1/tool-approvals/decision` with `continuation_id`. The wait is bounded by `tools_approval.approval_timeout`; on expiry the server takes the Stop path. Not emitted for `/v1/query`, which stops automatically at the limit.
+
+```json
+{"event": "continuation_required", "data": {"continuation_id": "...", "turns_used": 5, "turn_limit": 5}}
+```
+
 **tool_result** -- A tool execution has completed.
 
 ```json
@@ -665,6 +672,7 @@ No SSE framing. Output is concatenated directly.
 | reasoning                  | Raw reasoning text; a blank line (`\n\n`) separates the last reasoning token from the first text token |
 | tool_call                  | `\nTool call: {json}\n` |
 | approval_required          | `\nApproval request: {json}\n` |
+| continuation_required      | [PLANNED: OLS-4671] `\nContinuation request: {json}\n` |
 | tool_result                | `\nTool result: {json}\n` |
 | skill_selected             | `\nSkill selected: <name>\n` |
 | history_compression_start  | `\nHistory compression start: {json}\n` |
@@ -795,6 +803,7 @@ The service applies the following cross-cutting behaviors to all requests:
 
 ## Planned Changes
 
+- [PLANNED: OLS-4671] Add `continuation_required` streaming event and `continuation_id` on `POST /v1/tool-approvals/decision`; all other events and payloads unchanged. See `what/execution-core.md`.
 - [PLANNED: OLS-2682] Remove `/v1/query` endpoint. The streaming endpoint becomes the sole query interface.
 - [PLANNED: OLS-2680] Add OpenAI `/responses` API compatibility layer.
 - [PLANNED: OLS-2684] Remove client MCP headers (`mcp_headers` field).

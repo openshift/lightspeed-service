@@ -53,6 +53,9 @@ post-processing across eight sequential stages.
 
 ### Stage 3: Token Budget Calculation and RAG Retrieval
 
+> [PLANNED: OLS-4671] Budget computation, chunk truncation to a budget and the per-request budget tracker (rules 12–16) are removed; top-k, score cutoff, multi-index merge and URL deduplication remain. See `what/execution-core.md`.
+
+
 12. The system must compute the prompt budget by subtracting the response
     token reservation and (when tool calling is enabled) the tool token
     reservation from the model's context window size.
@@ -76,6 +79,9 @@ post-processing across eight sequential stages.
     unified per-request budget tracker.
 
 ### Stage 4: History Retrieval and Compression
+
+> [PLANNED: OLS-4671] History truncation and compression are removed; prior messages come from the conversation's DeepAgents checkpoint, and DeepAgents summarization emits the same `history_compression_start`/`history_compression_end` events. See `what/execution-core.md`.
+
 
 17. If no user ID or conversation ID is provided, the system must skip
     history entirely and use an empty history.
@@ -148,6 +154,9 @@ post-processing across eight sequential stages.
 
 ### Stage 7: LLM Generation with Tool Calling Loop
 
+> [PLANNED: OLS-4671] Rule 29's prompt-budget check is removed (context overflow is reported from provider rejection as the same "Prompt is too long" error). Stage 7 runs on the shared DeepAgents core: rules 30–34 are replaced by core execution with approval and turn-limit middleware; rule 33's automatic final iteration is replaced by the continuation flow (Continue, or Stop with a tool-disabled final answer); rule 34's per-round timeout becomes a run timeout. See `what/execution-core.md`.
+
+
 30. The system must resolve available tools from configured MCP servers
     for the current request. Tool definitions must be serialized and their
     token count charged against the tool budget.
@@ -205,6 +214,9 @@ post-processing across eight sequential stages.
     token counts (input and output), and the user's remaining quota.
 
 ## Token Budget System
+
+> [PLANNED: OLS-4671] This section is superseded: context management is delegated to DeepAgents eviction and summarization in the shared core; related configuration is accepted but ignored. See `what/execution-core.md`.
+
 
 41. The context window is partitioned into three top-level reserves:
     - **Response reserve**: tokens reserved for the LLM's generated
@@ -299,6 +311,9 @@ post-processing across eight sequential stages.
 
 ## Constraints
 
+> [PLANNED: OLS-4671] Constraints 3–6 (token budget) no longer apply after cutover. See `what/execution-core.md`.
+
+
 1. **Pipeline order is fixed.** The eight stages must execute in the
    defined order. Later stages depend on budget calculations and context
    assembled by earlier stages.
@@ -337,4 +352,5 @@ post-processing across eight sequential stages.
 |---|---|
 | OLS-2825 | Consolidate context window token budget management into a single, well-documented module |
 | OLS-2840 | Refactor DocsSummarizer: extract ToolCallingAgent class to separate prompt orchestration from tool loop execution |
+| OLS-4671 | Run Stage 7 on the shared DeepAgents execution core; delegate context management; add turn-limit continuation (see `what/execution-core.md`) |
 | OLS-2898 | Raise `max_iterations` to 50 and validate orchestration loop early-exit behavior (see also `what/agent-modes.md`) |
