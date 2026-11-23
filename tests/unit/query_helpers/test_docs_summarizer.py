@@ -10,7 +10,11 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
-from ols.app.models.config import LoggingConfig, MCPServerConfig, SolrHybridSettings
+from ols.app.models.config import (
+    LoggingConfig,
+    MCPServerConfig,
+    OpenShiftDocsMCPSettings,
+)
 from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
@@ -18,7 +22,6 @@ from ols.constants import (
     DEFAULT_MAX_TOKENS_FOR_RESPONSE,
     QueryMode,
 )
-from ols.utils.config import AppConfig
 
 # needs to be setup before importing docs_summarizer
 config.ols_config.authentication_config.module = "k8s"
@@ -84,24 +87,18 @@ def test_if_system_prompt_was_updated():
     assert summarizer._system_prompt == config.ols_config.system_prompt
 
 
-def test_tool_calling_enabled_when_solr_docs_tool_active_without_mcp():
-    """Enable tool loop when Solr hybrid docs tool is active, without MCP servers."""
-    hybrid = SolrHybridSettings()
-    mock_client = MagicMock()
-    with (
-        patch.object(config.ols_config, "solr_hybrid", hybrid),
-        patch.object(
-            AppConfig,
-            "solr_hybrid_search",
-            PropertyMock(return_value=mock_client),
-        ),
-    ):
+def test_tool_calling_enabled_when_docs_mcp_configured_without_generic_mcp():
+    """Enable tool loop when the dedicated docs MCP is configured."""
+    settings = OpenShiftDocsMCPSettings(
+        url="https://lightspeed-rhokp.test.svc:8443/mcp"
+    )
+    with patch.object(config.ols_config, "openshift_docs_mcp", settings):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     assert summarizer._tool_calling_enabled is True
 
 
-def test_tool_calling_disabled_without_mcp_and_without_solr_docs_tool():
-    """Tool calling stays off when neither MCP nor Solr docs tool is active."""
+def test_tool_calling_disabled_without_mcp_and_without_docs_mcp():
+    """Tool calling stays off when neither generic nor docs MCP is configured."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     assert summarizer._tool_calling_enabled is False
 
@@ -440,26 +437,70 @@ def test_summarize_retrieval_logging(caplog):
 
 
 @pytest.mark.asyncio
-async def test_resolve_tools_appends_openshift_docs_tool_when_solr_configured_no_mcp():
-    """Append docs tool for Solr hybrid when MCP returns no tools."""
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
-        new_callable=AsyncMock,
-    ) as m_get:
-        m_get.return_value = []
-        prev = config.ols_config.solr_hybrid
-        config.ols_config.solr_hybrid = SolrHybridSettings()
-        config._cached_solr_hybrid_search = MagicMock()
-        config._solr_hybrid_initialized = True
-        try:
-            summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-            tools = await summarizer._resolve_tools_for_request("query")
-        finally:
-            config.ols_config.solr_hybrid = prev
-            config._cached_solr_hybrid_search = None
-            config._solr_hybrid_initialized = False
-    assert [t.name for t in tools] == ["search_openshift_documentation"]
+async def test_resolve_tools_appends_docs_mcp_tool_without_generic_tools():
+    """Append the dedicated docs tool when generic MCP returns no tools."""
+    settings = OpenShiftDocsMCPSettings(
+        url="https://lightspeed-rhokp.test.svc:8443/mcp"
+    )
+    docs_tool = MagicMock()
+    with (
+        patch.object(config.ols_config, "openshift_docs_mcp", settings),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.initialize_rhokp_mcp",
+            new_callable=AsyncMock,
+        ) as m_init,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+            return_value=[],
+        ) as m_get,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_openshift_docs_tool",
+            return_value=docs_tool,
+        ) as m_get_docs_tool,
+    ):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        tools = await summarizer._resolve_tools_for_request("query")
+
+    assert tools == [docs_tool]
+    m_init.assert_awaited_once_with(settings)
     m_get.assert_awaited_once()
+    m_get_docs_tool.assert_called_once_with(settings)
+
+
+@pytest.mark.asyncio
+async def test_resolve_tools_reserves_search_for_docs_mcp():
+    """Keep RHOKP search when a generic MCP server also exposes ``search``."""
+    settings = OpenShiftDocsMCPSettings(
+        url="https://lightspeed-rhokp.test.svc:8443/mcp"
+    )
+    generic_search = MagicMock(name="search")
+    generic_search.name = "search"
+    other_tool = MagicMock(name="get_pods")
+    other_tool.name = "get_pods"
+    docs_tool = MagicMock(name="search")
+    docs_tool.name = "search"
+    with (
+        patch.object(config.ols_config, "openshift_docs_mcp", settings),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.initialize_rhokp_mcp",
+            new_callable=AsyncMock,
+        ) as m_init,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+            new_callable=AsyncMock,
+            return_value=[generic_search, other_tool],
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.get_openshift_docs_tool",
+            return_value=docs_tool,
+        ),
+    ):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        tools = await summarizer._resolve_tools_for_request("query")
+
+    assert tools == [other_tool, docs_tool]
+    m_init.assert_awaited_once_with(settings)
 
 
 @pytest.mark.asyncio
