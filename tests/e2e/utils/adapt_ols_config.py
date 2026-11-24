@@ -129,6 +129,53 @@ def update_ols_configmap() -> None:
         ) from e
 
 
+def disable_responses_api_for_ollama() -> None:
+    """Disable the OpenAI Responses API for models served by ollama.
+
+    The released OLS service defaults OpenAI-type providers to the
+    OpenAI Responses API (``POST /v1/responses``). Ollama - the LLM
+    backend used in disconnected e2e runs - only implements the Chat
+    Completions API, so every LLM call fails with 404 and the app-server
+    readiness probe never passes. The operator-managed OLSConfig CR has
+    no field for model options, so the generated ``olsconfig`` ConfigMap
+    is patched directly instead.
+    """
+    try:
+        configmap = cluster_api.read_resource("configmap", "olsconfig")
+        olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+
+        providers = olsconfig.get("llm_providers") or []
+        ollama_models = [
+            model
+            for provider in providers
+            if provider.get("name") == "ollama"
+            for model in provider.get("models") or []
+        ]
+        if not ollama_models:
+            raise RuntimeError(
+                "No 'ollama' provider found in OLS configmap - cannot disable "
+                "Responses API"
+            )
+
+        for model in ollama_models:
+            options = model.setdefault("options", {}) or {}
+            options["use_responses_api"] = False
+            model["options"] = options
+
+        updated = yaml.dump(olsconfig)
+        cluster_api.patch_resource(
+            "configmap",
+            "olsconfig",
+            {"data": {DEFAULT_CONFIGURATION_FILE: updated}},
+        )
+        print("Disabled Responses API for ollama models (Chat Completions only)")
+
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to disable Responses API in OLS configmap: {e}"
+        ) from e
+
+
 def setup_service_accounts(namespace: str) -> None:
     """Set up service accounts and access roles.
 
@@ -406,6 +453,10 @@ def _apply_e2e_specific_config(ols_image: str) -> None:
         print(
             "Disconnected mode: skipping configmap update, using existing configuration"
         )
+        # Ollama only implements Chat Completions; the Responses API
+        # default makes the LLM readiness check fail with 404 (OLS-4276).
+        print("Disabling Responses API for ollama-backed models...")
+        disable_responses_api_for_ollama()
     # Apply test image
     if ols_image:
         print(f"Applying test image: {ols_image}")

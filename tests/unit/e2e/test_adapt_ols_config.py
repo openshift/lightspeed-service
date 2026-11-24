@@ -13,6 +13,7 @@ from openshift.dynamic.exceptions import ConflictError, ForbiddenError
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e import conftest as e2e_conftest
 from tests.e2e.utils import adapt_ols_config, cluster_api, ols_installer, olsconfig_cr
+from tests.e2e.utils import cluster as cluster_utils
 
 
 @pytest.mark.parametrize("providers", [["openai"], ["openai", "watsonx"]])
@@ -256,3 +257,134 @@ def test_configmap_updates_patch_only_configuration_data(
     assert set(body["data"]) == {DEFAULT_CONFIGURATION_FILE}
     config = yaml.safe_load(body["data"][DEFAULT_CONFIGURATION_FILE])
     assert config["ols_config"]["logging_config"]["lib_log_level"] == "INFO"
+
+
+def test_disable_responses_api_targets_only_ollama_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Responses API is disabled only for ollama models via a data-only patch."""
+    original = {
+        "metadata": {"name": "olsconfig", "resourceVersion": "42"},
+        "data": {
+            "unrelated": "keep-me",
+            DEFAULT_CONFIGURATION_FILE: yaml.safe_dump(
+                {
+                    "llm_providers": [
+                        {
+                            "name": "ollama",
+                            "type": "openai",
+                            "url": "http://ollama-service.ollama.svc.cluster.local:11434/v1",
+                            "models": [{"name": "gemma3:1b"}],
+                        },
+                        {
+                            "name": "openai",
+                            "type": "openai",
+                            "models": [{"name": "gpt-4o"}],
+                        },
+                    ],
+                }
+            ),
+        },
+    }
+    monkeypatch.setattr(
+        cluster_api, "read_resource", Mock(return_value=deepcopy(original))
+    )
+    patch = Mock()
+    monkeypatch.setattr(cluster_api, "patch_resource", patch)
+    monkeypatch.setattr(
+        cluster_api,
+        "apply_resource",
+        Mock(side_effect=AssertionError("Unexpected apply")),
+    )
+    adapt_ols_config.disable_responses_api_for_ollama()
+    assert patch.call_args.args[:2] == ("configmap", "olsconfig")
+    body = patch.call_args.args[2]
+    assert set(body) == {"data"}
+    assert set(body["data"]) == {DEFAULT_CONFIGURATION_FILE}
+    config = yaml.safe_load(body["data"][DEFAULT_CONFIGURATION_FILE])
+    ollama_model = config["llm_providers"][0]["models"][0]
+    assert ollama_model["name"] == "gemma3:1b"
+    assert ollama_model["options"] == {"use_responses_api": False}
+    # other providers keep the Responses API default
+    other_model = config["llm_providers"][1]["models"][0]
+    assert other_model == {"name": "gpt-4o"}
+
+
+def test_disable_responses_api_fails_fast_without_ollama_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A configmap without an ollama provider fails fast instead of no-op."""
+    original = {
+        "data": {
+            DEFAULT_CONFIGURATION_FILE: yaml.safe_dump(
+                {
+                    "llm_providers": [
+                        {"name": "openai", "type": "openai", "models": [{"name": "x"}]}
+                    ]
+                }
+            )
+        }
+    }
+    monkeypatch.setattr(cluster_api, "read_resource", Mock(return_value=original))
+    patch = Mock()
+    monkeypatch.setattr(cluster_api, "patch_resource", patch)
+    with pytest.raises(RuntimeError, match="No 'ollama' provider found"):
+        adapt_ols_config.disable_responses_api_for_ollama()
+    patch.assert_not_called()
+
+
+def test_disable_responses_api_fails_fast_on_missing_configmap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing ConfigMap surfaces as a RuntimeError, not a raw KeyError."""
+    monkeypatch.setattr(
+        cluster_api,
+        "read_resource",
+        Mock(side_effect=ApiException(status=404, reason="Not Found")),
+    )
+    with pytest.raises(RuntimeError, match="Failed to disable Responses API"):
+        adapt_ols_config.disable_responses_api_for_ollama()
+
+
+def test_apply_e2e_specific_config_disables_responses_api_when_disconnected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Disconnected runs patch the ConfigMap to disable the Responses API."""
+    monkeypatch.setattr(adapt_ols_config, "disconnected", "true")
+    monkeypatch.setattr(cluster_api, "scale_deployment", Mock(return_value=None))
+    monkeypatch.setattr(
+        adapt_ols_config,
+        "retry_until_timeout_or_success",
+        Mock(return_value=True),
+    )
+    disable = Mock()
+    monkeypatch.setattr(adapt_ols_config, "disable_responses_api_for_ollama", disable)
+    update = Mock()
+    monkeypatch.setattr(adapt_ols_config, "update_ols_configmap", update)
+    monkeypatch.setattr(adapt_ols_config, "wait_for_deployment", Mock())
+    monkeypatch.setattr(cluster_utils, "deployment_exists", Mock(return_value=True))
+    adapt_ols_config._apply_e2e_specific_config(ols_image="")
+    disable.assert_called_once()
+    update.assert_not_called()
+
+
+def test_apply_e2e_specific_config_skips_responses_api_when_connected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Connected runs keep the Responses API default for real providers."""
+    monkeypatch.setattr(adapt_ols_config, "disconnected", "")
+    monkeypatch.setattr(cluster_api, "scale_deployment", Mock(return_value=None))
+    monkeypatch.setattr(
+        adapt_ols_config,
+        "retry_until_timeout_or_success",
+        Mock(return_value=True),
+    )
+    disable = Mock()
+    monkeypatch.setattr(adapt_ols_config, "disable_responses_api_for_ollama", disable)
+    update = Mock()
+    monkeypatch.setattr(adapt_ols_config, "update_ols_configmap", update)
+    monkeypatch.setattr(adapt_ols_config, "wait_for_deployment", Mock())
+    monkeypatch.setattr(cluster_utils, "deployment_exists", Mock(return_value=True))
+    adapt_ols_config._apply_e2e_specific_config(ols_image="")
+    disable.assert_not_called()
+    update.assert_called_once()

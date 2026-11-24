@@ -31,6 +31,7 @@ def test_image_patch_preserves_value(
             module.cluster_utils, "deployment_exists", Mock(return_value=True)
         )
         monkeypatch.setattr(module, "disconnected", True)
+        monkeypatch.setattr(module, "disable_responses_api_for_ollama", Mock())
         monkeypatch.setattr(module, "wait_for_deployment", Mock())
         adapt_ols_config._apply_e2e_specific_config(image)
     patch.assert_called_once_with(
