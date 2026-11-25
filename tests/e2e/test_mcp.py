@@ -39,6 +39,9 @@ def _log_cluster_mcp_effective_config() -> None:
     log_effective_mcp_debug_info()
 
 
+# Leave room for the 120-second approval window and the rest of the stream.
+APPROVAL_TEST_TIMEOUT = 300
+
 CLIENT_HEADERS = {"mock-client-auth": {"Authorization": "Bearer my-client-token-456"}}
 
 _MCP_DETAIL_RESPONSE_CHARS = 4000
@@ -201,6 +204,8 @@ def test_query_with_client_headers() -> None:
 def _stream_events(
     query: str,
     mcp_headers: Optional[dict[str, dict[str, str]]] = None,
+    *,
+    timeout: int = LLM_REST_API_TIMEOUT,
 ) -> list[dict]:
     """Send a streaming query and collect all SSE events as dicts."""
     body: dict = {"query": query, "media_type": "application/json"}
@@ -211,7 +216,7 @@ def _stream_events(
         "POST",
         "/v1/streaming_query",
         json=body,
-        timeout=LLM_REST_API_TIMEOUT,
+        timeout=timeout,
     ) as resp:
         assert resp.status_code == 200
         events.extend(
@@ -227,7 +232,7 @@ def _approve_async(approval_id: str, approved: bool) -> None:
     resp = pytest.client.post(
         "/v1/tool-approvals/decision",
         json={"approval_id": approval_id, "approved": approved},
-        timeout=LLM_REST_API_TIMEOUT,
+        timeout=APPROVAL_TEST_TIMEOUT,
     )
     resp.raise_for_status()
 
@@ -269,7 +274,7 @@ def _stream_with_approval(
             "POST",
             "/v1/streaming_query",
             json=body,
-            timeout=LLM_REST_API_TIMEOUT,
+            timeout=APPROVAL_TEST_TIMEOUT,
         ) as resp:
             assert resp.status_code == 200
             for line in resp.iter_lines():
@@ -286,7 +291,7 @@ def _stream_with_approval(
 
     t = threading.Thread(target=run)
     t.start()
-    t.join(timeout=LLM_REST_API_TIMEOUT)
+    t.join(timeout=APPROVAL_TEST_TIMEOUT)
     assert not t.is_alive(), "Streaming request did not complete in time"
     return events
 
@@ -331,6 +336,7 @@ def test_tool_approval_timeout() -> None:
     """Not responding to approval_required within the timeout produces an error tool_result."""
     events = _stream_events(
         "get openshift pod logs for my-app in namespace default",
+        timeout=APPROVAL_TEST_TIMEOUT,
     )
     event_types = [e.get("event") for e in events]
     assert "approval_required" in event_types
