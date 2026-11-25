@@ -2,38 +2,46 @@
 # OLS Provider: Azure OpenAI gpt-6-luna (model being evaluated)
 # Judge LLM: OpenAI gpt-6-luna (scoring responses)
 
-# Core Evaluation Configuration
-# Limits concurrent evaluations to avoid OpenAI API rate limiting on the judge LLM.
-# Each thread issues one OLS call and one judge LLM call, so 5 threads produce
-# at most 10 concurrent external API requests at any time.
+# Judge uses OpenAI gpt-6-luna; set OPENAI_API_KEY for judge requests.
+# OLS must have azure_openai configured with credentials and Azure deployment URL in olsconfig.
+# The test runner replaces api_base. Set LSEVAL_OLS_MODEL when deployment model differs.
+# OLS query endpoint is supported; streaming is not supported by the evaluation tool.
 core:
   max_threads: 5
+  cache_enabled: false
 
-# Judge LLM Configuration
-# Uses OpenAI gpt-6-luna for evaluation scoring.
-# Requires OPENAI_API_KEY environment variable.
-llm:
-  provider: "openai"
-  model: "gpt-6-luna"
-  temperature: 1
-  max_tokens: 1024
-  timeout: 300
-  num_retries: 3
+llm_pool:
+  defaults:
+    timeout: 300
+    num_retries: 3
+    parameters:
+      temperature: 1
+      max_completion_tokens: 1024
+  models:
+    judge:
+      provider: openai
+      model: gpt-6-luna
 
-# OLS API Configuration
-# Targets the OLS /query endpoint using Azure OpenAI gpt-6-luna as the backend LLM.
-# api_base is overridden at runtime with the actual OLS service URL.
-# Requires OLS to be configured with an azure_openai provider (credentials + deployment URL in olsconfig).
-# Override the model via LSEVAL_OLS_MODEL env var if your Azure deployment uses a different model.
-api:
+judge_panel:
+  judges:
+    - judge
+
+agents:
   enabled: true
-  api_base: http://localhost:8080
-  endpoint_type: query
-  timeout: 300
-  provider: "azure_openai"
-  model: "gpt-6-luna"
-  no_tools: null
-  system_prompt: null
+  default:
+    agent: [ols_conversational]
+    agent_config:
+      timeout: 300
+      num_retries: 3
+  ols_conversational:
+    type: http_api
+    api_base: http://localhost:8080
+    version: v1
+    endpoint_type: query
+    provider: "azure_openai"
+    model: "gpt-6-luna"
+    system_prompt: null
+    extra_request_params: null        # Set mode here for OLS request modes such as troubleshooting.
 
 # Metrics evaluated per conversation turn
 metrics_metadata:
@@ -46,24 +54,13 @@ metrics_metadata:
       default: true
 
 # Output Configuration
-output:
-  output_dir: "./eval_output"
-  base_filename: "evaluation"
-  enabled_outputs:
-    - csv
-    - json
-
-  csv_columns:
-    - "conversation_group_id"
-    - "turn_id"
-    - "metric_identifier"
-    - "score"
-    - "threshold"
-    - "result"
-    - "reason"
-    - "query"
-    - "response"
-    - "execution_time"
+storage:
+  - type: file
+    output_dir: "./eval_output"
+    base_filename: "evaluation"
+    enabled_outputs:
+      - csv
+      - json
 
 # Visualization settings
 visualization:
