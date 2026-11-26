@@ -591,11 +591,12 @@ def test_quota_limits():
     ]:
         if limiter["type"] == "UserQuotaLimiter":
             break
+    cluster_quota = 22222
     cluster_api.scale_deployment("lightspeed-app-server", 0)
     update_olsconfig(
         limiters=[
             {
-                "initial_quota": 22222,
+                "initial_quota": cluster_quota,
                 "name": "default",
                 "period": "1 month",
                 "quota_increase": 1000,
@@ -611,13 +612,13 @@ def test_quota_limits():
         json={"query": "what is kubernetes?"},
         timeout=LLM_REST_API_TIMEOUT,
     )
-    # assert that the available quota is less than the initial one hardcoded in the olsconfig
-    # but higher than the user limit
-    available_quota = response.json()["available_quotas"]["ClusterQuotaLimiter"]
-    assert (
-        11111 < available_quota < 22222
-    ), "Quota still being user limited when limitation was removed"
-    assert response.json()["input_tokens"] > 0, "input tokens were not populated"
+    assert response.status_code == 200
+    payload = response.json()
+    quotas = payload["available_quotas"]
+    assert "UserQuotaLimiter" not in quotas, "Removed user quota limiter still applies"
+    assert payload["input_tokens"] > 0, "input tokens were not populated"
+    charged_tokens = payload["input_tokens"] + payload["output_tokens"]
+    assert quotas["ClusterQuotaLimiter"] == cluster_quota - charged_tokens
     cluster_api.scale_deployment("lightspeed-app-server", 0)
     update_olsconfig(limiters=[])
     cluster_api.scale_deployment("lightspeed-app-server", 1)

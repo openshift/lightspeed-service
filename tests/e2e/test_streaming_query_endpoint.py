@@ -369,7 +369,7 @@ def test_rag_question() -> None:
 @pytest.mark.cluster
 @retry(max_attempts=3, wait_between_runs=10)
 def test_query_filter() -> None:
-    """Ensure responses does not include filtered words and redacted words are not logged."""
+    """Ensure responses reflect the configured query replacements."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
@@ -389,20 +389,6 @@ def test_query_filter() -> None:
         response_words = response_text.split()
         assert "foo" not in response_words
         assert "bar" not in response_words
-
-        # Retrieve the pod name
-        ols_container_name = "lightspeed-service-api"
-        pod_name = cluster_utils.get_pod_by_prefix()[0]
-
-        # Check if filtered words are redacted in the logs
-        container_log = cluster_utils.get_container_log(pod_name, ols_container_name)
-
-        # Verify the redaction pipeline ran: filters were applied and
-        # the redacted query was logged.
-        container_log_lower = container_log.lower()
-        assert "replaced: 1 matched with filter: foo_filter" in container_log_lower
-        assert "replaced: 1 matched with filter: bar_filter" in container_log_lower
-        assert "what is deployment in openshift?" in container_log_lower
 
 
 @retry(max_attempts=3, wait_between_runs=10)

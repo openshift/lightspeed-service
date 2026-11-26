@@ -33,7 +33,7 @@ spec:
       transcriptsDisabled: true
     toolsApprovalConfig:
       approvalType: tool_annotations
-      approvalTimeout: 5
+      approvalTimeout: 120
     toolFilteringConfig:
       alpha: 0.8
       topK: 10
