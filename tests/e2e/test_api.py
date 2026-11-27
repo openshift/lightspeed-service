@@ -10,10 +10,8 @@ import time
 
 import pytest
 import requests
-import yaml
 
 from ols.constants import (
-    DEFAULT_CONFIGURATION_FILE,
     HTTP_REQUEST_HEADERS_TO_REDACT,
     SERVICE_NAME,
 )
@@ -23,6 +21,7 @@ from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import cluster_api
 from tests.e2e.utils import metrics as metrics_utils
 from tests.e2e.utils import response as response_utils
+from tests.e2e.utils.adapt_ols_config import wait_for_olsconfig
 from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
@@ -545,28 +544,14 @@ def test_ca_service_certs_rotation():
     )
 
 
-def update_olsconfig(limiters: list[dict]):
-    """Update the olsconfig ConfigMap with new quota handler limiters.
-
-    Args:
-        limiters: List of dictionaries containing limiter configurations
-                 to set in ols_config.quota_handlers.limiters
-    """
-    configmap = cluster_api.read_resource("configmap", "olsconfig")
-    olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
-    olsconfig["ols_config"]["quota_handlers"]["limiters"] = limiters
-    configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
+def _set_quota_limiters(limiters: list[dict]) -> None:
+    """Apply quota changes through the operator and wait for the current spec."""
     cluster_api.patch_resource(
-        "configmap",
         "olsconfig",
-        {
-            "data": {
-                DEFAULT_CONFIGURATION_FILE: configmap["data"][
-                    DEFAULT_CONFIGURATION_FILE
-                ]
-            }
-        },
+        "cluster",
+        {"spec": {"ols": {"quotaHandlersConfig": {"limitersConfig": limiters}}}},
     )
+    wait_for_olsconfig()
 
 
 @pytest.mark.quota_limits
@@ -584,29 +569,13 @@ def test_quota_limits():
         response.json()["available_quotas"]["UserQuotaLimiter"] < 11111
     ), "available quota was not used or user limits were ignored"
     assert response.json()["input_tokens"] > 0, "input tokens were not populated"
-    # Assure we're removing the correct configuration. Not assume and hardcode.
-    result = cluster_api.read_resource("olsconfig")
-    for limiter in result["items"][0]["spec"]["ols"]["quotaHandlersConfig"][
-        "limitersConfig"
-    ]:
-        if limiter["type"] == "UserQuotaLimiter":
-            break
-    cluster_quota = 22222
-    cluster_api.scale_deployment("lightspeed-app-server", 0)
-    update_olsconfig(
-        limiters=[
-            {
-                "initial_quota": cluster_quota,
-                "name": "default",
-                "period": "1 month",
-                "quota_increase": 1000,
-                "type": "cluster_limiter",
-            }
-        ]
+    config = cluster_api.read_resource("olsconfig", "cluster")
+    limiters = config["spec"]["ols"]["quotaHandlersConfig"]["limitersConfig"]
+    cluster_limiter = next(
+        limiter for limiter in limiters if limiter["type"] == "cluster_limiter"
     )
-    cluster_api.scale_deployment("lightspeed-app-server", 1)
-    # Remove the user limitation, wait for pod and check available quota again
-    cluster_utils.wait_for_running_pod()
+    cluster_quota = cluster_limiter["initialQuota"]
+    _set_quota_limiters([cluster_limiter])
     response = pytest.client.post(
         "/v1/query",
         json={"query": "what is kubernetes?"},
@@ -619,10 +588,7 @@ def test_quota_limits():
     assert payload["input_tokens"] > 0, "input tokens were not populated"
     charged_tokens = payload["input_tokens"] + payload["output_tokens"]
     assert quotas["ClusterQuotaLimiter"] == cluster_quota - charged_tokens
-    cluster_api.scale_deployment("lightspeed-app-server", 0)
-    update_olsconfig(limiters=[])
-    cluster_api.scale_deployment("lightspeed-app-server", 1)
-    cluster_utils.wait_for_running_pod()
+    _set_quota_limiters([])
     response = pytest.client.post(
         "/v1/query",
         json={"query": "what is kubernetes?"},

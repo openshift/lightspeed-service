@@ -5,53 +5,50 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
-from tests.e2e.utils import adapt_ols_config, cluster_api, ols_installer
+from tests.e2e.utils import cluster_api, ols_installer
 from tests.e2e.utils import data_collector_control as collector
 
 
 @pytest.mark.parametrize(
     "image", ["registry.test/service:latest", 'image"with\\quotes']
 )
-@pytest.mark.parametrize("installer", [True, False])
 def test_image_patch_preserves_value(
-    monkeypatch: pytest.MonkeyPatch, image: str, installer: bool
+    monkeypatch: pytest.MonkeyPatch, image: str
 ) -> None:
-    """Pass image values unchanged in a native JSON patch list."""
+    """Pass candidate images to the operator without altering their values."""
+    monkeypatch.setenv("OLS_IMAGE", image)
+    deployment = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "manager",
+                            "args": ["--service-image=old", "--leader-elect"],
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    monkeypatch.setattr(cluster_api, "read_resource", Mock(return_value=deployment))
     patch = Mock()
     monkeypatch.setattr(cluster_api, "patch_resource", patch)
-    monkeypatch.setattr(cluster_api, "scale_deployment", Mock())
-    module = ols_installer if installer else adapt_ols_config
     monkeypatch.setattr(
-        module, "retry_until_timeout_or_success", Mock(return_value=True)
+        ols_installer, "retry_until_timeout_or_success", Mock(return_value=True)
     )
-    if installer:
-        ols_installer.replace_ols_image(image)
-    else:
-        monkeypatch.setattr(
-            module.cluster_utils, "deployment_exists", Mock(return_value=True)
-        )
-        monkeypatch.setattr(module, "disconnected", True)
-        monkeypatch.setattr(module, "wait_for_deployment", Mock())
-        adapt_ols_config._apply_e2e_specific_config(image)
-    expected = []
-    if not installer:
-        expected.append(
+    ols_installer.configure_operator_service_image()
+    patch.assert_called_once_with(
+        "deployment",
+        "lightspeed-operator-controller-manager",
+        [
             {
                 "op": "add",
-                "path": "/spec/template/spec/containers/0/imagePullPolicy",
-                "value": "IfNotPresent",
+                "path": "/spec/template/spec/containers/0/args",
+                "value": ["--leader-elect", f"--service-image={image}"],
             }
-        )
-    if installer or image:
-        expected.append(
-            {
-                "op": "replace",
-                "path": "/spec/template/spec/containers/0/image",
-                "value": image,
-            }
-        )
-    patch.assert_called_once_with(
-        "deployment", "lightspeed-app-server", expected, patch_type="json"
+        ],
+        patch_type="json",
     )
 
 

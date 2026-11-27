@@ -15,7 +15,6 @@ from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster, cluster_api, ols_installer
 from tests.e2e.utils.adapt_ols_config import adapt_ols_config, switch_default_provider
 from tests.e2e.utils.olsconfig_cr import inspection_enabled_for_e2e
-from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -50,12 +49,15 @@ def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
             "Lightspeed operator controller Deployment found "
             "(e.g. direct/kustomize install). Skipping bundle install."
         )
+    ols_installer.configure_operator_service_image()
     provider = os.getenv("PROVIDER", "openai")
     creds = os.getenv("PROVIDER_KEY_PATH", "empty")
     provider_list = provider.split()
     creds_list = creds.split()
     for i, prov in enumerate(provider_list):
         ols_installer.create_secrets(prov, creds_list[i], len(provider_list))
+    if "azure_openai" in provider_list:
+        ols_installer.ensure_azure_entra_id_secret()
     try:
         ols_url, token, metrics_token = adapt_ols_config()
     except RuntimeError as first_err:
@@ -114,8 +116,7 @@ def _setup_test_session() -> None:
                 )
 
             # Provider matrix runs reuse one deployment and switch the
-            # default provider/model per iteration (configmap patch +
-            # app-server restart) instead of a full OLSConfig reconcile.
+            # default provider/model per iteration through OLSConfig.
             provider_override = os.getenv("SWITCH_DEFAULT_PROVIDER", "")
             if provider_override:
                 provider_name, _, model_name = provider_override.partition(" ")
@@ -143,59 +144,6 @@ def _setup_test_session() -> None:
     # Gather OLS artifacts in case OLS does not become ready
     if on_cluster and not OLS_READY:
         must_gather()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _operator_running_for_certs(request):
-    """Scale up the operator for certificate rotation tests.
-
-    The operator controller-manager is normally scaled to 0 during e2e tests
-    to prevent interference. Certificate rotation tests need it running so it
-    can detect CA bundle changes and trigger pod rollouts.
-    """
-    if not any(
-        item.get_closest_marker("certificates") for item in request.session.items
-    ):
-        yield
-        return
-
-    print("Scaling up operator controller manager for certificate tests...")
-    cluster_api.scale_deployment("lightspeed-operator-controller-manager", 1)
-    try:
-        if not retry_until_timeout_or_success(
-            60,
-            5,
-            lambda: (
-                pods := cluster.get_pod_by_prefix(
-                    prefix="lightspeed-operator-controller-manager",
-                    fail_not_found=False,
-                )
-            )
-            and all(s == "true" for s in cluster.get_container_ready_status(pods[0])),
-            "Waiting for operator controller manager to be ready",
-        ):
-            raise RuntimeError(
-                "Timed out waiting for operator controller manager to be ready"
-            )
-        print("Operator controller manager is ready")
-
-        yield
-    finally:
-        print("Scaling down operator controller manager after certificate tests...")
-        cluster_api.scale_deployment("lightspeed-operator-controller-manager", 0)
-        if not retry_until_timeout_or_success(
-            30,
-            3,
-            lambda: not cluster.get_pod_by_prefix(
-                prefix="lightspeed-operator-controller-manager",
-                fail_not_found=False,
-            ),
-            "Waiting for operator controller manager to scale down",
-        ):
-            raise RuntimeError(
-                "Timed out waiting for operator controller manager to scale down"
-            )
-        print("Operator controller manager scaled down")
 
 
 def pytest_runtest_makereport(item, call) -> TestReport:

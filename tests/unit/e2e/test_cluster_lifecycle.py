@@ -239,27 +239,62 @@ def test_session_finish_cleans_tokens_when_namespace_is_retained(
     cleanup.assert_called_once_with()
 
 
-@pytest.mark.parametrize("ready", [False, True])
-def test_reconcile_checks_operator_readiness_before_updating(
-    monkeypatch: pytest.MonkeyPatch, ready: bool
+@pytest.mark.parametrize("observed", [3, 4])
+def test_olsconfig_readiness_requires_current_generation(
+    monkeypatch: pytest.MonkeyPatch, observed: int
 ) -> None:
-    """Do not update OLSConfig until the operator is ready."""
-    monkeypatch.setattr(api, "scale_deployment", Mock())
-    monkeypatch.setattr(cluster, "get_pod_by_prefix", Mock(return_value=["operator"]))
+    """Do not mistake the previous suite's readiness for the current suite's."""
     monkeypatch.setattr(
-        cluster,
-        "get_container_ready_status",
-        Mock(return_value=["true" if ready else "false"]),
+        api,
+        "read_resource",
+        Mock(
+            return_value={
+                "metadata": {"generation": 4},
+                "status": {
+                    "conditions": [
+                        {
+                            "type": "ApiReady",
+                            "status": "True",
+                            "observedGeneration": observed,
+                        }
+                    ]
+                },
+            }
+        ),
     )
+    assert adapt_ols_config._olsconfig_api_is_ready() == (observed == 4)
 
-    def retry(_attempts: int, _interval: int, predicate, _message: str) -> bool:
-        return bool(predicate())
 
-    monkeypatch.setattr(adapt_ols_config, "retry_until_timeout_or_success", retry)
-    apply = Mock(side_effect=RuntimeError("update reached"))
-    monkeypatch.setattr(adapt_ols_config, "apply_olsconfig", apply)
-    with pytest.raises(
-        RuntimeError, match="update reached" if ready else "Timed out waiting"
-    ):
-        adapt_ols_config._reconcile_olsconfig_with_operator(["openai"])
-    assert apply.call_count == int(ready)
+@pytest.mark.parametrize(
+    "status_override,ready",
+    [
+        ({}, True),
+        ({"observedGeneration": 3}, False),
+        ({"updatedReplicas": 0}, False),
+        ({"availableReplicas": 0}, False),
+        ({"replicas": 2}, False),
+    ],
+)
+def test_app_server_rollout_requires_current_replicas(
+    monkeypatch: pytest.MonkeyPatch, status_override: dict[str, int], ready: bool
+) -> None:
+    """An available old pod must not satisfy the new suite readiness check."""
+    status = {
+        "observedGeneration": 4,
+        "updatedReplicas": 1,
+        "availableReplicas": 1,
+        "replicas": 1,
+        **status_override,
+    }
+    monkeypatch.setattr(
+        api,
+        "read_resource",
+        Mock(
+            return_value={
+                "metadata": {"generation": 4},
+                "spec": {"replicas": 1},
+                "status": status,
+            }
+        ),
+    )
+    assert adapt_ols_config._app_server_rollout_complete() == ready

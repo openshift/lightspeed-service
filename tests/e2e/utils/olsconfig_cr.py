@@ -29,6 +29,9 @@ def apply_e2e_olsconfig(
         config_yaml = os.path.expandvars(config_yaml)
 
     olsconfig = yaml.safe_load(config_yaml)
+    olsconfig.setdefault("spec", {}).setdefault("ols", {}).setdefault(
+        "logLevel", "INFO"
+    )
     inspection_config = (
         olsconfig.setdefault("spec", {})
         .setdefault("ols", {})

@@ -7,13 +7,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
-from openshift.dynamic.exceptions import ConflictError, DynamicApiError
+from openshift.dynamic.exceptions import ConflictError
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import cluster_api
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
-from tests.e2e.utils.olsconfig_cr import apply_e2e_olsconfig
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -23,45 +22,48 @@ CLUSTER_RETRY_DELAY = 5
 disconnected = os.getenv("DISCONNECTED", "")
 
 
-def _app_server_deployment_exists() -> bool:
-    """Return whether the OLS API Deployment exists."""
-    return cluster_utils.deployment_exists("lightspeed-app-server")
-
-
-def _wait_for_operator_controller_ready() -> None:
-    """Wait until the operator manager pod exists and all containers are ready."""
-    r = retry_until_timeout_or_success(
-        60,
-        5,
-        lambda: (
-            pods := cluster_utils.get_pod_by_prefix(
-                prefix="lightspeed-operator-controller-manager", fail_not_found=False
-            )
-        )
-        and all(
-            status == "true"
-            for status in cluster_utils.get_container_ready_status(pods[0])
-        ),
-        "Waiting for operator controller to be ready",
+def configure_operator_service_image() -> None:
+    """Configure the candidate image on the operator, never the operand."""
+    image = os.getenv("OLS_IMAGE")
+    if not image:
+        return
+    name = "lightspeed-operator-controller-manager"
+    deployment = cluster_api.read_resource("deployment", name)
+    containers = deployment["spec"]["template"]["spec"]["containers"]
+    index, manager = next(
+        (i, c) for i, c in enumerate(containers) if c["name"] == "manager"
     )
-    if not r:
-        raise Exception(
-            "Timed out waiting for operator controller manager to become ready"
+    args = manager.get("args", [])
+    flag = f"--service-image={image}"
+    if flag not in args:
+        updated = [arg for arg in args if not arg.startswith("--service-image=")]
+        cluster_api.patch_resource(
+            "deployment",
+            name,
+            [
+                {
+                    "op": "add",
+                    "path": f"/spec/template/spec/containers/{index}/args",
+                    "value": [*updated, flag],
+                }
+            ],
+            patch_type="json",
         )
 
+    def rolled_out() -> bool:
+        current = cluster_api.read_resource("deployment", name)
+        status = current.get("status", {})
+        return (
+            status.get("observedGeneration") == current["metadata"]["generation"]
+            and status.get("replicas") == 1
+            and status.get("updatedReplicas") == 1
+            and status.get("availableReplicas") == 1
+        )
 
-def _dump_ols_install_debug() -> None:
-    """Print cluster state to logs when install waits fail (Konflux / Azure debugging)."""
-    for resource, name in (
-        ("olsconfig", "cluster"),
-        ("deployment", None),
-        ("clusterserviceversion", None),
+    if not retry_until_timeout_or_success(
+        60, 5, rolled_out, "Waiting for candidate image configuration on the operator"
     ):
-        try:
-            print(f"--- {resource} (debug) ---")
-            print(yaml.safe_dump(cluster_api.read_resource(resource, name)))
-        except Exception as e:
-            print(f"Could not get {resource}: {e}")
+        raise RuntimeError("Operator did not roll out with the candidate service image")
 
 
 def create_and_config_sas() -> tuple[str, str]:
@@ -470,7 +472,7 @@ def warm_up_rhokp_image() -> None:
         marker.write_text(rhokp_image, encoding="utf-8")
 
 
-def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # noqa: C901
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912
     """Install OLS onto an OCP cluster using the OLS operator."""
     if not disconnected:
         print("Setting up for on cluster test execution")
@@ -499,10 +501,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
         # install the operator from bundle
         print("Installing OLS operator from bundle")
         _run_bundle_with_retry(bundle_image)
-    token, metrics_token = create_and_config_sas()
 
-    # wait for the operator to install
-    # time.sleep(3)  # not sure if it is needed but it fails sometimes
+    # Wait for OLM to finish before configuring the candidate image.
     r = retry_until_timeout_or_success(
         120,
         10,
@@ -517,6 +517,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
         print(msg)
         raise Exception(msg)
     print("Operator installed successfully")
+    configure_operator_service_image()
+    token, metrics_token = create_and_config_sas()
 
     provider = os.getenv("PROVIDER", "openai")
     creds = os.getenv("PROVIDER_KEY_PATH", "empty")
@@ -531,102 +533,15 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     warm_up_rhokp_image()
 
-    # create the olsconfig operand
-    cluster_api.delete_resource("olsconfig", "cluster", ignore_missing=True)
-
-    try:
-        crd_yml_file = "tests/config/operator_install/olsconfig.crd.evaluation.yaml"
-        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-
-        if len(provider_list) == 1:
-            crd_yml_name = f"olsconfig.crd.{provider}"
-            if ols_config_suffix != "default":
-                crd_yml_name += f"_{ols_config_suffix}"
-            crd_yml_file = f"tests/config/operator_install/{crd_yml_name}.yaml"
-
-        print(f"CRD path: {crd_yml_file}.")
-        substitute_environment = "rhoai_vllm_lseval" in crd_yml_file
-        if substitute_environment:
-            print("Running envsubst on CR YAML (rhoai_vllm_lseval template)...")
-            if not os.environ.get("KSVC_URL"):
-                raise RuntimeError(
-                    "KSVC_URL environment variable is not set; "
-                    "required for rhoai_vllm_lseval CR template"
-                )
-
-        apply_e2e_olsconfig(
-            crd_yml_file,
-            "create",
-            suffix=ols_config_suffix,
-            substitute_environment=substitute_environment,
-            ignore_existing_resource=False,
-        )
-
-    except DynamicApiError as e:
-        csv = cluster_api.read_resource("clusterserviceversion")
-        print(f"Error creating olsconfig: {e}, csv: {csv}")
-        raise
-    cluster_api.scale_deployment("lightspeed-operator-controller-manager", 1)
-    _wait_for_operator_controller_ready()
-
-    # wait for the ols api server deployment to be created
-    r = retry_until_timeout_or_success(
-        CLUSTER_RETRY_COUNT,
-        CLUSTER_RETRY_DELAY,
-        _app_server_deployment_exists,
-        "Waiting for OLS API server deployment to be created",
-    )
-    if not r:
-        msg = "Timed out waiting for OLS deployment to be created"
-        print(msg)
-        _dump_ols_install_debug()
-        raise Exception(msg)
-    print("OLS deployment created")
-
-    # Ensure ols pod exists so it gets deleted during the scale down to zero, otherwise
-    # there may be a race condition.
-    retry_until_timeout_or_success(
-        CLUSTER_RETRY_COUNT,
-        CLUSTER_RETRY_DELAY,
-        lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False),
+    # Import locally: adapt_ols_config also uses credential setup from this module.
+    from tests.e2e.utils.adapt_ols_config import (  # pylint: disable=import-outside-toplevel
+        apply_olsconfig,
+        wait_for_olsconfig,
     )
 
-    # get the name of the OLS image from CI so we can substitute it in
-    new_ols_image = os.getenv("OLS_IMAGE", "")
+    apply_olsconfig(provider_list, operation="replace_spec")
+    wait_for_olsconfig()
 
-    # scale down the operator controller manager to avoid it interfering with the tests
-    cluster_api.scale_deployment("lightspeed-operator-controller-manager", 0)
-
-    if new_ols_image != "":
-        replace_ols_image(new_ols_image)
-
-    # Scale down server pod. If image is replaced, it won't do anything
-    # otherwise, it enables the config modification and subsequent
-    # scaling up
-    cluster_api.scale_deployment("lightspeed-app-server", 0)
-    update_ols_config()
-    # scale the ols app server up
-    cluster_api.scale_deployment("lightspeed-app-server", 1)
-    print("Deployment updated, waiting for new pod to be ready")
-    # Wait for the pod to start being created and then wait for it to start running.
-    cluster_utils.wait_for_running_pod(wait_http_ready=False)
-
-    print("-" * 50)
-    print("OLS pod seems to be ready")
-    print("All pods")
-    print(yaml.safe_dump(cluster_api.read_resource("pod")))
-    print("Running pods")
-    print(cluster_utils.get_running_pods())
-    pod_name = cluster_utils.get_pod_by_prefix()[0]
-    print(f"Found new running OLS pod {pod_name}")
-    print("-" * 50)
-
-    # Print the deployment so we can confirm the configuration is what we
-    # expect it to be (must-gather will also collect this)
-    print(
-        yaml.safe_dump(cluster_api.read_resource("deployment", "lightspeed-app-server"))
-    )
-    print("-" * 50)
     if not disconnected:
         # Configure exporter for e2e tests with proper settings
         try:
@@ -642,7 +557,6 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             print(f"Warning: Could not configure exporter: {e}")
             print("Tests may experience interference from data collector")
 
-    cluster_api.delete_resource("route", "ols", ignore_missing=True)
     cluster_api.apply_file("tests/config/operator_install/route.yaml")
     ols_url = cluster_utils.get_ols_url("ols")
     wait_for_ols(ols_url)

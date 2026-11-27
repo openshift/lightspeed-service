@@ -16,14 +16,9 @@ import threading
 from typing import Optional
 
 import pytest
-import yaml
 
-from ols.constants import DEFAULT_CONFIGURATION_FILE
-from tests.e2e.utils import cluster_api
-from tests.e2e.utils.adapt_ols_config import restart_app_server_with_config
 from tests.e2e.utils.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.utils.mcp_setup import log_effective_mcp_debug_info
-from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 pytestmark = pytest.mark.mcp
 
@@ -338,22 +333,9 @@ def test_tool_approval_denied() -> None:
     assert len(rejected) > 0, f"Expected a rejected tool_result, got: {tool_results}"
 
 
-def _configure_expiry_test(seconds: int) -> None:
-    """Update the approval window on a deployment reused by the expiry test."""
-    configmap = cluster_api.read_resource("configmap", "olsconfig")
-    config = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
-    approval = config["ols_config"]["tools_approval"]
-    if approval["approval_timeout"] != seconds:
-        approval["approval_timeout"] = seconds
-        restart_app_server_with_config(config)
-        assert wait_for_ols(_ols_base_url()), "OLS did not become ready after restart"
-
-
 @pytest.mark.mcp_approval_timeout
 def test_tool_approval_timeout() -> None:
     """Not responding to approval_required within the timeout produces an error tool_result."""
-    if approval_timeout := os.getenv("E2E_APPROVAL_TIMEOUT"):
-        _configure_expiry_test(int(approval_timeout))
     events = _stream_events(
         "get openshift pod logs for my-app in namespace default",
         timeout=APPROVAL_TEST_TIMEOUT,
