@@ -35,6 +35,7 @@ from ols.app.models.models import (
 from ols.src.auth.auth import get_auth_dependency
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
+from ols.src.query_helpers.conversation_access import ensure_conversation_owned_by_user
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
@@ -328,6 +329,8 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
             },
         )
     timestamps["retrieve conversation"] = time.time()
+
+    ensure_conversation_owned_by_user(user_id, conversation_id)
 
     audit_logger = AuditLogger(enabled=config.ols_config.audit.enabled)
     audit_ctx = AuditContext(

@@ -220,6 +220,16 @@ class InMemoryCache(Cache):
                     message_count=0,
                 )
 
+    def find_owner_user_id(self, conversation_id: str) -> str | None:
+        """Return user_id for an existing conversation_id, if present in cache."""
+        Cache._check_conversation_id(conversation_id)
+        suffix = f"{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
+        with self._lock:
+            for key in self.cache:
+                if key.endswith(suffix):
+                    return key[: -len(suffix)]
+        return None
+
     def ready(self) -> bool:
         """Check if the cache is ready.
 
