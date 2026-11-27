@@ -3,7 +3,8 @@ r"""End-to-end tests for MCP integration.
 These tests run against a live OLS instance and a mock MCP server.
 The mock MCP server must be reachable from OLS (locally or on-cluster).
 
-On-cluster: the mock server is deployed as a pod by conftest (OLS_CONFIG_SUFFIX=mcp).
+On-cluster: the job starts the mock server before running pytest. For standalone
+cluster runs, explicitly call setup_mcp_on_cluster() and teardown_mcp_on_cluster().
 Locally: start the mock server manually (python tests/e2e/mcp/server/server.py 3000).
 """
 
@@ -15,9 +16,14 @@ import threading
 from typing import Optional
 
 import pytest
+import yaml
 
+from ols.constants import DEFAULT_CONFIGURATION_FILE
+from tests.e2e.utils import cluster_api
+from tests.e2e.utils.adapt_ols_config import restart_app_server_with_config
 from tests.e2e.utils.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.utils.mcp_setup import log_effective_mcp_debug_info
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 pytestmark = pytest.mark.mcp
 
@@ -332,9 +338,22 @@ def test_tool_approval_denied() -> None:
     assert len(rejected) > 0, f"Expected a rejected tool_result, got: {tool_results}"
 
 
+def _configure_expiry_test(seconds: int) -> None:
+    """Update the approval window on a deployment reused by the expiry test."""
+    configmap = cluster_api.read_resource("configmap", "olsconfig")
+    config = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+    approval = config["ols_config"]["tools_approval"]
+    if approval["approval_timeout"] != seconds:
+        approval["approval_timeout"] = seconds
+        restart_app_server_with_config(config)
+        assert wait_for_ols(_ols_base_url()), "OLS did not become ready after restart"
+
+
 @pytest.mark.mcp_approval_timeout
 def test_tool_approval_timeout() -> None:
     """Not responding to approval_required within the timeout produces an error tool_result."""
+    if approval_timeout := os.getenv("E2E_APPROVAL_TIMEOUT"):
+        _configure_expiry_test(int(approval_timeout))
     events = _stream_events(
         "get openshift pod logs for my-app in namespace default",
         timeout=APPROVAL_TEST_TIMEOUT,

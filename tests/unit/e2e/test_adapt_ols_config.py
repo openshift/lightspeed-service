@@ -196,25 +196,22 @@ def test_apply_olsconfig_rejects_existing_configuration(
 
 @pytest.mark.parametrize(
     "failure",
-    [TimeoutError("finalizer stuck"), ForbiddenError(ApiException(status=403))],
+    [TimeoutError("update timed out"), ForbiddenError(ApiException(status=403))],
 )
-def test_reconcile_stops_when_olsconfig_deletion_fails(
+def test_reconcile_stops_when_olsconfig_update_fails(
     monkeypatch: pytest.MonkeyPatch, failure: Exception
 ) -> None:
-    """Do not warm images or create a replacement CR after failed deletion."""
+    """Stop the operator and surface an unsuccessful in-place update."""
     scale = Mock()
     monkeypatch.setattr(cluster_api, "scale_deployment", scale)
     monkeypatch.setattr(
         adapt_ols_config, "retry_until_timeout_or_success", Mock(return_value=True)
     )
-    monkeypatch.setattr(cluster_api, "delete_resource", Mock(side_effect=failure))
-    warm, apply = Mock(), Mock()
-    monkeypatch.setattr(adapt_ols_config, "warm_up_rhokp_image", warm)
+    apply = Mock(side_effect=failure)
     monkeypatch.setattr(adapt_ols_config, "apply_olsconfig", apply)
     with pytest.raises(type(failure)):
         adapt_ols_config._reconcile_olsconfig_with_operator(["openai", "watsonx"])
-    warm.assert_not_called()
-    apply.assert_not_called()
+    apply.assert_called_once_with(["openai", "watsonx"], operation="replace_spec")
     assert [call.args for call in scale.call_args_list] == [
         ("lightspeed-operator-controller-manager", 1),
         ("lightspeed-operator-controller-manager", 0),

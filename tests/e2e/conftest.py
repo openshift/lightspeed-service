@@ -14,7 +14,6 @@ from pytest import TestReport
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster, cluster_api, ols_installer
 from tests.e2e.utils.adapt_ols_config import adapt_ols_config, switch_default_provider
-from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster, teardown_mcp_on_cluster
 from tests.e2e.utils.olsconfig_cr import inspection_enabled_for_e2e
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
@@ -31,19 +30,6 @@ OLS_READY = False
 # on_cluster attribute is set to true when the tests are being run
 # against ols running on a cluster
 on_cluster: bool = False  # pylint: disable=C0103
-
-
-def _maybe_setup_mcp() -> None:
-    """Deploy mock MCP server and secret if running MCP test suite.
-
-    Must run before adapt_ols_config/install_ols so the mock server
-    is reachable and the secret exists when the operator reconciles the CR.
-    """
-    ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-    if "mcp" not in ols_config_suffix:
-        return
-    print("MCP test suite detected - deploying mock server and secret...")
-    setup_mcp_on_cluster()
 
 
 def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
@@ -80,13 +66,26 @@ def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
 
 
 def pytest_sessionstart() -> None:
-    """Clean up session credentials if any part of startup fails."""
+    """Time E2E setup and clean up credentials if startup fails."""
+    started = time.monotonic()
     try:
         _setup_test_session()
     except BaseException:
         if on_cluster:
             cluster.cleanup_session_tokens()
         raise
+    finally:
+        print(f"[e2e timing] setup_seconds={time.monotonic() - started:.3f}")
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtestloop():
+    """Report test execution time separately from cluster setup."""
+    started = time.monotonic()
+    try:
+        return (yield)
+    finally:
+        print(f"[e2e timing] test_seconds={time.monotonic() - started:.3f}")
 
 
 def _setup_test_session() -> None:
@@ -100,15 +99,11 @@ def _setup_test_session() -> None:
     if "localhost" not in ols_url:
         on_cluster = True
         try:
-            _maybe_setup_mcp()
-
             if os.getenv("SKIP_CLUSTER_SETUP", "false").lower() == "true":
                 print(
                     "SKIP_CLUSTER_SETUP enabled - skipping OLS installation/configuration."
                 )
                 print("Using existing cluster setup...")
-                # warm up for - load RHOKP image
-                ols_installer.warm_up_rhokp_image()
                 ols_url = cluster.get_ols_url("ols")
                 token = cluster.get_token_for("test-user")
                 metrics_token = cluster.get_token_for("metrics-test-user")
@@ -327,15 +322,10 @@ def _should_gather_artifacts(session: object, exitstatus: object) -> bool:
 def pytest_sessionfinish(session, exitstatus):
     """Gather OLS artifacts and clean up test resources after session finishes."""
     if on_cluster:
-        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
         try:
             if _should_gather_artifacts(session, exitstatus):
                 must_gather()
             else:
                 print("Skipping must-gather for a passing suite")
         finally:
-            try:
-                if "mcp" in ols_config_suffix:
-                    teardown_mcp_on_cluster()
-            finally:
-                cluster.cleanup_session_tokens()
+            cluster.cleanup_session_tokens()

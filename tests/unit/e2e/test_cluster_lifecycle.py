@@ -175,8 +175,6 @@ def test_session_start_failure_cleans_created_tokens(
     monkeypatch.setenv("SKIP_CLUSTER_SETUP", "true")
     monkeypatch.delenv("SWITCH_DEFAULT_PROVIDER", raising=False)
     monkeypatch.setattr(e2e_fixtures, "on_cluster", False)
-    monkeypatch.setattr(e2e_fixtures, "_maybe_setup_mcp", Mock())
-    monkeypatch.setattr(e2e_fixtures.ols_installer, "warm_up_rhokp_image", Mock())
     monkeypatch.setattr(
         cluster, "get_ols_url", Mock(return_value="https://ols.example")
     )
@@ -215,23 +213,22 @@ def test_session_start_failure_cleans_created_tokens(
     )
 
 
-@pytest.mark.parametrize("failure", [None, "gather", "mcp"])
+@pytest.mark.parametrize("failure", [None, "gather"])
 def test_session_finish_cleans_tokens_when_namespace_is_retained(
     monkeypatch: pytest.MonkeyPatch, failure: str | None
 ) -> None:
-    """Always clean up session credentials even if artifact or MCP cleanup fails."""
+    """Always clean up session credentials even if artifact collection fails."""
     monkeypatch.setenv("SKIP_CLUSTER_SETUP", "true")
     monkeypatch.setenv("OLS_CONFIG_SUFFIX", "mcp")
     monkeypatch.setattr(e2e_fixtures, "on_cluster", True)
     monkeypatch.setattr(
         e2e_fixtures, "_should_gather_artifacts", Mock(return_value=True)
     )
-    for name, stage in [("must_gather", "gather"), ("teardown_mcp_on_cluster", "mcp")]:
-        monkeypatch.setattr(
-            e2e_fixtures,
-            name,
-            Mock(side_effect=RuntimeError(stage) if failure == stage else None),
-        )
+    monkeypatch.setattr(
+        e2e_fixtures,
+        "must_gather",
+        Mock(side_effect=RuntimeError("gather") if failure else None),
+    )
     cleanup = Mock()
     monkeypatch.setattr(cluster, "cleanup_session_tokens", cleanup)
     if failure:
@@ -243,10 +240,10 @@ def test_session_finish_cleans_tokens_when_namespace_is_retained(
 
 
 @pytest.mark.parametrize("ready", [False, True])
-def test_reconcile_checks_operator_readiness_before_deleting(
+def test_reconcile_checks_operator_readiness_before_updating(
     monkeypatch: pytest.MonkeyPatch, ready: bool
 ) -> None:
-    """Do not delete the OLSConfig until the operator can process its finalizer."""
+    """Do not update OLSConfig until the operator is ready."""
     monkeypatch.setattr(api, "scale_deployment", Mock())
     monkeypatch.setattr(cluster, "get_pod_by_prefix", Mock(return_value=["operator"]))
     monkeypatch.setattr(
@@ -259,10 +256,10 @@ def test_reconcile_checks_operator_readiness_before_deleting(
         return bool(predicate())
 
     monkeypatch.setattr(adapt_ols_config, "retry_until_timeout_or_success", retry)
-    delete = Mock(side_effect=RuntimeError("deletion reached"))
-    monkeypatch.setattr(api, "delete_resource", delete)
+    apply = Mock(side_effect=RuntimeError("update reached"))
+    monkeypatch.setattr(adapt_ols_config, "apply_olsconfig", apply)
     with pytest.raises(
-        RuntimeError, match="deletion reached" if ready else "Timed out waiting"
+        RuntimeError, match="update reached" if ready else "Timed out waiting"
     ):
         adapt_ols_config._reconcile_olsconfig_with_operator(["openai"])
-    assert delete.call_count == int(ready)
+    assert apply.call_count == int(ready)

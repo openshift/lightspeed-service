@@ -20,24 +20,24 @@ class _Item:
         return object() if self._marker == name else None
 
 
-def test_cluster_session_gathers_before_mock_server_teardown(
+def test_cluster_session_gathers_before_token_cleanup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Keep mock logs available to must-gather before removing the mock Pod."""
+    """Gather artifacts before removing session credentials."""
     events: list[str] = []
     monkeypatch.setattr(conftest, "on_cluster", True)
     monkeypatch.setenv("OLS_CONFIG_SUFFIX", "mcp_inspection")
     monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
     monkeypatch.setattr(
-        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+        conftest.cluster, "cleanup_session_tokens", lambda: events.append("cleanup")
     )
 
     conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=1), 1)
 
-    assert events == ["gather", "teardown"]
+    assert events == ["gather", "cleanup"]
 
 
-def test_cluster_session_tears_down_mock_server_when_gather_fails(
+def test_cluster_session_cleans_tokens_when_gather_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Clean up test resources even when artifact collection fails."""
@@ -51,13 +51,13 @@ def test_cluster_session_tears_down_mock_server_when_gather_fails(
 
     monkeypatch.setattr(conftest, "must_gather", fail_gather)
     monkeypatch.setattr(
-        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+        conftest.cluster, "cleanup_session_tokens", lambda: events.append("cleanup")
     )
 
     with pytest.raises(RuntimeError, match="artifact collection failed"):
         conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=1), 1)
 
-    assert events == ["gather", "teardown"]
+    assert events == ["gather", "cleanup"]
 
 
 def test_sessionfinish_skips_must_gather_for_passing_suite(
@@ -69,13 +69,13 @@ def test_sessionfinish_skips_must_gather_for_passing_suite(
     monkeypatch.setenv("OLS_CONFIG_SUFFIX", "default")
     monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
     monkeypatch.setattr(
-        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+        conftest.cluster, "cleanup_session_tokens", lambda: events.append("cleanup")
     )
     monkeypatch.delenv("MUST_GATHER_ON_SUCCESS", raising=False)
 
     conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=0), 0)
 
-    assert events == []
+    assert events == ["cleanup"]
 
 
 def test_sessionfinish_gathers_for_passing_suite_when_requested(
@@ -87,13 +87,13 @@ def test_sessionfinish_gathers_for_passing_suite_when_requested(
     monkeypatch.setenv("OLS_CONFIG_SUFFIX", "mcp_inspection_all")
     monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
     monkeypatch.setattr(
-        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+        conftest.cluster, "cleanup_session_tokens", lambda: events.append("cleanup")
     )
     monkeypatch.setenv("MUST_GATHER_ON_SUCCESS", "true")
 
     conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=0), 0)
 
-    assert events == ["gather", "teardown"]
+    assert events == ["gather", "cleanup"]
 
 
 def test_sessionfinish_gathers_on_nonzero_exit_status(
@@ -105,13 +105,13 @@ def test_sessionfinish_gathers_on_nonzero_exit_status(
     monkeypatch.setenv("OLS_CONFIG_SUFFIX", "default")
     monkeypatch.setattr(conftest, "must_gather", lambda: events.append("gather"))
     monkeypatch.setattr(
-        conftest, "teardown_mcp_on_cluster", lambda: events.append("teardown")
+        conftest.cluster, "cleanup_session_tokens", lambda: events.append("cleanup")
     )
     monkeypatch.delenv("MUST_GATHER_ON_SUCCESS", raising=False)
 
     conftest.pytest_sessionfinish(SimpleNamespace(testsfailed=0), 5)
 
-    assert events == ["gather"]
+    assert events == ["gather", "cleanup"]
 
 
 def test_inspection_marker_runs_only_with_dedicated_suffix(

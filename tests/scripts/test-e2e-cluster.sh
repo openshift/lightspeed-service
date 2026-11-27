@@ -52,9 +52,12 @@ function run_suites() {
   (( rc = rc || $? ))
 
   # MCP e2e: run early while CR is still default openai shape; avoids races after tool_calling (introspection true).
-  run_suite "openai_mcp" "mcp and not mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp"
-  (( rc = rc || $? ))
-  run_suite "openai_mcp_timeout" "mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_timeout"
+  if run_suite "openai_mcp" "mcp and not mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp"; then
+    SKIP_CLUSTER_SETUP=true E2E_APPROVAL_TIMEOUT=5 run_suite "openai_mcp_timeout" "mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_timeout"
+  else
+    rc=1
+    run_suite "openai_mcp_timeout" "mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_timeout"
+  fi
   (( rc = rc || $? ))
 
   # Run inspection for the audited provider/model matrix in PR CI. Set the flag
@@ -149,6 +152,7 @@ function run_suites() {
 }
 
 function finish() {
+    stop_e2e_mock_mcp
     if [ "${LOCAL_MODE:-0}" -eq 1 ]; then
       # When running locally, cleanup the tmp files
       rm -rf "$ARTIFACT_DIR"
@@ -166,4 +170,5 @@ if [ -z "${ARTIFACT_DIR:-}" ]; then
     readonly LOCAL_MODE=1
 fi
 
+start_e2e_mock_mcp
 run_suites

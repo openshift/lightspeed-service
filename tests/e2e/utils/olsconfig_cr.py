@@ -4,6 +4,7 @@ import os
 from typing import Literal
 
 import yaml
+from openshift.dynamic.exceptions import NotFoundError
 
 from tests.e2e.utils import cluster_api
 
@@ -15,7 +16,7 @@ def inspection_enabled_for_e2e(suffix: str) -> bool:
 
 def apply_e2e_olsconfig(
     path: str,
-    operation: Literal["apply", "create"],
+    operation: Literal["apply", "create", "replace_spec"],
     *,
     suffix: str,
     substitute_environment: bool,
@@ -38,5 +39,15 @@ def apply_e2e_olsconfig(
 
     if operation == "apply":
         cluster_api.apply_resource(olsconfig)
+    elif operation == "replace_spec":
+        try:
+            cluster_api.patch_resource(
+                "olsconfig",
+                olsconfig["metadata"]["name"],
+                [{"op": "replace", "path": "/spec", "value": olsconfig["spec"]}],
+                patch_type="json",
+            )
+        except NotFoundError:
+            cluster_api.create_resource(olsconfig, ignore_existing=False)
     else:
         cluster_api.create_resource(olsconfig, ignore_existing=ignore_existing_resource)
