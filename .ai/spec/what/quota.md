@@ -24,6 +24,8 @@ The quota subsystem enforces token consumption limits on LLM requests, preventin
 
 4f. If a failed provider call does not report usage, the service must not estimate actual provider consumption.
 
+> [PLANNED: OLS-4671] On the shared execution core, the core calls a service-supplied quota gate before every model call (agent turns, summarization, classifier calls, the turn-limit Stop answer) and the service debits after each call. Exhaustion mid-run stops with the existing quota error; a turn-limit Continue grants turns, not quota. See `what/execution-core.md` rule 22a.
+
 5. **Auto-initialization**: When a subject (user or cluster) is queried for the first time and no quota record exists, the system must automatically create a record with the available balance set to the configured initial quota value. No manual provisioning is required.
 
 6. **Revoke (reset)**: It must be possible to reset a subject's available balance to the configured initial quota value. This is the mechanism used by the scheduler to restore quotas on a recurring basis.
@@ -75,3 +77,4 @@ The quota subsystem enforces token consumption limits on LLM requests, preventin
 - [PLANNED: OLS-1470] When cluster awareness is enabled by default, a default quota must be automatically set so that the system operates with quota enforcement out of the box.
 - [PLANNED: OLS-2823] Per-user LLM provider API keys, enabling individual token quota management tied to each user's own provider credentials rather than a shared service credential.
 - [PLANNED: OLS-3928] Count tool-result classifier usage against the initiating user and cluster quota.
+- [PLANNED: OLS-4671] Quota gate before every model call on the shared execution core, with per-call debit. See `what/execution-core.md` rule 22a.

@@ -60,6 +60,9 @@ _The `@connection` pre-check reconnect, `connected()` liveness check, and per-in
 
 25. The health status maintained by the background health-check loop is the single source of truth for database health consumed by the readiness and liveness probes. Neither probe performs its own database query or acquires `_tx_lock`. The health status is an in-memory flag updated by two sources: (a) the background loop on each iteration, and (b) cache operations that encounter connection errors, which immediately mark the status as unhealthy (dual-feed model). Only the background loop may restore the status to healthy after successfully reconnecting on its independent connection. This ensures near-instant detection (first failed user query flips to unhealthy) and controlled recovery (background loop confirms before restoring healthy).
 
+
+> [PLANNED: OLS-4671] Rules 10–16 (compression and budget truncation) are removed. Each conversation becomes a DeepAgents thread with a LangGraph checkpointer (Postgres or in-memory, matching the cache backend) that persists summarization across turns; checkpoint threads are deleted with the conversation (deletion or eviction). The conversation endpoints and stored turns keep their contracts; endpoint sourcing is workspace open decision OD-1. `ols_config.history_compression_enabled` is accepted but ignored. See `what/execution-core.md`.
+
 ## Configuration Surface
 
 | Field path | Description |
@@ -96,6 +99,8 @@ _The `@connection` pre-check reconnect, `connected()` liveness check, and per-in
 7. When compression is disabled, history that exceeds the token budget is truncated by the token handler (newest messages kept, oldest dropped) with no summarization attempt.
 
 ## Planned Changes
+
+- [PLANNED: OLS-4671] Remove history compression and truncation; DeepAgents summarization with a per-conversation checkpointer handles context growth across turns. See `what/execution-core.md` rules 6a–6d.
 
 - [PLANNED: OLS-3221] PostgreSQL resilience — connection/operational error distinction, background health-check loop, dual-feed health status, operation timeouts, and health-status-backed readiness/liveness probes. See Rules 22–25. (Auto-reconnect via `@connection` is already shipped — Rules 20–21.)
 - [PLANNED: OLS-2713] Persistent chat -- UI-side conversation persistence, enabling users to resume conversations across browser sessions.

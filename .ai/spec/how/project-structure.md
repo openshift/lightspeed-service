@@ -2,6 +2,8 @@
 
 OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app/` (HTTP surface), `src/` (business logic), `utils/` (shared infrastructure), and `runners/` (process entry points). Each layer has strict import direction -- `app` depends on `src` and `utils`; `src` depends on `utils`; `runners` orchestrate startup.
 
+> [PLANNED: OLS-4671] At cutover `src/query_helpers/llm_execution_agent.py`, `src/query_helpers/history_support.py`, `src/tools/offloaded_content.py` (and its startup cleanup) and token-budget code in `utils/token_handler.py` are removed; the service depends on the shared execution core library. See `what/execution-core.md`.
+
 ## Module Map
 
 ### `ols/app/` -- FastAPI application layer

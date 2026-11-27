@@ -52,6 +52,9 @@ solely on general knowledge.
 
 ### Tool Execution
 
+> [PLANNED: OLS-4671] Execution moves to the shared core. Retries (rules 11–13) are kept as a core opt-in with the same policy; rule 14's per-round timeout becomes a run timeout. See `what/execution-core.md`.
+
+
 10. When the LLM requests multiple tool calls in a single round, all calls
     must execute concurrently. Results are streamed as they complete from any
     tool, not in request order. For how tool execution integrates with the
@@ -74,6 +77,9 @@ solely on general knowledge.
     iteration limits across rounds, see `what/agent-modes.md`.
 
 ### Token Budget for Tool Results
+
+> [PLANNED: OLS-4671] Rules in this section are removed; large results are handled by DeepAgents eviction with preview and paging. `tool_budget_ratio` and `tool_round_cap_fraction` are accepted but ignored. See `what/execution-core.md`.
+
 
 15. A configurable fraction of the model's context window is reserved for tool
     traffic (definitions + execution results), controlled by
@@ -107,6 +113,9 @@ solely on general knowledge.
     the character limit.
 
 ### Tool-Result Prompt-Injection Inspection
+
+> [PLANNED: OLS-4671] Inspection, wrapping and redaction use the shared core (sandbox implementation): per-result inspection with whole-run stop supersedes rule 18c's concurrent-round rule; offload rules apply to DeepAgents-evicted results. See `what/execution-core.md`.
+
 
 18a. [PLANNED: OLS-3928] The service MUST conform to the normative contract in `openshift/ols/.ai/spec/what/tool-result-inspection.md`.
 
@@ -193,6 +202,9 @@ For the full set of refinement decisions, see
     passed to the LLM without filtering.
 
 ### Tool Approval Workflow
+
+> [PLANNED: OLS-4671] The approval contract (rules 27–31) is unchanged and implemented by the core `ApprovalMiddleware` with a service approver. The decision endpoint also resolves turn-limit continuations via `continuation_id`. See `what/execution-core.md`.
+
 
 27. Three approval strategies are supported, selected by
     `tools_approval.approval_type`:
@@ -315,6 +327,7 @@ For the full set of refinement decisions, see
 
 | Jira Key | Summary |
 |---|---|
+| OLS-4671 | Execute tools on the shared DeepAgents core; remove tool budget/truncation and offload; per-result inspection; approval via core middleware (see `what/execution-core.md`) |
 | OLS-2685 | Previous tools in context -- carry tool results from prior conversation turns into the current prompt |
 | OLS-2715 | ocp-mcp additional toolsets -- expand the default MCP server set |
 | OLS-2684 | Remove client MCP headers -- eliminate the `"client"` header placeholder mechanism |

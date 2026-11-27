@@ -2,6 +2,8 @@
 
 The query pipeline is the core request-processing path that transforms a user question into an LLM-generated answer with optional RAG context, conversation history, skill injection, and multi-round tool calling. `DocsSummarizer` orchestrates the pipeline stages (RAG, skill, history, prompt assembly) and delegates the LLM invocation and tool-calling loop to `LLMExecutionAgent`.
 
+> [PLANNED: OLS-4671] `LLMExecutionAgent`, the token budget partitioning in `DocsSummarizer`/`token_handler.py` and `history_support.py` compression are removed at cutover. `DocsSummarizer` keeps retrieval, skill matching and prompt assembly and calls the shared execution core (`lightspeed-agent-core`, placeholder name) for generation; a service adapter maps core events to `StreamedChunk`/SSE and supplies the approver and continuation decider. The final module layout is recorded here during implementation. See `what/execution-core.md`.
+
 ## Module Map
 
 ### `ols/app/endpoints/ols.py` -- Non-streaming entry point
