@@ -4,13 +4,16 @@ import asyncio
 import logging
 import time
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
 from pydantic import BaseModel
 
+from ols.src.quota.quota_exceed_error import QuotaExceedError
 from ols.src.tools import tools as tools_module
+from ols.src.tools.tool_result_inspection import ToolResultRejectedError
 from ols.src.tools.tools import (
     ToolResultBudgetExceededError,
     ToolResultEvent,
@@ -715,6 +718,135 @@ async def test_execute_tool_calls_stream_approval_rejection_unmarked(
     assert "execution was rejected" in events[1].data.content
     assert "Do not retry this exact tool call." in events[1].data.content
     assert events[1].data.name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["rejected", "timeout"])
+async def test_execute_tool_calls_stream_does_not_inspect_approval_outcome(
+    monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    """Skip result inspection for calls that approval prevents from executing."""
+
+    async def _decision(*args: object, **kwargs: object) -> str:
+        return outcome
+
+    monkeypatch.setattr(tools_module, "need_validation", lambda **kwargs: True)
+    monkeypatch.setattr(tools_module, "get_approval_decision", _decision)
+    inspect_result = AsyncMock(return_value=ToolResultRejectedError("rejected"))
+
+    events = [
+        event
+        async for event in execute_tool_calls_stream(
+            [("call_denied", {}, FakeTool("denied_tool"))],
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
+            streaming=True,
+            inspect_result=inspect_result,
+        )
+    ]
+
+    inspect_result.assert_not_called()
+    assert isinstance(events[-1], ToolResultEvent)
+    assert events[-1].inspection_error is None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_attaches_inspection_outcome() -> None:
+    """Inspect each executed result after redaction and attach the outcome."""
+    rejection = ToolResultRejectedError("rejected")
+    inspect_result = AsyncMock(return_value=rejection)
+    tool = FakeTool("executed_tool")
+
+    events = [
+        event
+        async for event in execute_tool_calls_stream(
+            [("call_executed", {}, tool)],
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
+            inspect_result=inspect_result,
+        )
+    ]
+
+    inspected_message, inspected_tool, _span = inspect_result.await_args.args
+    assert inspected_message.content == "fake_output_from_executed_tool"
+    assert inspected_tool is tool
+    assert events[0].inspection_error is rejection
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_inspects_tool_error_content() -> None:
+    """Inspect error text produced by an executed tool."""
+    inspect_result = AsyncMock(return_value=None)
+
+    events = [
+        event
+        async for event in execute_tool_calls_stream(
+            [("call_failed", {}, FakeTool("failing_tool", should_fail=True))],
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
+            inspect_result=inspect_result,
+        )
+    ]
+
+    inspected_message = inspect_result.await_args.args[0]
+    assert inspected_message.status == "error"
+    assert "Tool execution failed" in inspected_message.content
+    assert events[0].inspection_error is None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_rejection_does_not_cancel_siblings() -> None:
+    """Let sibling tools finish when another result fails inspection."""
+
+    async def _inspect(message: ToolMessage, tool: StructuredTool, span: object):
+        if tool.name == "fast_tool":
+            return ToolResultRejectedError("rejected")
+        return None
+
+    events = [
+        event
+        async for event in execute_tool_calls_stream(
+            [
+                ("call_fast", {}, FakeTool("fast_tool")),
+                ("call_slow", {}, FakeTool("slow_tool", delay=0.05)),
+            ],
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
+            inspect_result=_inspect,
+        )
+    ]
+
+    outcomes = {event.data.tool_call_id: event.inspection_error for event in events}
+    assert isinstance(outcomes["call_fast"], ToolResultRejectedError)
+    assert outcomes["call_slow"] is None
+    assert (
+        next(
+            event for event in events if event.data.tool_call_id == "call_slow"
+        ).data.content
+        == "fake_output_from_slow_tool"
+    )
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_defers_inspector_exception() -> None:
+    """Attach an inspector exception so sibling tools still finish."""
+    quota_error = QuotaExceedError("user", "u1", 0)
+
+    async def _inspect(message: ToolMessage, tool: StructuredTool, span: object):
+        if tool.name == "fast_tool":
+            raise quota_error
+        return None
+
+    events = [
+        event
+        async for event in execute_tool_calls_stream(
+            [
+                ("call_fast", {}, FakeTool("fast_tool")),
+                ("call_slow", {}, FakeTool("slow_tool", delay=0.05)),
+            ],
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
+            inspect_result=_inspect,
+        )
+    ]
+
+    outcomes = {event.data.tool_call_id: event.inspection_error for event in events}
+    assert outcomes == {"call_fast": quota_error, "call_slow": None}
 
 
 @pytest.mark.asyncio
