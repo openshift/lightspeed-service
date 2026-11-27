@@ -33,17 +33,25 @@ def test_image_patch_preserves_value(
         monkeypatch.setattr(module, "disconnected", True)
         monkeypatch.setattr(module, "wait_for_deployment", Mock())
         adapt_ols_config._apply_e2e_specific_config(image)
-    patch.assert_called_once_with(
-        "deployment",
-        "lightspeed-app-server",
-        [
+    expected = []
+    if not installer:
+        expected.append(
+            {
+                "op": "add",
+                "path": "/spec/template/spec/containers/0/imagePullPolicy",
+                "value": "IfNotPresent",
+            }
+        )
+    if installer or image:
+        expected.append(
             {
                 "op": "replace",
                 "path": "/spec/template/spec/containers/0/image",
                 "value": image,
             }
-        ],
-        patch_type="json",
+        )
+    patch.assert_called_once_with(
+        "deployment", "lightspeed-app-server", expected, patch_type="json"
     )
 
 
