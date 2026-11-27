@@ -6,7 +6,7 @@ The harness installs the operator itself. `bundle-image` defaults to `quay.io/op
 
 ## Enable
 
-Merge these files before applying the scenario: its Git resolver reads `main` from `openshift/lightspeed-service`. Apply `integration-test-scenarios/konflux-integration-test-scenarios.yaml` to the existing `crt-nshift-lightspeed-tenant` namespace. The scenario is initially optional and uses `component_lightspeed-service`, matching the build PipelineRuns.
+Merge these files before applying the scenario: its Git resolver reads `main` from `openshift/lightspeed-service`. Apply `integration-test-scenarios/konflux-integration-test-scenarios.yaml` to the existing `crt-nshift-lightspeed-tenant` namespace. The scenario is initially optional and uses the `pull_request` context: push builds still produce images, but do not trigger this E2E test. Konflux treats contexts as OR alternatives, so adding `component_lightspeed-service` alongside `pull_request` would re-enable the test on pushes. Because `ols` is a shared application, this scenario starts a PipelineRun for PR snapshots from any component; the pipeline checks the component label before extracting the service image or provisioning a cluster.
 
 The tenant must have access to the `aws-konflux-prod` cluster profile and Git task/StepAction resolvers. The pipeline reuses the secure OCI publication StepAction from `openshift/lightspeed-operator` at `main`; that file must be available there before running this pipeline. Like the operator pipeline, provisioning uses three `m5.2xlarge` workers on `hosted-mgmt2`. Cluster ownership is passed to the provisioner for lifecycle management.
 
