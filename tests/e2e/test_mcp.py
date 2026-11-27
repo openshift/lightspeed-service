@@ -332,6 +332,7 @@ def test_tool_approval_denied() -> None:
     assert len(rejected) > 0, f"Expected a rejected tool_result, got: {tool_results}"
 
 
+@pytest.mark.mcp_approval_timeout
 def test_tool_approval_timeout() -> None:
     """Not responding to approval_required within the timeout produces an error tool_result."""
     events = _stream_events(

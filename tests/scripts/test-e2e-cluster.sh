@@ -52,7 +52,9 @@ function run_suites() {
   (( rc = rc || $? ))
 
   # MCP e2e: run early while CR is still default openai shape; avoids races after tool_calling (introspection true).
-  run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp"
+  run_suite "openai_mcp" "mcp and not mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp"
+  (( rc = rc || $? ))
+  run_suite "openai_mcp_timeout" "mcp_approval_timeout" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-6-luna" "$OLS_IMAGE" "mcp_timeout"
   (( rc = rc || $? ))
 
   # Run inspection for the audited provider/model matrix in PR CI. Set the flag

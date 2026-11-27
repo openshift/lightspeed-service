@@ -406,27 +406,34 @@ def _apply_e2e_specific_config(ols_image: str) -> None:
         print(
             "Disconnected mode: skipping configmap update, using existing configuration"
         )
-    # Apply test image
-    if ols_image:
-        print(f"Applying test image: {ols_image}")
-        try:
-            # Patch the lightspeed-service-api container (containers/0)
-            cluster_api.patch_resource(
-                "deployment",
-                "lightspeed-app-server",
-                [
-                    {
-                        "op": "replace",
-                        "path": "/spec/template/spec/containers/0/image",
-                        "value": ols_image,
-                    }
-                ],
-                patch_type="json",
+    print(f"Applying test image settings: {ols_image or 'bundle image'}, IfNotPresent")
+    try:
+        # Patch the lightspeed-service-api container (containers/0)
+        patch = [
+            {
+                "op": "add",
+                "path": "/spec/template/spec/containers/0/imagePullPolicy",
+                "value": "IfNotPresent",
+            }
+        ]
+        if ols_image:
+            patch.append(
+                {
+                    "op": "replace",
+                    "path": "/spec/template/spec/containers/0/image",
+                    "value": ols_image,
+                }
             )
+        cluster_api.patch_resource(
+            "deployment",
+            "lightspeed-app-server",
+            patch,
+            patch_type="json",
+        )
 
-            print("Image configuration completed")
-        except Exception as e:
-            print(f" Warning: Could not apply test image: {e}")
+        print("Image configuration completed")
+    except Exception as e:
+        print(f" Warning: Could not apply test image: {e}")
 
     # Scale back up
     print("Scaling up app server with new configuration...")
