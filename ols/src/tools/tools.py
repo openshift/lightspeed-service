@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict
@@ -90,10 +90,15 @@ class ToolResultEvent:
     data: ToolMessage
     event: Literal[StreamChunkType.TOOL_RESULT] = StreamChunkType.TOOL_RESULT
     audit_span: Span | None = None
+    inspection_error: Exception | None = None
 
 
 ToolExecutionEvent = ApprovalRequiredEvent | ToolResultEvent
 ToolCallDefinition: TypeAlias = tuple[str, dict[str, object], StructuredTool]
+ToolResultInspector: TypeAlias = Callable[
+    [ToolMessage, StructuredTool, Span | None],
+    Awaitable[ToolResultInspectionError | None],
+]
 
 
 class _ApprovalNotGrantedError(Exception):
@@ -614,12 +619,26 @@ def _redact_tool_result(
     return tool_output, structured_content, ref_docs, metadata
 
 
+async def _deferred_inspection_outcome(
+    inspect_result: ToolResultInspector,
+    message: ToolMessage,
+    tool: StructuredTool,
+    tool_span: Span | None,
+) -> Exception | None:
+    """Return the inspection outcome, or the exception raised while inspecting."""
+    try:
+        return await inspect_result(message, tool, tool_span)
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        return error
+
+
 async def _execute_single_tool_call_stream(
     tool_call: ToolCallDefinition,
     tools_token_budget: int,
     streaming: bool = False,
     offload_manager: "OffloadManager | None" = None,
     audit_ctx: AuditContext | None = None,
+    inspect_result: ToolResultInspector | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Execute a single tool call and emit execution events.
 
@@ -629,6 +648,9 @@ async def _execute_single_tool_call_stream(
         streaming: Whether this call originated from the streaming endpoint.
         offload_manager: Optional manager for offloading large outputs to disk.
         audit_ctx: Audit context for structured event logging.
+        inspect_result: Optional inspector applied to the executed result. Its
+            outcome, or any exception it raises, is attached to the event so
+            sibling calls are never cancelled by inspection.
 
     Yields:
         Approval-required or tool-result events.
@@ -723,6 +745,10 @@ async def _execute_single_tool_call_stream(
             audit_span=tool_span,
             redaction_metadata=redaction_metadata,
         )
+        if inspect_result is not None:
+            event.inspection_error = await _deferred_inspection_outcome(
+                inspect_result, event.data, tool, tool_span
+            )
         result_span_transferred = tool_span is not None
         yield event
     finally:
@@ -740,6 +766,7 @@ async def execute_tool_calls_stream(
     streaming: bool = False,
     offload_manager: "OffloadManager | None" = None,
     audit_ctx: AuditContext | None = None,
+    inspect_result: ToolResultInspector | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Execute tool calls in parallel and stream execution events."""
     if not tool_calls:
@@ -751,7 +778,12 @@ async def execute_tool_calls_stream(
     merged = stream.merge(
         *(
             _execute_single_tool_call_stream(
-                tc, per_tool_budget, streaming, offload_manager, audit_ctx
+                tc,
+                per_tool_budget,
+                streaming,
+                offload_manager,
+                audit_ctx,
+                inspect_result,
             )
             for tc in tool_calls
         )

@@ -15,7 +15,7 @@ execution with retry/backoff, and token-budget-aware result truncation.
 | `ols/src/tools/tools_rag/hybrid_tools_rag.py` | `ToolsRAG`, `populate_tools`, `retrieve_hybrid`, `remove_tools` | Hybrid RAG for tool filtering: indexes tool name+description into Qdrant (in-memory) with dense embeddings and BM25 sparse vectors, retrieves relevant tools via reciprocal rank fusion (RRF) with configurable alpha weighting, grouped by server. Supports default servers (always included) and per-request client servers. |
 | `ols/app/endpoints/tool_approvals.py` | `submit_tool_approval_decision` | REST endpoint (`POST /tool-approvals/decision`) for receiving user approval/rejection decisions. Delegates to `set_approval_decision` and returns 404/409 for missing or already-resolved approvals. |
 | `ols/src/query_helpers/docs_summarizer.py` | `DocsSummarizer` | Loads the classifier model and passes the configured provider type to `ToolResultClassifier`. It gives the classifier to `LLMExecutionAgent`. |
-| `ols/src/query_helpers/llm_execution_agent.py` | `LLMExecutionAgent`, `_inspect_tool_messages` | Enforces the aggregate result budget, inspects the complete concurrent batch, and delivers results only after inspection passes. |
+| `ols/src/query_helpers/llm_execution_agent.py` | `LLMExecutionAgent`, `_inspect_tool_result` | Supplies the per-result inspector to the executor, fails the complete concurrent batch on any inspection error, enforces the aggregate result budget, and delivers results only after inspection passes. |
 
 ## Data Flow
 
@@ -96,7 +96,12 @@ LLMExecutionAgent._process_tool_calls_for_round
                  -> Cheap char guard: tools_token_budget * 4 chars max
                  -> Cut at last newline boundary, append truncation warning
                On failure: return error status with truncated reason
-          3. Yield ToolResultEvent with ToolMessage
+          3. Redact, then inspect_result (LLMExecutionAgent._inspect_tool_result)
+               ToolResultClassifier inspects the executed result or error
+               Outcome attached as ToolResultEvent.inspection_error (never raised here)
+          4. Yield ToolResultEvent with ToolMessage
+     Skipped calls and approval rejected/timeout never reach step 3
+  -> Any inspection_error in the batch: raise the controlled safety exception
   -> enforce_tool_token_budget(all_tool_messages, remaining_budget)
        Tier 1: char estimate (len/4) -- if < 90% of budget, skip tokenization
        Tier 2: precise tokenization -- if under budget, return as-is
@@ -104,10 +109,6 @@ LLMExecutionAgent._process_tool_calls_for_round
          If longest message can absorb excess (>= 2x excess): shrink only that one
          Otherwise: scale all messages proportionally (ratio = budget/total)
          Cut at last newline, append truncation warning
-  -> LLMExecutionAgent._inspect_tool_messages checks the complete result batch
-       ToolResultClassifier inspects each effective result or error
-       Complete batch passes: continue
-       Inspection failure: raise the controlled safety exception
   -> Yield tool_result streaming events, charge token budget
   -> Append ToolMessages to conversation, loop back to LLM
 ```
@@ -175,7 +176,7 @@ arbitrarily large raw tool outputs before they even reach the budget enforcer.
 | Boundary | How it connects |
 |---|---|
 | **DocsSummarizer** | Loads the active provider and model for classification. It passes the configured provider type to `ToolResultClassifier` and gives the classifier to `LLMExecutionAgent`. |
-| **LLMExecutionAgent** | Enforces the result budget and inspects every result in a concurrent batch before it emits any `tool_result` event or sends results to the model. |
+| **LLMExecutionAgent** | Has every executed result in a concurrent batch inspected at the execution boundary and enforces the result budget before it emits any `tool_result` event or sends results to the model. |
 | **Tool Approvals Endpoint** | `POST /tool-approvals/decision` receives `{approval_id, approved}` from the client. Calls `set_approval_decision` which sets the `asyncio.Event`, unblocking the waiter in `get_approval_decision`. |
 | **TokenBudgetTracker** | DocsSummarizer charges tool results via `tracker.charge(TokenCategory.TOOL_RESULT, count)`. The tools_token_budget passed to execution is derived from the tracker's remaining budget. |
 | **Streaming Protocol** | Three event types flow to the client: `StreamChunkType.TOOL_CALL` (before execution), `StreamChunkType.APPROVAL_REQUIRED` (when gated), `StreamChunkType.TOOL_RESULT` (after execution). Each carries structured data including tool name, args, output, truncation status, and optional structured_content from MCP artifacts. |
@@ -260,6 +261,8 @@ The normative contract is `openshift/ols/.ai/spec/what/tool-result-inspection.md
 
 For Watsonx, the classifier sends `WatsonxToolResultInspectionDecision` with a `oneOf` schema. For other provider types, it sends `ToolResultInspectionDecision` without `oneOf`. Both models use the same Pydantic validation. An inconsistent decision is a classifier failure for every provider.
 
-`LLMExecutionAgent` inspects the complete batch after budget enforcement. It does not emit or reinject a result from that batch until every result passes. A failed result rejects the complete batch.
+`execute_tool_calls_stream` accepts an `inspect_result` callback, which is `LLMExecutionAgent._inspect_tool_result`. `_execute_single_tool_call_stream` calls it after redaction and attaches the outcome to `ToolResultEvent.inspection_error`. It never raises the outcome inside the merged stream, so sibling calls finish normally. An exception raised during inspection, such as quota exhaustion, is also attached and re-raised unchanged by the round, so the existing quota response still applies. Results from concurrent calls are inspected concurrently. Calls that never execute produce no tool result and are never inspected. These are the resolution skips in `_resolve_tool_call_definitions`, the tool-budget skip in `_process_tool_calls_for_round`, and `_approval_rejection_event`.
+
+After every executed call completes, `_process_tool_calls_for_round` raises the first inspection error. It does not emit or reinject a result from that batch until every result passes. A passing result is audited at inspection time, even when a sibling fails. `enforce_tool_token_budget` runs after inspection. It only shortens inspected content and appends the fixed truncation notice (shared contract rule 13a).
 
 Classifier calls use the quota subject from the request. The safety exception carries only the controlled reason that the endpoints and storage paths use.

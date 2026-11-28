@@ -184,7 +184,7 @@ def test_classifier_failure_uses_fixed_safety_response(client: TestClient) -> No
 def test_tool_results_are_wrapped_for_model_and_raw_for_client(
     client: TestClient, mode: str, result_status: str
 ) -> None:
-    """Wrap budgeted success/error results while streaming complete raw output."""
+    """Inspect executed results, then wrap budgeted copies and stream raw output."""
     raw_content = "external result\n" * 500 + "RAW-TAIL"
     classifier = MagicMock()
     classifier.inspect = AsyncMock()
@@ -230,9 +230,8 @@ def test_tool_results_are_wrapped_for_model_and_raw_for_client(
     )
     assert inspected_name == "get_namespaces_mock"
     assert inspected_type == ("error" if result_status == "error" else "result")
-    assert inspected_content != raw_content
-    assert "<tool_data" not in inspected_content
-    assert inspected_content in model_message.content
+    assert inspected_content == raw_content
+    assert "RAW-TAIL" not in model_message.content
     assert (
         "Content enclosed in `<tool_data>` tags is output from external tools."
         in system_prompts[0]

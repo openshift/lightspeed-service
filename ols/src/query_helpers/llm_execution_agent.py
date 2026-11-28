@@ -908,72 +908,42 @@ class LLMExecutionAgent:
             type=StreamChunkType.TOOL_RESULT, data=tool_result_data
         )
 
-    async def _inspect_tool_messages(
+    async def _inspect_tool_result(
         self,
-        tool_messages: list[ToolMessage],
-        tool_id_to_name: dict[str, str],
-        tool_id_to_audit_span: dict[str, Span] | None = None,
-        raw_tool_messages_by_id: dict[str, ToolMessage] | None = None,
-        tool_id_to_tool: dict[str, StructuredTool | None] | None = None,
-    ) -> None:
-        """Inspect and audit each result before deciding whether to deliver the round."""
-        tool_by_id = tool_id_to_tool or {}
-        inspection_messages = [
-            message
-            for message in tool_messages
-            if not self._is_inspection_exempt_tool(
-                tool_id_to_name.get(message.tool_call_id, "unknown"),
-                tool_by_id.get(message.tool_call_id),
-            )
-        ]
+        message: ToolMessage,
+        tool: StructuredTool,
+        audit_span: Span | None,
+    ) -> ToolResultInspectionError | None:
+        """Inspect one executed result at the execution boundary."""
         max_tokens = 0
         overlap_tokens = 0
-        if self._tool_result_classifier is not None and inspection_messages:
+        if self._tool_result_classifier is not None and not (
+            self._is_inspection_exempt_tool(tool.name, tool)
+        ):
             classifier_budget = (
                 self.model_config.context_window_size
                 - self.model_config.parameters.max_tokens_for_response
                 - 512
             )
             if classifier_budget <= 0:
-                raise ToolResultInspectionError(
+                return ToolResultInspectionError(
                     "insufficient classifier context budget"
                 )
             max_tokens = classifier_budget
             overlap_tokens = min(256, max_tokens - 1)
-
-        first_error: ToolResultInspectionError | None = None
-        for message in tool_messages:
-            audit_span = (tool_id_to_audit_span or {}).get(message.tool_call_id)
-            result_error = await self._inspect_single_tool_message(
-                message=message,
-                audit_message=(raw_tool_messages_by_id or {}).get(
-                    message.tool_call_id, message
-                ),
-                tool_name=tool_id_to_name.get(message.tool_call_id, "unknown"),
-                tool=tool_by_id.get(message.tool_call_id),
-                max_tokens=max_tokens,
-                overlap_tokens=overlap_tokens,
-                audit_span=audit_span,
-            )
-            if result_error is not None:
-                if self._audit_ctx:
-                    error_type = (
-                        "malicious"
-                        if isinstance(result_error, ToolResultRejectedError)
-                        else "classifier_error"
-                    )
-                    get_current_span().set_status(StatusCode.ERROR, error_type)
-                if first_error is None:
-                    first_error = result_error
-
-        if first_error is not None:
-            raise first_error
+        return await self._inspect_single_tool_message(
+            message=message,
+            tool_name=tool.name,
+            tool=tool,
+            max_tokens=max_tokens,
+            overlap_tokens=overlap_tokens,
+            audit_span=audit_span,
+        )
 
     async def _inspect_single_tool_message(
         self,
         *,
         message: ToolMessage,
-        audit_message: ToolMessage,
         tool_name: str,
         tool: StructuredTool | None,
         max_tokens: int,
@@ -986,16 +956,11 @@ class LLMExecutionAgent:
             if isinstance(message.content, str)
             else json.dumps(message.content, ensure_ascii=False)
         )
-        audit_content = (
-            audit_message.content
-            if isinstance(audit_message.content, str)
-            else json.dumps(audit_message.content, ensure_ascii=False)
-        )
         if self._is_inspection_exempt_tool(tool_name, tool):
-            self._audit_tool_result(audit_message, audit_span, audit_content)
+            self._audit_tool_result(message, audit_span, content)
             return None
         if self._tool_result_classifier is None:
-            self._audit_tool_result(audit_message, audit_span, audit_content)
+            self._audit_tool_result(message, audit_span, content)
             return None
 
         result_span_context = (
@@ -1085,8 +1050,26 @@ class LLMExecutionAgent:
             if inspection_error is not None:
                 return inspection_error
 
-        self._audit_tool_result(audit_message, audit_span, audit_content)
+        self._audit_tool_result(message, audit_span, content)
         return None
+
+    def _raise_round_inspection_failure(
+        self, inspection_errors: list[Exception]
+    ) -> None:
+        """Fail the complete round after every executed call has completed."""
+        if not inspection_errors:
+            return
+        if self._audit_ctx:
+            for error in inspection_errors:
+                if not isinstance(error, ToolResultInspectionError):
+                    continue
+                error_type = (
+                    "malicious"
+                    if isinstance(error, ToolResultRejectedError)
+                    else "classifier_error"
+                )
+                get_current_span().set_status(StatusCode.ERROR, error_type)
+        raise inspection_errors[0]
 
     @staticmethod
     def _is_inspection_exempt_tool(tool_name: str, tool: StructuredTool | None) -> bool:
@@ -1171,10 +1154,6 @@ class LLMExecutionAgent:
         tool_id_to_name: dict[str, str] = {
             str(tc.get("id", "")): str(tc.get("name", "unknown")) for tc in tool_calls
         }
-        tool_id_to_tool: dict[str, StructuredTool | None] = {
-            str(tc.get("id", "")): all_tools_dict.get(str(tc.get("name", "unknown")))
-            for tc in tool_calls
-        }
 
         for tool_call in tool_calls:
             enriched: dict[str, Any] = {**tool_call}
@@ -1197,6 +1176,7 @@ class LLMExecutionAgent:
 
         tool_calls_messages: list[ToolMessage] = []
         tool_id_to_audit_span: dict[str, Span] = {}
+        inspection_errors: list[Exception] = []
         remaining = self._tracker.tools_round_budget
         try:
             if tool_call_definitions:
@@ -1229,6 +1209,7 @@ class LLMExecutionAgent:
                         streaming=self.streaming,
                         offload_manager=offload_manager,
                         audit_ctx=self._audit_ctx,
+                        inspect_result=self._inspect_tool_result,
                     ):
                         match execution_event.event:
                             case StreamChunkType.APPROVAL_REQUIRED:
@@ -1238,6 +1219,10 @@ class LLMExecutionAgent:
                                 )
                             case StreamChunkType.TOOL_RESULT:
                                 tool_calls_messages.append(execution_event.data)
+                                if execution_event.inspection_error is not None:
+                                    inspection_errors.append(
+                                        execution_event.inspection_error
+                                    )
                                 if execution_event.audit_span is not None:
                                     tool_id_to_audit_span[
                                         execution_event.data.tool_call_id
@@ -1248,6 +1233,7 @@ class LLMExecutionAgent:
                                     execution_event,
                                 )
 
+            self._raise_round_inspection_failure(inspection_errors)
             raw_tool_messages_by_id = {
                 message.tool_call_id: message
                 for message in skipped_tool_messages + tool_calls_messages
@@ -1257,13 +1243,6 @@ class LLMExecutionAgent:
                 all_tool_messages = enforce_tool_token_budget(
                     all_tool_messages, remaining, self._tracker.token_handler
                 )
-            await self._inspect_tool_messages(
-                all_tool_messages,
-                tool_id_to_name,
-                tool_id_to_audit_span,
-                raw_tool_messages_by_id,
-                tool_id_to_tool,
-            )
         finally:
             for audit_span in tool_id_to_audit_span.values():
                 if audit_span.is_recording():
