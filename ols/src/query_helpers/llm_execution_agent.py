@@ -1049,7 +1049,7 @@ class LLMExecutionAgent:
                         if error.category in INJECTION_CATEGORIES
                         else "unknown"
                     )
-                    logger.debug(
+                    logger.info(
                         "Tool result inspection outcome=malicious result_type=%s "
                         "category=%s",
                         result_type,
@@ -1064,7 +1064,7 @@ class LLMExecutionAgent:
                         parent_span.set_status(StatusCode.ERROR, "malicious")
                 except ToolResultInspectionError as error:
                     inspection_error = error
-                    logger.debug(
+                    logger.info(
                         "Tool result inspection outcome=classifier_error result_type=%s",
                         result_type,
                     )
@@ -1075,7 +1075,7 @@ class LLMExecutionAgent:
                         inspection_span.set_status(StatusCode.ERROR, "classifier_error")
                         parent_span.set_status(StatusCode.ERROR, "classifier_error")
                 else:
-                    logger.debug(
+                    logger.info(
                         "Tool result inspection outcome=benign result_type=%s",
                         result_type,
                     )

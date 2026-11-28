@@ -149,6 +149,7 @@ function run_suites() {
 }
 
 function finish() {
+    stop_e2e_mock_mcp
     if [ "${LOCAL_MODE:-0}" -eq 1 ]; then
       # When running locally, cleanup the tmp files
       rm -rf "$ARTIFACT_DIR"
@@ -166,4 +167,5 @@ if [ -z "${ARTIFACT_DIR:-}" ]; then
     readonly LOCAL_MODE=1
 fi
 
+start_e2e_mock_mcp
 run_suites

@@ -3,7 +3,8 @@ r"""End-to-end tests for MCP integration.
 These tests run against a live OLS instance and a mock MCP server.
 The mock MCP server must be reachable from OLS (locally or on-cluster).
 
-On-cluster: the mock server is deployed as a pod by conftest (OLS_CONFIG_SUFFIX=mcp).
+On-cluster: the job starts the mock server before running pytest. For standalone
+cluster runs, explicitly call setup_mcp_on_cluster() and teardown_mcp_on_cluster().
 Locally: start the mock server manually (python tests/e2e/mcp/server/server.py 3000).
 """
 

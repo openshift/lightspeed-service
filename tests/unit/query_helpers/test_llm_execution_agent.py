@@ -255,13 +255,13 @@ async def test_inspection_failure_metadata_is_exported(
     ],
 )
 @pytest.mark.asyncio
-async def test_inspection_debug_log_records_outcome_without_content(
+async def test_inspection_info_log_records_outcome_without_content(
     caplog: pytest.LogCaptureFixture,
     inspection_error: ToolResultInspectionError | None,
     expected_outcome: str,
 ) -> None:
     """Distinguish rejection from provider failure without logging tool output."""
-    caplog.set_level(logging.DEBUG, logger="ols.src.query_helpers.llm_execution_agent")
+    caplog.set_level(logging.INFO, logger="ols.src.query_helpers.llm_execution_agent")
     classifier = MagicMock()
     classifier.inspect = AsyncMock(side_effect=inspection_error)
     agent = _make_agent(tool_result_classifier=classifier)
@@ -292,7 +292,7 @@ async def test_rejected_tool_error_logs_result_type_without_content(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Identify an inspected error result without printing its untrusted text."""
-    caplog.set_level(logging.DEBUG, logger="ols.src.query_helpers.llm_execution_agent")
+    caplog.set_level(logging.INFO, logger="ols.src.query_helpers.llm_execution_agent")
     classifier = MagicMock()
     classifier.inspect = AsyncMock(
         side_effect=ToolResultRejectedError("rejected", category="tool_manipulation")

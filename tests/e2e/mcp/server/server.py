@@ -187,6 +187,7 @@ class MCPMockHandler(BaseHTTPRequestHandler):
         elif method == "tools/call":
             tool_args = request_data.get("params", {}).get("arguments", {})
             tool_call_name = request_data.get("params", {}).get("name", "")
+            request_log[-1]["tool_name"] = tool_call_name
             tool_result = _tool_result_for_call(tool_call_name, tool_args)
             response = {
                 "jsonrpc": "2.0",

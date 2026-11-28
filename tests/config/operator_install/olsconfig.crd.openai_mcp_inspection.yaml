@@ -23,7 +23,7 @@ spec:
     deployment:
       replicas: 1
     disableAuth: false
-    logLevel: DEBUG
+    logLevel: INFO
     introspectionEnabled: false
     userDataCollection:
       feedbackDisabled: true

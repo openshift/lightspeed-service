@@ -21,6 +21,25 @@ function cleanup_ols() {
 }
 
 # no arguments
+# Shared MCP fixture lifecycle for cluster jobs, not individual pytest suites.
+e2e_mock_mcp_owned=false
+function start_e2e_mock_mcp() {
+  local existing
+  existing=$(oc -n openshift-lightspeed get deployment/mcp-mock-server service/mcp-mock-server configmap/mcp-mock-server-source secret/mcp-test-token --ignore-not-found -o name) || return 1
+  if [[ -n "$existing" ]]; then
+    echo "Mock MCP resources already exist; refusing to replace them" >&2
+    return 1
+  fi
+  e2e_mock_mcp_owned=true
+  uv run python -c 'from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster; setup_mcp_on_cluster()'
+}
+
+function stop_e2e_mock_mcp() {
+  if [[ "$e2e_mock_mcp_owned" == true ]]; then
+    uv run python -c 'from tests.e2e.utils.mcp_setup import teardown_mcp_on_cluster; teardown_mcp_on_cluster()' || true
+  fi
+}
+
 function cleanup_ols_operator() {
     # Deletes may fail if this is the first time running against
     # the cluster, so ignore failures

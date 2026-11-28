@@ -2,7 +2,6 @@
 
 from copy import deepcopy
 from io import StringIO
-from types import ModuleType
 from unittest.mock import Mock
 
 import pytest
@@ -122,61 +121,44 @@ def test_apply_olsconfig_substitutes_environment(
     assert spec["ols"]["guardrails"]["toolResultInspection"]["enabled"] is False
 
 
-@pytest.mark.parametrize("scenario", ["unchanged", "changed", "failure"])
+@pytest.mark.parametrize("changed", [False, True])
 def test_switch_default_provider(
-    monkeypatch: pytest.MonkeyPatch, scenario: str
+    monkeypatch: pytest.MonkeyPatch, changed: bool
 ) -> None:
-    """Update defaults with a clean restart and restore replicas after failures."""
-    configmap = {
-        "apiVersion": "v1",
-        "kind": "ConfigMap",
-        "metadata": {"name": "olsconfig"},
-        "data": {
-            DEFAULT_CONFIGURATION_FILE: yaml.safe_dump(
-                {
-                    "llm_config": {
-                        "default_provider": "openai",
-                        "default_model": "gpt-6-luna",
+    """Update OLSConfig and let the operator roll the app server."""
+    monkeypatch.setattr(
+        cluster_api,
+        "read_resource",
+        Mock(
+            return_value={
+                "spec": {
+                    "ols": {"defaultProvider": "openai", "defaultModel": "gpt-6-luna"}
+                }
+            }
+        ),
+    )
+    patch, wait = Mock(), Mock()
+    monkeypatch.setattr(cluster_api, "patch_resource", patch)
+    monkeypatch.setattr(adapt_ols_config, "wait_for_olsconfig", wait)
+    if changed:
+        adapt_ols_config.switch_default_provider("bedrock", "openai.gpt-6-luna")
+        patch.assert_called_once_with(
+            "olsconfig",
+            "cluster",
+            {
+                "spec": {
+                    "ols": {
+                        "defaultProvider": "bedrock",
+                        "defaultModel": "openai.gpt-6-luna",
                     }
                 }
-            )
-        },
-    }
-    read, apply, scale = Mock(return_value=deepcopy(configmap)), Mock(), Mock()
-    monkeypatch.setattr(cluster_api, "read_resource", read)
-    monkeypatch.setattr(cluster_api, "patch_resource", apply)
-    monkeypatch.setattr(cluster_api, "scale_deployment", scale)
-    monkeypatch.setattr(
-        adapt_ols_config.cluster_utils, "get_running_pods", lambda _namespace: []
-    )
-    if scenario == "failure":
-        monkeypatch.setattr(
-            adapt_ols_config, "retry_until_timeout_or_success", lambda *_a, **_k: False
+            },
         )
-        with pytest.raises(RuntimeError, match="did not terminate"):
-            adapt_ols_config.switch_default_provider("bedrock", "openai.gpt-6-luna")
-        apply.assert_not_called()
-    elif scenario == "unchanged":
-        adapt_ols_config.switch_default_provider("openai", "gpt-6-luna")
-        apply.assert_not_called()
-        scale.assert_not_called()
+        wait.assert_called_once_with()
     else:
-        adapt_ols_config.switch_default_provider("bedrock", "openai.gpt-6-luna")
-        assert apply.call_args.args[:2] == ("configmap", "olsconfig")
-        assert set(apply.call_args.args[2]) == {"data"}
-        config = yaml.safe_load(
-            apply.call_args.args[2]["data"][DEFAULT_CONFIGURATION_FILE]
-        )
-        assert config["llm_config"] == {
-            "default_provider": "bedrock",
-            "default_model": "openai.gpt-6-luna",
-        }
-    read.assert_called_once_with("configmap", "olsconfig")
-    if scenario != "unchanged":
-        assert [call.args for call in scale.call_args_list] == [
-            ("lightspeed-app-server", 0),
-            ("lightspeed-app-server", 1),
-        ]
+        adapt_ols_config.switch_default_provider("openai", "gpt-6-luna")
+        patch.assert_not_called()
+        wait.assert_not_called()
 
 
 @pytest.mark.parametrize("providers", [["openai"], ["openai", "watsonx"]])
@@ -196,34 +178,27 @@ def test_apply_olsconfig_rejects_existing_configuration(
 
 @pytest.mark.parametrize(
     "failure",
-    [TimeoutError("finalizer stuck"), ForbiddenError(ApiException(status=403))],
+    [TimeoutError("update timed out"), ForbiddenError(ApiException(status=403))],
 )
-def test_reconcile_stops_when_olsconfig_deletion_fails(
+def test_reconcile_stops_when_olsconfig_update_fails(
     monkeypatch: pytest.MonkeyPatch, failure: Exception
 ) -> None:
-    """Do not warm images or create a replacement CR after failed deletion."""
+    """Surface an unsuccessful in-place update without scaling the operator."""
     scale = Mock()
     monkeypatch.setattr(cluster_api, "scale_deployment", scale)
     monkeypatch.setattr(
         adapt_ols_config, "retry_until_timeout_or_success", Mock(return_value=True)
     )
-    monkeypatch.setattr(cluster_api, "delete_resource", Mock(side_effect=failure))
-    warm, apply = Mock(), Mock()
-    monkeypatch.setattr(adapt_ols_config, "warm_up_rhokp_image", warm)
+    apply = Mock(side_effect=failure)
     monkeypatch.setattr(adapt_ols_config, "apply_olsconfig", apply)
     with pytest.raises(type(failure)):
         adapt_ols_config._reconcile_olsconfig_with_operator(["openai", "watsonx"])
-    warm.assert_not_called()
-    apply.assert_not_called()
-    assert [call.args for call in scale.call_args_list] == [
-        ("lightspeed-operator-controller-manager", 1),
-        ("lightspeed-operator-controller-manager", 0),
-    ]
+    apply.assert_called_once_with(["openai", "watsonx"], operation="replace_spec")
+    scale.assert_not_called()
 
 
-@pytest.mark.parametrize("module", [adapt_ols_config, ols_installer])
 def test_configmap_updates_patch_only_configuration_data(
-    monkeypatch: pytest.MonkeyPatch, module: ModuleType
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Avoid taking server-side ownership of a fetched operator-managed ConfigMap."""
     original = {
@@ -246,10 +221,7 @@ def test_configmap_updates_patch_only_configuration_data(
         "apply_resource",
         Mock(side_effect=AssertionError("Unexpected apply")),
     )
-    if module is adapt_ols_config:
-        module.update_ols_configmap()
-    else:
-        module.update_ols_config()
+    ols_installer.update_ols_config()
     assert patch.call_args.args[:2] == ("configmap", "olsconfig")
     body = patch.call_args.args[2]
     assert set(body) == {"data"}

@@ -129,6 +129,15 @@ def test_install_ols_creates_olsconfig(
     """Create the suffix-selected resource with environment substitution."""
     create = Mock(side_effect=RuntimeError("resource captured"))
     monkeypatch.setattr(cluster_api, "create_resource", create)
+    from openshift.dynamic.exceptions import (
+        NotFoundError,  # pylint: disable=import-outside-toplevel
+    )
+
+    monkeypatch.setattr(
+        cluster_api,
+        "patch_resource",
+        Mock(side_effect=NotFoundError(ApiException(status=404))),
+    )
     monkeypatch.setattr(cluster_api, "delete_resource", Mock())
     monkeypatch.setattr(ols_installer, "disconnected", True)
     monkeypatch.setattr(

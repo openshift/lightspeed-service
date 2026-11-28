@@ -175,8 +175,6 @@ def test_session_start_failure_cleans_created_tokens(
     monkeypatch.setenv("SKIP_CLUSTER_SETUP", "true")
     monkeypatch.delenv("SWITCH_DEFAULT_PROVIDER", raising=False)
     monkeypatch.setattr(e2e_fixtures, "on_cluster", False)
-    monkeypatch.setattr(e2e_fixtures, "_maybe_setup_mcp", Mock())
-    monkeypatch.setattr(e2e_fixtures.ols_installer, "warm_up_rhokp_image", Mock())
     monkeypatch.setattr(
         cluster, "get_ols_url", Mock(return_value="https://ols.example")
     )
@@ -215,23 +213,22 @@ def test_session_start_failure_cleans_created_tokens(
     )
 
 
-@pytest.mark.parametrize("failure", [None, "gather", "mcp"])
+@pytest.mark.parametrize("failure", [None, "gather"])
 def test_session_finish_cleans_tokens_when_namespace_is_retained(
     monkeypatch: pytest.MonkeyPatch, failure: str | None
 ) -> None:
-    """Always clean up session credentials even if artifact or MCP cleanup fails."""
+    """Always clean up session credentials even if artifact collection fails."""
     monkeypatch.setenv("SKIP_CLUSTER_SETUP", "true")
     monkeypatch.setenv("OLS_CONFIG_SUFFIX", "mcp")
     monkeypatch.setattr(e2e_fixtures, "on_cluster", True)
     monkeypatch.setattr(
         e2e_fixtures, "_should_gather_artifacts", Mock(return_value=True)
     )
-    for name, stage in [("must_gather", "gather"), ("teardown_mcp_on_cluster", "mcp")]:
-        monkeypatch.setattr(
-            e2e_fixtures,
-            name,
-            Mock(side_effect=RuntimeError(stage) if failure == stage else None),
-        )
+    monkeypatch.setattr(
+        e2e_fixtures,
+        "must_gather",
+        Mock(side_effect=RuntimeError("gather") if failure else None),
+    )
     cleanup = Mock()
     monkeypatch.setattr(cluster, "cleanup_session_tokens", cleanup)
     if failure:
@@ -242,27 +239,62 @@ def test_session_finish_cleans_tokens_when_namespace_is_retained(
     cleanup.assert_called_once_with()
 
 
-@pytest.mark.parametrize("ready", [False, True])
-def test_reconcile_checks_operator_readiness_before_deleting(
-    monkeypatch: pytest.MonkeyPatch, ready: bool
+@pytest.mark.parametrize("observed", [3, 4])
+def test_olsconfig_readiness_requires_current_generation(
+    monkeypatch: pytest.MonkeyPatch, observed: int
 ) -> None:
-    """Do not delete the OLSConfig until the operator can process its finalizer."""
-    monkeypatch.setattr(api, "scale_deployment", Mock())
-    monkeypatch.setattr(cluster, "get_pod_by_prefix", Mock(return_value=["operator"]))
+    """Do not mistake the previous suite's readiness for the current suite's."""
     monkeypatch.setattr(
-        cluster,
-        "get_container_ready_status",
-        Mock(return_value=["true" if ready else "false"]),
+        api,
+        "read_resource",
+        Mock(
+            return_value={
+                "metadata": {"generation": 4},
+                "status": {
+                    "conditions": [
+                        {
+                            "type": "ApiReady",
+                            "status": "True",
+                            "observedGeneration": observed,
+                        }
+                    ]
+                },
+            }
+        ),
     )
+    assert adapt_ols_config._olsconfig_api_is_ready() == (observed == 4)
 
-    def retry(_attempts: int, _interval: int, predicate, _message: str) -> bool:
-        return bool(predicate())
 
-    monkeypatch.setattr(adapt_ols_config, "retry_until_timeout_or_success", retry)
-    delete = Mock(side_effect=RuntimeError("deletion reached"))
-    monkeypatch.setattr(api, "delete_resource", delete)
-    with pytest.raises(
-        RuntimeError, match="deletion reached" if ready else "Timed out waiting"
-    ):
-        adapt_ols_config._reconcile_olsconfig_with_operator(["openai"])
-    assert delete.call_count == int(ready)
+@pytest.mark.parametrize(
+    "status_override,ready",
+    [
+        ({}, True),
+        ({"observedGeneration": 3}, False),
+        ({"updatedReplicas": 0}, False),
+        ({"availableReplicas": 0}, False),
+        ({"replicas": 2}, False),
+    ],
+)
+def test_app_server_rollout_requires_current_replicas(
+    monkeypatch: pytest.MonkeyPatch, status_override: dict[str, int], ready: bool
+) -> None:
+    """An available old pod must not satisfy the new suite readiness check."""
+    status = {
+        "observedGeneration": 4,
+        "updatedReplicas": 1,
+        "availableReplicas": 1,
+        "replicas": 1,
+        **status_override,
+    }
+    monkeypatch.setattr(
+        api,
+        "read_resource",
+        Mock(
+            return_value={
+                "metadata": {"generation": 4},
+                "spec": {"replicas": 1},
+                "status": status,
+            }
+        ),
+    )
+    assert adapt_ols_config._app_server_rollout_complete() == ready

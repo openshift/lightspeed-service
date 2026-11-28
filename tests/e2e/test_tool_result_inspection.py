@@ -20,7 +20,7 @@ from tests.e2e.mcp.server.server import (
     BENIGN_INSPECTION_RESULT,
     MALICIOUS_INSPECTION_RESULT,
 )
-from tests.e2e.utils import cluster_api
+from tests.e2e.utils import cluster, cluster_api
 from tests.e2e.utils.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.utils.inspection_assertions import (
     assert_inspection_outcome,
@@ -90,10 +90,37 @@ def _read_sse_events(response_text: str) -> list[dict]:
     ]
 
 
+def _mock_debug(command: str, *args: str) -> str:
+    """Query mock debug state inside its pod without exporting captured headers."""
+    pod = cluster.get_pod_by_prefix(prefix="mcp-mock-server")[0]
+    return cluster_api.execute(pod, ["python", "-c", command, *args], NAMESPACE).strip()
+
+
+def _clear_mock_requests() -> None:
+    """Reset request evidence before each inspection query."""
+    _mock_debug(
+        "from urllib.request import Request, urlopen; "
+        "urlopen(Request('http://127.0.0.1:3000/debug/requests', method='DELETE'), "
+        "timeout=5).close()"
+    )
+
+
+def _mock_tool_called(tool_name: str) -> bool:
+    """Check only tool calls recorded since the reset."""
+    return (
+        _mock_debug(
+            "import json, sys; from urllib.request import urlopen; "
+            "entries = json.load(urlopen('http://127.0.0.1:3000/debug/requests', timeout=5)); "
+            "print(any(entry.get('tool_name') == sys.argv[1] for entry in entries))",
+            tool_name,
+        )
+        == "True"
+    )
+
+
 def _assert_mock_tool_called(tool_name: str) -> None:
-    """Make sure that the mock MCP server received the named tool call."""
-    logs = cluster_api.deployment_logs("mcp-mock-server", NAMESPACE)
-    if f"MCP tool called: {tool_name}" not in logs:
+    """Make sure that the current query reached the named mock tool."""
+    if not _mock_tool_called(tool_name):
         pytest.fail("The mock MCP server did not record the expected tool call")
 
 
@@ -125,8 +152,7 @@ def _failure_diagnostics_since(
         outcomes = _inspection_outcomes_since(previous_logs, current_logs)
         classifier_failures = classifier_failures_since(previous_logs, current_logs)
     try:
-        mock_logs = cluster_api.deployment_logs("mcp-mock-server", NAMESPACE)
-        mock_tool_called = f"MCP tool called: {tool_name}" in mock_logs
+        mock_tool_called = _mock_tool_called(tool_name)
     except Exception:
         mock_tool_called = None
     return format_inspection_failure_diagnostics(
@@ -165,6 +191,7 @@ def _post_with_inspection_diagnostics(
 def test_benign_tool_result_passes_inspection(provider: str, model: str) -> None:
     """Accept benign mock tool output and return a successful query response."""
     previous_logs = _service_logs()
+    _clear_mock_requests()
     response = _post_with_inspection_diagnostics(
         "/v1/query",
         {
@@ -234,6 +261,7 @@ def test_malicious_tool_result_fails_closed_without_leaking_content(
         payload["media_type"] = "application/json"
 
     previous_logs = _service_logs()
+    _clear_mock_requests()
     response = _post_with_inspection_diagnostics(
         endpoint, payload, previous_logs, tool_name
     )
