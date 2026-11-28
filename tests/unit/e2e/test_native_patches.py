@@ -18,6 +18,7 @@ def test_image_patch_preserves_value(
     """Pass candidate images to the operator without altering their values."""
     monkeypatch.setenv("OLS_IMAGE", image)
     deployment = {
+        "metadata": {},
         "spec": {
             "template": {
                 "spec": {
@@ -29,9 +30,28 @@ def test_image_patch_preserves_value(
                     ]
                 }
             }
+        },
+    }
+    deployment["metadata"]["ownerReferences"] = [
+        {"kind": "ClusterServiceVersion", "name": "lightspeed-operator.v2.0.2"}
+    ]
+    csv = {
+        "spec": {
+            "install": {
+                "spec": {
+                    "deployments": [
+                        {
+                            "name": "lightspeed-operator-controller-manager",
+                            "spec": deployment["spec"],
+                        }
+                    ]
+                }
+            }
         }
     }
-    monkeypatch.setattr(cluster_api, "read_resource", Mock(return_value=deployment))
+    monkeypatch.setattr(
+        cluster_api, "read_resource", Mock(side_effect=[deployment, csv])
+    )
     patch = Mock()
     monkeypatch.setattr(cluster_api, "patch_resource", patch)
     monkeypatch.setattr(
@@ -39,12 +59,12 @@ def test_image_patch_preserves_value(
     )
     ols_installer.configure_operator_service_image()
     patch.assert_called_once_with(
-        "deployment",
-        "lightspeed-operator-controller-manager",
+        "clusterserviceversion",
+        "lightspeed-operator.v2.0.2",
         [
             {
                 "op": "add",
-                "path": "/spec/template/spec/containers/0/args",
+                "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/args",
                 "value": ["--leader-elect", f"--service-image={image}"],
             }
         ],

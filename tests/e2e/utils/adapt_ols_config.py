@@ -214,11 +214,14 @@ def wait_for_olsconfig() -> None:
     if image := os.getenv("OLS_IMAGE"):
         deployment = cluster_api.read_resource("deployment", "lightspeed-app-server")
         containers = deployment["spec"]["template"]["spec"]["containers"]
-        if not any(
-            c["name"] == "lightspeed-service-api" and c["image"] == image
-            for c in containers
-        ):
-            raise RuntimeError("Operator did not deploy the candidate service image")
+        actual = next(
+            (c["image"] for c in containers if c["name"] == "lightspeed-service-api"),
+            None,
+        )
+        if actual != image:
+            raise RuntimeError(
+                f"Candidate service image mismatch: expected {image}, got {actual}"
+            )
     _wait_for_openshift_mcp_server()
 
 

@@ -23,27 +23,46 @@ disconnected = os.getenv("DISCONNECTED", "")
 
 
 def configure_operator_service_image() -> None:
-    """Configure the candidate image on the operator, never the operand."""
+    """Set the candidate image in the operator install strategy when OLM owns it."""
     image = os.getenv("OLS_IMAGE")
     if not image:
         return
     name = "lightspeed-operator-controller-manager"
     deployment = cluster_api.read_resource("deployment", name)
-    containers = deployment["spec"]["template"]["spec"]["containers"]
+    target_kind, target_name = "deployment", name
+    template_path = "/spec/template"
+    template = deployment["spec"]["template"]
+    for owner in deployment["metadata"].get("ownerReferences", []):
+        if owner["kind"] != "ClusterServiceVersion":
+            continue
+        target_kind, target_name = "clusterserviceversion", owner["name"]
+        csv = cluster_api.read_resource(target_kind, target_name)
+        strategy = csv["spec"]["install"]["spec"]["deployments"]
+        deployment_index, managed = next(
+            (i, entry) for i, entry in enumerate(strategy) if entry["name"] == name
+        )
+        template = managed["spec"]["template"]
+        template_path = (
+            f"/spec/install/spec/deployments/{deployment_index}/spec/template"
+        )
+        break
+
     index, manager = next(
-        (i, c) for i, c in enumerate(containers) if c["name"] == "manager"
+        (i, c)
+        for i, c in enumerate(template["spec"]["containers"])
+        if c["name"] == "manager"
     )
     args = manager.get("args", [])
     flag = f"--service-image={image}"
     if flag not in args:
         updated = [arg for arg in args if not arg.startswith("--service-image=")]
         cluster_api.patch_resource(
-            "deployment",
-            name,
+            target_kind,
+            target_name,
             [
                 {
                     "op": "add",
-                    "path": f"/spec/template/spec/containers/{index}/args",
+                    "path": f"{template_path}/spec/containers/{index}/args",
                     "value": [*updated, flag],
                 }
             ],
@@ -53,8 +72,12 @@ def configure_operator_service_image() -> None:
     def rolled_out() -> bool:
         current = cluster_api.read_resource("deployment", name)
         status = current.get("status", {})
+        containers = current["spec"]["template"]["spec"]["containers"]
         return (
-            status.get("observedGeneration") == current["metadata"]["generation"]
+            any(
+                c["name"] == "manager" and flag in c.get("args", []) for c in containers
+            )
+            and status.get("observedGeneration") == current["metadata"]["generation"]
             and status.get("replicas") == 1
             and status.get("updatedReplicas") == 1
             and status.get("availableReplicas") == 1

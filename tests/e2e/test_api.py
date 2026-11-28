@@ -6,7 +6,6 @@
 
 import json
 import re
-import time
 
 import pytest
 import requests
@@ -311,7 +310,42 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     assert "OpenShift" in deserialized[3].content
 
 
+def _exporter_upload_completed(logs: str) -> bool:
+    """Require successful upload and report an HTTP failure without its body."""
+    failure = re.search(r"Data upload failed with response code: (\d{3})", logs)
+    if failure:
+        pytest.fail(f"Exporter upload failed with HTTP {failure.group(1)}")
+    return all(
+        marker in logs
+        for marker in (
+            "Collected 1 files",
+            "Uploading data chunk",
+            "Data uploaded with request_id:",
+        )
+    )
+
+
+@pytest.fixture(name="paused_export_operator")
+def fixture_paused_export_operator():
+    """Prevent reconciliation from undoing the test's manual exporter mode."""
+    operator = "lightspeed-operator-controller-manager"
+    try:
+        cluster_api.scale_deployment(operator, 0)
+        assert retry_until_timeout_or_success(
+            30,
+            3,
+            lambda: not cluster_utils.get_pod_by_prefix(
+                prefix=operator, fail_not_found=False
+            ),
+            "Waiting for operator to scale down",
+        ), "Operator did not stop before exporter setup"
+        yield
+    finally:
+        cluster_api.scale_deployment(operator, 1)
+
+
 @pytest.mark.data_export
+@pytest.mark.usefixtures("paused_export_operator")
 def test_user_data_collection():
     """Test user data collection and upload to ingress.
 
@@ -347,19 +381,25 @@ def test_user_data_collection():
     )
     last_log_line = get_last_log_line(container_log)
 
-    # Wait another cycle to verify exporter ran but found no data
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL_SHORT + 1)
+    def new_exporter_logs() -> str:
+        return filter_logs(
+            cluster_utils.get_container_log(pod_name, data_collection_container_name),
+            last_log_line,
+        )
 
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
+    def empty_cycle_completed() -> bool:
+        logs = new_exporter_logs()
+        if "Uploading data chunk" in logs:
+            pytest.fail("Exporter attempted an unexpected upload")
+        return "No data marked for collection in" in logs
+
+    assert retry_until_timeout_or_success(
+        30, 2, empty_cycle_completed, "Waiting for an empty exporter collection cycle"
+    ), "Exporter did not report an empty collection cycle"
+
+    last_log_line = get_last_log_line(
+        cluster_utils.get_container_log(pod_name, data_collection_container_name)
     )
-    logs = filter_logs(container_log, last_log_line)
-    # Verify exporter ran and found no data to collect
-    assert "No data marked for collection in" in logs, logs[-2000:]
-    assert "Uploading data chunk" not in logs, logs[-2000:]
-
-    # Get log point for next check
-    last_log_line = get_last_log_line(container_log)
 
     # Create new data via feedback endpoint
     response = pytest.client.post(
@@ -374,24 +414,12 @@ def test_user_data_collection():
     )
     assert response.status_code == requests.codes.ok
 
-    # Wait for collection to happen
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL_SHORT + 5)
-
-    # Check that data was collected and sent
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    logs = filter_logs(container_log, last_log_line)
-    # Verify data was collected and uploaded
-    assert "Collected 1 files" in logs, (
-        "Expected 'Collected 1 files' in logs:\n" f"{logs[-2000:]}"
-    )
-    assert "Uploading data chunk" in logs, (
-        "Expected 'Uploading data chunk' in logs:\n" f"{logs[-2000:]}"
-    )
-    assert "Data uploaded with request_id:" in logs, (
-        "Expected 'Data uploaded with request_id:' in logs:\n" f"{logs[-2000:]}"
-    )
+    assert retry_until_timeout_or_success(
+        30,
+        2,
+        lambda: _exporter_upload_completed(new_exporter_logs()),
+        "Waiting for the exporter to collect and upload feedback",
+    ), "Exporter did not report collecting one file and successfully uploading it"
 
     # Verify data was cleaned up after upload
     user_data = cluster_utils.list_path(pod_name, f"{OLS_USER_DATA_PATH}/feedback/")
