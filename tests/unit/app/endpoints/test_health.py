@@ -17,6 +17,8 @@ from ols.app.endpoints.health import (
 from ols.app.models.config import InMemoryCacheConfig
 from ols.app.models.models import LivenessResponse, ReadinessResponse
 from ols.src.cache.in_memory_cache import InMemoryCache
+from tests.unit.utils.test_audit_support import audit_records as audit_records
+from tests.unit.utils.test_audit_support import records
 
 
 def mock_cache():
@@ -226,3 +228,74 @@ def test_liveness_probe_get_method():
     # i.e. it does not depend on application state
     response = liveness_probe_get_method()
     assert response == LivenessResponse(alive=True)
+
+
+def test_readiness_audits_real_worker_attempt_not_future_timeout(
+    audit_records, monkeypatch
+):
+    """Keep health purpose and native attempt lifetime after the caller times out."""
+    import threading
+
+    import httpx
+    from langchain_openai import ChatOpenAI
+
+    from ols.app.endpoints import health
+    from ols.utils.audit_support import audit_model
+
+    entered, release, done = threading.Event(), threading.Event(), threading.Event()
+
+    def handler(_request):
+        entered.set()
+        assert release.wait(5), "readiness test did not release controlled I/O"
+        return httpx.Response(
+            200,
+            json={
+                "id": "chat-test",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "test",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"role": "assistant", "content": "ok"},
+                    }
+                ],
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        model = audit_model(
+            ChatOpenAI(
+                model="test", api_key="unused", max_retries=0, http_client=client
+            )
+        )
+
+        def invoke(prompt):
+            try:
+                return model.invoke(prompt)
+            finally:
+                done.set()
+
+        bare = Mock()
+        bare.invoke.side_effect = invoke
+        monkeypatch.setattr(health, "load_llm", Mock(return_value=bare))
+        monkeypatch.setattr(health, "llm_is_ready_persistent_state", False)
+        monkeypatch.setattr(health, "LLM_READINESS_TIMEOUT", 0.1)
+        try:
+            assert not health.llm_is_ready()
+            assert entered.is_set()
+            assert len(records(audit_records)) == 1
+            assert "trace_id" not in records(audit_records)[0]
+        finally:
+            release.set()
+            assert done.wait(5)
+        started, completed = records(audit_records)
+        assert started["attempt_id"] == completed["attempt_id"]
+        assert completed["outcome"] == "success"
+        assert health.llm_is_ready_persistent_state is False
+        monkeypatch.setattr(health, "llm_is_ready_persistent_state", True)
+        config.ols_config.expire_llm_is_ready_persistent_state = -1
+        assert health.llm_is_ready()
+        assert len(records(audit_records)) == 2
+        bare.invoke.assert_called_once_with("Hello there!")

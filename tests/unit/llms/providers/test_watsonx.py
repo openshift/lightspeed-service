@@ -1,5 +1,6 @@
 """Unit tests for Watsonx provider."""
 
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
@@ -97,6 +98,34 @@ def provider_config_with_specific_params():
             ],
         }
     )
+
+
+def test_load_wraps_client_construction_in_watsonx_auth_audit_scope(
+    provider_config,
+):
+    """Catch initial IAM acquisition occurring before the Watsonx audit scope."""
+    events = []
+
+    @contextmanager
+    def audit_scope():
+        events.append("audit_scope_enter")
+        yield
+        events.append("audit_scope_exit")
+
+    def construct_client(**_kwargs):
+        events.append("construct_client")
+        return object()
+
+    with (
+        patch("ols.src.llms.providers.watsonx.watsonx_auth_audit_scope", audit_scope),
+        patch(
+            "ols.src.llms.providers.watsonx.ChatWatsonx",
+            side_effect=construct_client,
+        ),
+    ):
+        Watsonx(model="uber-model", params={}, provider_config=provider_config).load()
+
+    assert events == ["audit_scope_enter", "construct_client", "audit_scope_exit"]
 
 
 def test_basic_interface(provider_config):
